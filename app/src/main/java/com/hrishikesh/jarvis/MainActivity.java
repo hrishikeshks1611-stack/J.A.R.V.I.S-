@@ -41,23 +41,18 @@ public class MainActivity extends Activity {
         voicePrefs = getSharedPreferences("jarvis_voice", MODE_PRIVATE);
         textToSpeech = new TextToSpeech(this, status -> {
             if (status == TextToSpeech.SUCCESS) {
-                // Restore the user's exact installed voice choice. Otherwise prefer an explicitly
-                // male British voice when the TTS engine exposes that metadata.
+                // Restore an explicitly selected British voice first. Otherwise retain the
+                // voice already configured as the Android TTS engine's system default.
+                // Android does not expose reliable gender metadata for every installed voice.
                 Voice selected = findVoice(voicePrefs.getString("voice_name", ""));
-                if (selected == null && textToSpeech.getVoices() != null) {
-                    for (Voice voice : textToSpeech.getVoices()) {
-                        if (isBritish(voice) && isExplicitlyMale(voice)
-                                && (selected == null || voice.getQuality() > selected.getQuality())) selected = voice;
-                    }
-                }
-                if (selected != null) {
-                    textToSpeech.setVoice(selected);
+                if (selected == null) selected = textToSpeech.getDefaultVoice();
+                if (selected != null && textToSpeech.setVoice(selected) != TextToSpeech.ERROR) {
                     voiceChosen = true;
                 } else {
-                    // Do not silently fall back to an arbitrary voice (which may be female).
-                    // The user must audition and choose an installed British voice first.
-                    textToSpeech.setLanguage(Locale.UK);
-                    voiceChosen = false;
+                    // Keep speech available using the system's configured English (UK) voice.
+                    int languageResult = textToSpeech.setLanguage(Locale.UK);
+                    voiceChosen = languageResult != TextToSpeech.LANG_MISSING_DATA
+                            && languageResult != TextToSpeech.LANG_NOT_SUPPORTED;
                 }
                 textToSpeech.setSpeechRate(1.0f);
                 textToSpeech.setPitch(1.0f);
@@ -197,16 +192,13 @@ public class MainActivity extends Activity {
             if (!ttsReady || voiceName == null) return "Voice engine is not ready, Sir.";
             Voice candidate = findVoice(voiceName);
             if (candidate == null) return "That British voice is not installed, Sir.";
-            String previouslySaved = voicePrefs.getString("voice_name", "");
-            Voice previous = findVoice(previouslySaved);
+            Voice previous = textToSpeech.getVoice();
             if (textToSpeech.setVoice(candidate) == TextToSpeech.ERROR) return "Android could not preview that voice, Sir.";
             final String previewId = "JARVIS_PREVIEW_" + System.currentTimeMillis();
             textToSpeech.setOnUtteranceProgressListener(new UtteranceProgressListener() {
                 private void restore() {
                     runOnUiThread(() -> {
-                        Voice restoreVoice = findVoice(previouslySaved);
-                        if (restoreVoice != null) textToSpeech.setVoice(restoreVoice);
-                        else if (!voiceChosen) textToSpeech.setLanguage(Locale.UK);
+                        if (previous != null) textToSpeech.setVoice(previous);
                     });
                 }
                 @Override public void onStart(String id) { }
