@@ -24,7 +24,7 @@ export default async function handler(req, res) {
   const apiKey = process.env.JARVIS || process.env.GEMINI_API_KEY;
   if (!apiKey) {
     return res.status(503).json({
-      error: "GEMINI_API_KEY is missing from this Vercel deployment. Check the project's Environment Variables and redeploy."
+      error: "No Gemini API key is configured. Add GEMINI_API_KEY (or JARVIS) in this Vercel project's Environment Variables, then redeploy."
     });
   }
 
