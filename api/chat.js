@@ -51,10 +51,10 @@ export default async function handler(req, res) {
       "Keep answers appropriately concise, but give enough detail to be genuinely useful."
     ].join(" ");
 
-    const prior = Array.isArray(body.history) ? body.history.slice(-12) : [];
+    const prior = Array.isArray(body.history) ? body.history.slice(-8) : [];
     const contents = prior
       .filter(item => item && (item.role === "user" || item.role === "model") && typeof item.text === "string")
-      .map(item => ({ role: item.role, parts: [{ text: item.text.slice(0, 6000) }] }));
+      .map(item => ({ role: item.role, parts: [{ text: item.text.slice(0, 2500) }] }));
     if (!contents.length || contents[contents.length - 1].role !== "user" ||
         contents[contents.length - 1].parts[0].text !== message) {
       contents.push({ role: "user", parts: [{ text: message }] });
@@ -63,7 +63,7 @@ export default async function handler(req, res) {
     // Try the current stable Flash model first, then two compatible fallbacks.
     // A 503 is model-capacity pressure, so move to another model rather than
     // making the user repeat the same request.
-    const models = ["gemini-3.8-flash", "gemini-3.5-flash-lite", "gemini-3.5-flash"];
+    const models = ["gemini-3.5-flash-lite", "gemini-3.8-flash", "gemini-3.5-flash"];
     let response;
     let data = {};
     let lastUnavailable = "";
@@ -77,7 +77,7 @@ export default async function handler(req, res) {
           body: JSON.stringify({
             system_instruction: { parts: [{ text: system }] },
             contents,
-            generationConfig: { temperature: 0.7, maxOutputTokens: 1800 }
+            generationConfig: { temperature: 0.7, maxOutputTokens: 1200 }
           })
         }
       );
