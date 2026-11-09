@@ -5,6 +5,9 @@ import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
+import android.content.SharedPreferences;
+import org.json.JSONArray;
+import org.json.JSONObject;
 import android.speech.RecognizerIntent;
 import android.speech.tts.TextToSpeech;
 import android.speech.tts.Voice;
@@ -25,6 +28,7 @@ public class MainActivity extends Activity {
     private WebView webView;
     private TextToSpeech textToSpeech;
     private boolean ttsReady = false;
+    private SharedPreferences voicePrefs;
     private String pendingSpeech = null;
     private final Map<String, String[]> appPackages = new HashMap<>();
 
@@ -33,31 +37,26 @@ public class MainActivity extends Activity {
         getWindow().setStatusBarColor(android.graphics.Color.rgb(5, 11, 24));
         getWindow().setNavigationBarColor(android.graphics.Color.rgb(5, 11, 24));
         registerApps();
+        voicePrefs = getSharedPreferences("jarvis_voice", MODE_PRIVATE);
         textToSpeech = new TextToSpeech(this, status -> {
             if (status == TextToSpeech.SUCCESS) {
-                // Prefer the best installed British English voice over the engine default.
-                Voice bestBritishVoice = null;
-                if (textToSpeech.getVoices() != null) {
+                // Restore the user's exact installed voice choice. Otherwise prefer an explicitly
+                // male British voice when the TTS engine exposes that metadata.
+                Voice selected = findVoice(voicePrefs.getString("voice_name", ""));
+                if (selected == null && textToSpeech.getVoices() != null) {
                     for (Voice voice : textToSpeech.getVoices()) {
-                        Locale voiceLocale = voice.getLocale();
-                        if (voiceLocale != null
-                                && "en".equalsIgnoreCase(voiceLocale.getLanguage())
-                                && "GB".equalsIgnoreCase(voiceLocale.getCountry())
-                                && !voice.isNetworkConnectionRequired()
-                                && (bestBritishVoice == null || voice.getQuality() > bestBritishVoice.getQuality())) {
-                            bestBritishVoice = voice;
-                        }
+                        if (isBritish(voice) && isExplicitlyMale(voice)
+                                && (selected == null || voice.getQuality() > selected.getQuality())) selected = voice;
                     }
                 }
-                if (bestBritishVoice != null) {
-                    textToSpeech.setVoice(bestBritishVoice);
-                } else {
-                    int language = textToSpeech.setLanguage(Locale.UK);
-                    if (language == TextToSpeech.LANG_MISSING_DATA || language == TextToSpeech.LANG_NOT_SUPPORTED) {
-                        textToSpeech.setLanguage(Locale.getDefault());
+                if (selected == null && textToSpeech.getVoices() != null) {
+                    for (Voice voice : textToSpeech.getVoices()) {
+                        if (isBritish(voice) && !voice.isNetworkConnectionRequired()
+                                && (selected == null || voice.getQuality() > selected.getQuality())) selected = voice;
                     }
                 }
-                // Neutral pitch and normal pacing avoid an artificially lowered, sluggish sound.
+                if (selected != null) textToSpeech.setVoice(selected);
+                else textToSpeech.setLanguage(Locale.UK);
                 textToSpeech.setSpeechRate(1.0f);
                 textToSpeech.setPitch(1.0f);
                 ttsReady = true;
@@ -88,6 +87,47 @@ public class MainActivity extends Activity {
         });
         setContentView(webView);
         webView.loadUrl("https://hrishikeshks1611-stack.github.io/J.A.R.V.I.S-/");
+    }
+
+
+    private boolean isBritish(Voice voice) {
+        Locale locale = voice.getLocale();
+        return locale != null && "en".equalsIgnoreCase(locale.getLanguage())
+                && "GB".equalsIgnoreCase(locale.getCountry());
+    }
+
+    private boolean isExplicitlyMale(Voice voice) {
+        if (voice.getFeatures() == null) return false;
+        for (String feature : voice.getFeatures()) {
+            String f = feature.toLowerCase(Locale.ROOT);
+            if (f.equals("gender=male") || f.equals("gender_male") || f.equals("male")) return true;
+        }
+        return false;
+    }
+
+    private Voice findVoice(String name) {
+        if (name == null || name.isEmpty() || textToSpeech == null || textToSpeech.getVoices() == null) return null;
+        for (Voice voice : textToSpeech.getVoices()) if (name.equals(voice.getName()) && isBritish(voice)) return voice;
+        return null;
+    }
+
+    private JSONArray availableBritishVoices() {
+        JSONArray result = new JSONArray();
+        if (textToSpeech == null || textToSpeech.getVoices() == null) return result;
+        for (Voice voice : textToSpeech.getVoices()) {
+            if (!isBritish(voice)) continue;
+            JSONObject item = new JSONObject();
+            try {
+                item.put("name", voice.getName());
+                item.put("locale", voice.getLocale().toLanguageTag());
+                item.put("quality", voice.getQuality());
+                item.put("offline", !voice.isNetworkConnectionRequired());
+                item.put("male", isExplicitlyMale(voice));
+                item.put("features", new JSONArray(voice.getFeatures() == null ? new ArrayList<String>() : new ArrayList<String>(voice.getFeatures())));
+                result.put(item);
+            } catch (Exception ignored) { }
+        }
+        return result;
     }
 
     private void registerApps() {
@@ -140,6 +180,22 @@ public class MainActivity extends Activity {
                 }
             }
             return title(name) + " does not appear to be installed, Sir.";
+        }
+
+
+        @JavascriptInterface public String getAvailableVoices() {
+            if (!ttsReady) return "[]";
+            return availableBritishVoices().toString();
+        }
+
+        @JavascriptInterface public String selectBritishVoice(String voiceName) {
+            if (!ttsReady || voiceName == null) return "Voice engine is not ready, Sir.";
+            Voice voice = findVoice(voiceName);
+            if (voice == null) return "That British voice is not installed, Sir.";
+            int result = textToSpeech.setVoice(voice);
+            if (result == TextToSpeech.ERROR) return "Android could not activate that voice, Sir.";
+            voicePrefs.edit().putString("voice_name", voice.getName()).apply();
+            return "Selected " + voice.getName() + ", Sir.";
         }
 
         @JavascriptInterface public void speak(String text) {
