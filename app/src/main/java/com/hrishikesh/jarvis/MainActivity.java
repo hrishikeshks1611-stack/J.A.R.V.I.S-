@@ -193,6 +193,31 @@ public class MainActivity extends Activity {
             return availableBritishVoices().toString();
         }
 
+        @JavascriptInterface public String previewBritishVoice(String voiceName) {
+            if (!ttsReady || voiceName == null) return "Voice engine is not ready, Sir.";
+            Voice candidate = findVoice(voiceName);
+            if (candidate == null) return "That British voice is not installed, Sir.";
+            String previouslySaved = voicePrefs.getString("voice_name", "");
+            Voice previous = findVoice(previouslySaved);
+            if (textToSpeech.setVoice(candidate) == TextToSpeech.ERROR) return "Android could not preview that voice, Sir.";
+            final String previewId = "JARVIS_PREVIEW_" + System.currentTimeMillis();
+            textToSpeech.setOnUtteranceProgressListener(new UtteranceProgressListener() {
+                private void restore() {
+                    runOnUiThread(() -> {
+                        Voice restoreVoice = findVoice(previouslySaved);
+                        if (restoreVoice != null) textToSpeech.setVoice(restoreVoice);
+                        else if (!voiceChosen) textToSpeech.setLanguage(Locale.UK);
+                    });
+                }
+                @Override public void onStart(String id) { }
+                @Override public void onDone(String id) { if (previewId.equals(id)) restore(); }
+                @Override public void onError(String id) { if (previewId.equals(id)) restore(); }
+            });
+            textToSpeech.speak("Good evening, Sir. I am JARVIS. How may I assist you today?",
+                    TextToSpeech.QUEUE_FLUSH, null, previewId);
+            return "Previewing " + candidate.getName() + ". This voice has not been saved yet, Sir.";
+        }
+
         @JavascriptInterface public String selectBritishVoice(String voiceName) {
             if (!ttsReady || voiceName == null) return "Voice engine is not ready, Sir.";
             Voice voice = findVoice(voiceName);
