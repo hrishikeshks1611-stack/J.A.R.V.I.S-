@@ -1,4 +1,4 @@
-const CACHE="jarvis-shell-v4";
+const CACHE="jarvis-shell-v5";
 const ASSETS=["./","./index.html","./manifest.webmanifest","./jarvis-icon.svg"];
 
 self.addEventListener("install",event=>{
