@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#050b18"><meta name="description" content="J.A.R.V.I.S. — Personal voice-first AI assistant">
-<link rel="manifest" href="/manifest.webmanifest">
+<link rel="manifest" href="./manifest.webmanifest">
 <title>J.A.R.V.I.S.</title>
 <style>
 :root{color-scheme:dark;--bg:#050b18;--panel:#0a1426;--line:#183b59;--cyan:#62d9ff;--blue:#218bff;--muted:#8ba6bd;--white:#eaf7ff}
@@ -44,5 +44,5 @@ $('voiceToggle').onclick=()=>{voiceOn=!voiceOn;$('voiceToggle').textContent='Voi
 $('clear').onclick=()=>{history=[];messages.innerHTML='';add('Conversation cleared, Sir. What shall we discuss?','jarvis')};
 $('form').onsubmit=async e=>{e.preventDefault();const message=$('prompt').value.trim();if(!message)return;$('prompt').value='';add(message,'user');history.push({role:'user',text:message});status('Thinking','thinking');$('hint').textContent='Processing your request…';try{const r=await fetch('https://jarvis-sigma-one-92.vercel.app/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message,history,mode:$('mode').value})});const raw=await r.text();let data={};try{data=JSON.parse(raw)}catch{}if(!r.ok)throw Error(data.error||('AI service returned HTTP '+r.status));const reply=data.reply||'I have no response, Sir.';add(reply,'jarvis');history.push({role:'model',text:reply});history=history.slice(-20);$('hint').textContent='Ready when you are.';speak(reply);if(!voiceOn)status('System ready');}catch(err){const msg='I could not reach my intelligence service, Sir. '+err.message;add(msg,'jarvis');$('hint').textContent='The AI service needs to be configured.';status('Service unavailable');speak(msg)}};
 $('mic').onclick=()=>{const SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(!SR){add('Voice recognition is not supported by this browser, Sir.','jarvis');return}const rec=new SR();rec.lang='en-GB';rec.interimResults=false;rec.onstart=()=>status('Listening','listening');rec.onresult=e=>{$('prompt').value=e.results[0][0].transcript;$('form').requestSubmit()};rec.onerror=()=>status('System ready');rec.onend=()=>{if(!$('prompt').value)status('System ready')};rec.start()};
-if('serviceWorker'in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('/sw.js').catch(()=>{});
+if('serviceWorker'in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('./sw.js').catch(()=>{});
 </script></body></html>
