@@ -36,7 +36,6 @@
     </queries>
     <application
         android:allowBackup="false"
-        android:icon="@drawable/ic_jarvis"
         android:icon="@drawable/ic_jarvis_launcher"
         android:label="J.A.R.V.I.S."
         android:theme="@android:style/Theme.Material.NoActionBar"
