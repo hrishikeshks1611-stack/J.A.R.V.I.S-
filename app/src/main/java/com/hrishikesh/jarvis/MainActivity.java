@@ -97,6 +97,9 @@ public class MainActivity extends Activity {
     }
 
     private boolean isExplicitlyMale(Voice voice) {
+        String name = voice.getName() == null ? "" : voice.getName().toLowerCase(Locale.ROOT);
+        if (name.matches(".*(^|[-_ ])(male|masculine)([-_ ]|$).*")) return true;
+        if (name.matches(".*(^|[-_ ])(female|feminine)([-_ ]|$).*")) return false;
         if (voice.getFeatures() == null) return false;
         for (String feature : voice.getFeatures()) {
             String f = feature.toLowerCase(Locale.ROOT);
