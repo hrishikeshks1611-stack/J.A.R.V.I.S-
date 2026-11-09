@@ -18,6 +18,20 @@
         <package android:name="com.android.dialer" />
         <package android:name="com.twitter.android" />
         <package android:name="com.reddit.frontpage" />
+        <package android:name="com.google.android.apps.photos" />
+        <package android:name="com.google.android.calendar" />
+        <package android:name="com.google.android.keep" />
+        <package android:name="com.google.android.contacts" />
+        <package android:name="com.google.android.apps.docs" />
+        <package android:name="com.google.android.apps.nbu.files" />
+        <package android:name="com.amazon.mShop.android.shopping" />
+        <package android:name="com.flipkart.android" />
+        <package android:name="com.vivo.browser" />
+        <package android:name="com.vivo.calculator" />
+        <package android:name="com.vivo.filemanager" />
+        <package android:name="com.vivo.gallery" />
+        <package android:name="in.swiggy.android" />
+        <package android:name="com.application.zomato" />
     </queries>
     <application
         android:allowBackup="false"
