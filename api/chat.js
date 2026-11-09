@@ -1,15 +1,30 @@
 // J.A.R.V.I.S. server-side AI endpoint for Vercel.
-// GEMINI_API_KEY must exist only in Vercel Environment Variables.
+// The Gemini key stays in Vercel Environment Variables; it is never sent to the browser.
 export default async function handler(req, res) {
+  const origin = req.headers.origin || "";
+  const allowedOrigin =
+    origin === "https://hrishikeshks1611-stack.github.io" ||
+    /^https:\/\/[^/]+\.vercel\.app$/.test(origin);
+
+  if (origin && !allowedOrigin) {
+    return res.status(403).json({ error: "This website is not authorised to use the JARVIS AI service." });
+  }
+  if (allowedOrigin) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+    res.setHeader("Vary", "Origin");
+    res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  }
+  if (req.method === "OPTIONS") return res.status(204).end();
   if (req.method !== "POST") {
-    res.setHeader("Allow", "POST");
+    res.setHeader("Allow", "POST, OPTIONS");
     return res.status(405).json({ error: "Use POST for assistant requests." });
   }
 
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     return res.status(503).json({
-      error: "GEMINI_API_KEY is missing from this Vercel deployment. Add it to the Vercel project and redeploy."
+      error: "GEMINI_API_KEY is missing from this Vercel deployment. Check the project's Environment Variables and redeploy."
     });
   }
 
@@ -60,14 +75,12 @@ export default async function handler(req, res) {
 
     const raw = await response.text();
     let data;
-    try { data = JSON.parse(raw); }
-    catch { data = {}; }
+    try { data = JSON.parse(raw); } catch { data = {}; }
 
     if (!response.ok) {
       const detail = data?.error?.message || raw.slice(0, 500) || "No error detail returned by Google.";
       console.error("Gemini API error:", response.status, detail);
-      const status = response.status === 429 ? 429 : 502;
-      return res.status(status).json({
+      return res.status(response.status === 429 ? 429 : 502).json({
         error: `Gemini rejected the request (HTTP ${response.status}): ${detail}`
       });
     }
