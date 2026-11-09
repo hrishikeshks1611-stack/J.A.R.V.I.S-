@@ -60,28 +60,49 @@ export default async function handler(req, res) {
       contents.push({ role: "user", parts: [{ text: message }] });
     }
 
-    const response = await fetch(
-      "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent",
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
-        body: JSON.stringify({
-          system_instruction: { parts: [{ text: system }] },
-          contents,
-          generationConfig: { temperature: 0.7, maxOutputTokens: 1800 }
-        })
-      }
-    );
+    // Try the current stable Flash model first, then two compatible fallbacks.
+    // A 503 is model-capacity pressure, so move to another model rather than
+    // making the user repeat the same request.
+    const models = ["gemini-3.8-flash", "gemini-3.5-flash-lite", "gemini-3.5-flash"];
+    let response;
+    let data = {};
+    let lastUnavailable = "";
 
-    const raw = await response.text();
-    let data;
-    try { data = JSON.parse(raw); } catch { data = {}; }
+    for (const model of models) {
+      response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
+          body: JSON.stringify({
+            system_instruction: { parts: [{ text: system }] },
+            contents,
+            generationConfig: { temperature: 0.7, maxOutputTokens: 1800 }
+          })
+        }
+      );
 
-    if (!response.ok) {
+      const raw = await response.text();
+      try { data = JSON.parse(raw); } catch { data = {}; }
+
+      if (response.ok) break;
+
       const detail = data?.error?.message || raw.slice(0, 500) || "No error detail returned by Google.";
-      console.error("Gemini API error:", response.status, detail);
+      console.error("Gemini model error:", model, response.status, detail);
+
+      if (response.status === 503) {
+        lastUnavailable = detail;
+        continue;
+      }
+
       return res.status(response.status === 429 ? 429 : 502).json({
         error: `Gemini rejected the request (HTTP ${response.status}): ${detail}`
+      });
+    }
+
+    if (!response?.ok) {
+      return res.status(503).json({
+        error: "Sir, Google's Gemini models are temporarily at capacity. I tried the primary model and two fallbacks. Please try again shortly. " + (lastUnavailable || "")
       });
     }
 
