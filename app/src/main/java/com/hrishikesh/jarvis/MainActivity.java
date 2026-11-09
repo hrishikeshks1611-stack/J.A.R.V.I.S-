@@ -67,6 +67,19 @@ public class MainActivity extends Activity {
         appPackages.put("x", new String[]{"com.twitter.android"});
         appPackages.put("twitter", new String[]{"com.twitter.android"});
         appPackages.put("reddit", new String[]{"com.reddit.frontpage"});
+        appPackages.put("photos", new String[]{"com.google.android.apps.photos"});
+        appPackages.put("calendar", new String[]{"com.google.android.calendar"});
+        appPackages.put("keep", new String[]{"com.google.android.keep"});
+        appPackages.put("contacts", new String[]{"com.google.android.contacts"});
+        appPackages.put("drive", new String[]{"com.google.android.apps.docs"});
+        appPackages.put("files", new String[]{"com.google.android.apps.nbu.files", "com.vivo.filemanager"});
+        appPackages.put("amazon", new String[]{"com.amazon.mShop.android.shopping"});
+        appPackages.put("flipkart", new String[]{"com.flipkart.android"});
+        appPackages.put("browser", new String[]{"com.android.chrome", "com.vivo.browser"});
+        appPackages.put("calculator", new String[]{"com.vivo.calculator"});
+        appPackages.put("gallery", new String[]{"com.vivo.gallery", "com.google.android.apps.photos"});
+        appPackages.put("swiggy", new String[]{"in.swiggy.android"});
+        appPackages.put("zomato", new String[]{"com.application.zomato"});
     }
 
     private class JarvisBridge {
