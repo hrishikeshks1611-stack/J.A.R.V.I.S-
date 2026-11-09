@@ -24,6 +24,7 @@ public class MainActivity extends Activity {
     private WebView webView;
     private TextToSpeech textToSpeech;
     private boolean ttsReady = false;
+    private String pendingSpeech = null;
     private final Map<String, String[]> appPackages = new HashMap<>();
 
     @Override public void onCreate(Bundle savedInstanceState) {
@@ -40,6 +41,10 @@ public class MainActivity extends Activity {
                 textToSpeech.setSpeechRate(0.94f);
                 textToSpeech.setPitch(0.90f);
                 ttsReady = true;
+                if (pendingSpeech != null) {
+                    textToSpeech.speak(pendingSpeech, TextToSpeech.QUEUE_FLUSH, null, "JARVIS_STARTUP");
+                    pendingSpeech = null;
+                }
             }
         });
         webView = new WebView(this);
@@ -119,11 +124,12 @@ public class MainActivity extends Activity {
 
         @JavascriptInterface public void speak(String text) {
             runOnUiThread(() -> {
+                String message = text == null ? "" : text;
                 if (textToSpeech == null || !ttsReady) {
-                    Toast.makeText(MainActivity.this, "JARVIS voice is still starting. Please try again in a moment.", Toast.LENGTH_SHORT).show();
+                    pendingSpeech = message;
                     return;
                 }
-                textToSpeech.speak(text == null ? "" : text, TextToSpeech.QUEUE_FLUSH, null, "JARVIS_" + System.currentTimeMillis());
+                textToSpeech.speak(message, TextToSpeech.QUEUE_FLUSH, null, "JARVIS_" + System.currentTimeMillis());
             });
         }
 
