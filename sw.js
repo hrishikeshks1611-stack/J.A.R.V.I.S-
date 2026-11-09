@@ -1,5 +1,5 @@
 const CACHE="jarvis-shell-v4";
-const ASSETS=["/","/index.html","/manifest.webmanifest","/jarvis-icon.svg"];
+const ASSETS=["./","./index.html","./manifest.webmanifest","./jarvis-icon.svg"];
 
 self.addEventListener("install",event=>{
   self.skipWaiting();
@@ -28,7 +28,7 @@ self.addEventListener("fetch",event=>{
           caches.open(CACHE).then(cache=>cache.put(request,copy));
         }
         return response;
-      }).catch(()=>caches.match(request).then(cached=>cached || caches.match("/index.html")))
+      }).catch(()=>caches.match(request).then(cached=>cached || caches.match("./index.html")))
     );
     return;
   }
