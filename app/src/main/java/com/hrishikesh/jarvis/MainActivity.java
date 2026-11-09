@@ -6,6 +6,8 @@ import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
 import android.speech.RecognizerIntent;
+import android.speech.tts.TextToSpeech;
+import android.speech.tts.UtteranceProgressListener;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
@@ -20,6 +22,8 @@ import java.util.Map;
 public class MainActivity extends Activity {
     private static final int REQUEST_SPEECH = 4102;
     private WebView webView;
+    private TextToSpeech textToSpeech;
+    private boolean ttsReady = false;
     private final Map<String, String[]> appPackages = new HashMap<>();
 
     @Override public void onCreate(Bundle savedInstanceState) {
@@ -27,6 +31,17 @@ public class MainActivity extends Activity {
         getWindow().setStatusBarColor(android.graphics.Color.rgb(5, 11, 24));
         getWindow().setNavigationBarColor(android.graphics.Color.rgb(5, 11, 24));
         registerApps();
+        textToSpeech = new TextToSpeech(this, status -> {
+            if (status == TextToSpeech.SUCCESS) {
+                int language = textToSpeech.setLanguage(Locale.UK);
+                if (language == TextToSpeech.LANG_MISSING_DATA || language == TextToSpeech.LANG_NOT_SUPPORTED) {
+                    textToSpeech.setLanguage(Locale.getDefault());
+                }
+                textToSpeech.setSpeechRate(0.94f);
+                textToSpeech.setPitch(0.90f);
+                ttsReady = true;
+            }
+        });
         webView = new WebView(this);
         webView.setBackgroundColor(android.graphics.Color.rgb(5, 11, 24));
         webView.getSettings().setJavaScriptEnabled(true);
@@ -102,6 +117,20 @@ public class MainActivity extends Activity {
             return title(name) + " does not appear to be installed, Sir.";
         }
 
+        @JavascriptInterface public void speak(String text) {
+            runOnUiThread(() -> {
+                if (textToSpeech == null || !ttsReady) {
+                    Toast.makeText(MainActivity.this, "JARVIS voice is still starting. Please try again in a moment.", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                textToSpeech.speak(text == null ? "" : text, TextToSpeech.QUEUE_FLUSH, null, "JARVIS_" + System.currentTimeMillis());
+            });
+        }
+
+        @JavascriptInterface public void stopSpeaking() {
+            runOnUiThread(() -> { if (textToSpeech != null) textToSpeech.stop(); });
+        }
+
         @JavascriptInterface public void startVoiceRecognition() {
             runOnUiThread(() -> {
                 Intent intent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
@@ -130,6 +159,12 @@ public class MainActivity extends Activity {
                 webView.evaluateJavascript("window.jarvisNative && window.jarvisNative.onSpeechResult(" + spoken + ")", null);
             }
         }
+    }
+
+    @Override protected void onDestroy() {
+        if (textToSpeech != null) { textToSpeech.stop(); textToSpeech.shutdown(); }
+        if (webView != null) webView.destroy();
+        super.onDestroy();
     }
 
     @Override public void onBackPressed() {
