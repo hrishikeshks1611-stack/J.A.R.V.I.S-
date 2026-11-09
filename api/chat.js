@@ -21,7 +21,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "Use POST for assistant requests." });
   }
 
-  const apiKey = process.env.GEMINI_API_KEY;
+  const apiKey = process.env.JARVIS || process.env.GEMINI_API_KEY;
   if (!apiKey) {
     return res.status(503).json({
       error: "GEMINI_API_KEY is missing from this Vercel deployment. Check the project's Environment Variables and redeploy."
