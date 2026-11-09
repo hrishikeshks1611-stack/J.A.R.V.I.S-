@@ -1,5 +1,5 @@
-const CACHE="jarvis-shell-v7";
-const ASSETS=["./","./index.html","./manifest.webmanifest","./jarvis-icon.svg"];
+const CACHE="jarvis-shell-v8";
+const ASSETS=["./","./index.html","./manifest.webmanifest","./jarvis-icon.svg","./icons/jarvis-192.png","./icons/jarvis-512.png"];
 
 self.addEventListener("install",event=>{
   self.skipWaiting();
@@ -18,28 +18,15 @@ self.addEventListener("fetch",event=>{
   const request=event.request;
   const url=new URL(request.url);
   if(request.method!=="GET" || url.pathname.startsWith("/api/")) return;
-
-  // Always check the deployed server first for the app shell, so updates are not trapped in an old cache.
-  if(request.mode==="navigate" || url.pathname==="/index.html" || url.pathname==="/") {
-    event.respondWith(
-      fetch(request).then(response=>{
-        if(response.ok) {
-          const copy=response.clone();
-          caches.open(CACHE).then(cache=>cache.put(request,copy));
-        }
-        return response;
-      }).catch(()=>caches.match(request).then(cached=>cached || caches.match("./index.html")))
-    );
+  if(request.mode==="navigate" || url.pathname.endsWith("/index.html") || url.pathname==="/") {
+    event.respondWith(fetch(request).then(response=>{
+      if(response.ok){const copy=response.clone();caches.open(CACHE).then(cache=>cache.put(request,copy));}
+      return response;
+    }).catch(()=>caches.match(request).then(cached=>cached || caches.match("./index.html"))));
     return;
   }
-
-  event.respondWith(
-    caches.match(request).then(cached=>cached || fetch(request).then(response=>{
-      if(response.ok) {
-        const copy=response.clone();
-        caches.open(CACHE).then(cache=>cache.put(request,copy));
-      }
-      return response;
-    }))
-  );
+  event.respondWith(caches.match(request).then(cached=>cached || fetch(request).then(response=>{
+    if(response.ok){const copy=response.clone();caches.open(CACHE).then(cache=>cache.put(request,copy));}
+    return response;
+  })));
 });
