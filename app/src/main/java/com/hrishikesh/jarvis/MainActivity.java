@@ -28,6 +28,7 @@ public class MainActivity extends Activity {
     private WebView webView;
     private TextToSpeech textToSpeech;
     private boolean ttsReady = false;
+    private boolean voiceChosen = false;
     private SharedPreferences voicePrefs;
     private String pendingSpeech = null;
     private final Map<String, String[]> appPackages = new HashMap<>();
@@ -49,14 +50,15 @@ public class MainActivity extends Activity {
                                 && (selected == null || voice.getQuality() > selected.getQuality())) selected = voice;
                     }
                 }
-                if (selected == null && textToSpeech.getVoices() != null) {
-                    for (Voice voice : textToSpeech.getVoices()) {
-                        if (isBritish(voice) && !voice.isNetworkConnectionRequired()
-                                && (selected == null || voice.getQuality() > selected.getQuality())) selected = voice;
-                    }
+                if (selected != null) {
+                    textToSpeech.setVoice(selected);
+                    voiceChosen = true;
+                } else {
+                    // Do not silently fall back to an arbitrary voice (which may be female).
+                    // The user must audition and choose an installed British voice first.
+                    textToSpeech.setLanguage(Locale.UK);
+                    voiceChosen = false;
                 }
-                if (selected != null) textToSpeech.setVoice(selected);
-                else textToSpeech.setLanguage(Locale.UK);
                 textToSpeech.setSpeechRate(1.0f);
                 textToSpeech.setPitch(1.0f);
                 ttsReady = true;
@@ -198,7 +200,8 @@ public class MainActivity extends Activity {
             int result = textToSpeech.setVoice(voice);
             if (result == TextToSpeech.ERROR) return "Android could not activate that voice, Sir.";
             voicePrefs.edit().putString("voice_name", voice.getName()).apply();
-            return "Selected " + voice.getName() + ", Sir.";
+            voiceChosen = true;
+            return "Selected " + voice.getName() + ", Sir. Use Test voice to audition it.";
         }
 
         @JavascriptInterface public void speak(String text) {
@@ -208,6 +211,7 @@ public class MainActivity extends Activity {
                     pendingSpeech = message;
                     return;
                 }
+                if (!voiceChosen) return;
                 textToSpeech.speak(message, TextToSpeech.QUEUE_FLUSH, null, "JARVIS_" + System.currentTimeMillis());
             });
         }
