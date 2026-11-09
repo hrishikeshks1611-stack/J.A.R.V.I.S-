@@ -7,6 +7,7 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.speech.RecognizerIntent;
 import android.speech.tts.TextToSpeech;
+import android.speech.tts.Voice;
 import android.speech.tts.UtteranceProgressListener;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebChromeClient;
@@ -34,12 +35,31 @@ public class MainActivity extends Activity {
         registerApps();
         textToSpeech = new TextToSpeech(this, status -> {
             if (status == TextToSpeech.SUCCESS) {
-                int language = textToSpeech.setLanguage(Locale.UK);
-                if (language == TextToSpeech.LANG_MISSING_DATA || language == TextToSpeech.LANG_NOT_SUPPORTED) {
-                    textToSpeech.setLanguage(Locale.getDefault());
+                // Prefer the best installed British English voice over the engine default.
+                Voice bestBritishVoice = null;
+                if (textToSpeech.getVoices() != null) {
+                    for (Voice voice : textToSpeech.getVoices()) {
+                        Locale voiceLocale = voice.getLocale();
+                        if (voiceLocale != null
+                                && "en".equalsIgnoreCase(voiceLocale.getLanguage())
+                                && "GB".equalsIgnoreCase(voiceLocale.getCountry())
+                                && !voice.isNetworkConnectionRequired()
+                                && (bestBritishVoice == null || voice.getQuality() > bestBritishVoice.getQuality())) {
+                            bestBritishVoice = voice;
+                        }
+                    }
                 }
-                textToSpeech.setSpeechRate(0.94f);
-                textToSpeech.setPitch(0.90f);
+                if (bestBritishVoice != null) {
+                    textToSpeech.setVoice(bestBritishVoice);
+                } else {
+                    int language = textToSpeech.setLanguage(Locale.UK);
+                    if (language == TextToSpeech.LANG_MISSING_DATA || language == TextToSpeech.LANG_NOT_SUPPORTED) {
+                        textToSpeech.setLanguage(Locale.getDefault());
+                    }
+                }
+                // Neutral pitch and normal pacing avoid an artificially lowered, sluggish sound.
+                textToSpeech.setSpeechRate(1.0f);
+                textToSpeech.setPitch(1.0f);
                 ttsReady = true;
                 if (pendingSpeech != null) {
                     textToSpeech.speak(pendingSpeech, TextToSpeech.QUEUE_FLUSH, null, "JARVIS_STARTUP");
