@@ -1,5 +1,5 @@
 // J.A.R.V.I.S. server-side AI endpoint for Vercel.
-// Configure GEMINI_API_KEY in the hosting provider's environment variables.
+// GEMINI_API_KEY must exist only in Vercel Environment Variables.
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     res.setHeader("Allow", "POST");
@@ -9,7 +9,7 @@ export default async function handler(req, res) {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     return res.status(503).json({
-      error: "The AI service is not configured yet. Add GEMINI_API_KEY to the server environment."
+      error: "GEMINI_API_KEY is missing from this Vercel deployment. Add it to the Vercel project and redeploy."
     });
   }
 
@@ -32,7 +32,7 @@ export default async function handler(req, res) {
       personality,
       "Answer open-ended questions with real reasoning. Explain calculations and educational topics step by step when useful.",
       "If uncertain, say so. Never fabricate facts, actions, sources, or device access.",
-      "You cannot control the user's phone, laptop, or TV unless a real tool explicitly provides that capability. Do not claim to have done so.",
+      "You cannot control the user's phone, laptop, or TV unless a real tool explicitly provides that capability.",
       "Keep answers appropriately concise, but give enough detail to be genuinely useful."
     ].join(" ");
 
@@ -58,27 +58,33 @@ export default async function handler(req, res) {
       }
     );
 
-    const data = await response.json();
+    const raw = await response.text();
+    let data;
+    try { data = JSON.parse(raw); }
+    catch { data = {}; }
+
     if (!response.ok) {
-      const detail = data && data.error && data.error.message ? data.error.message : "The AI provider returned an error.";
+      const detail = data?.error?.message || raw.slice(0, 500) || "No error detail returned by Google.";
       console.error("Gemini API error:", response.status, detail);
-      return res.status(response.status === 429 ? 429 : 502).json({
-        error: response.status === 429
-          ? "The free AI request limit has been reached for now. Please try again later."
-          : "The AI service returned an error. Please check the server configuration."
+      const status = response.status === 429 ? 429 : 502;
+      return res.status(status).json({
+        error: `Gemini rejected the request (HTTP ${response.status}): ${detail}`
       });
     }
 
     const reply = (data.candidates || [])
-      .flatMap(candidate => candidate.content && candidate.content.parts ? candidate.content.parts : [])
+      .flatMap(candidate => candidate.content?.parts || [])
       .map(part => part.text || "")
       .join("")
       .trim();
 
-    if (!reply) return res.status(502).json({ error: "The AI service returned an empty response. Please try again." });
+    if (!reply) {
+      const reason = data.promptFeedback?.blockReason || data.candidates?.[0]?.finishReason || "No text was returned.";
+      return res.status(502).json({ error: "Gemini returned no answer: " + reason });
+    }
     return res.status(200).json({ reply });
   } catch (error) {
     console.error("JARVIS API failure:", error);
-    return res.status(500).json({ error: "J.A.R.V.I.S. encountered a server error. Please try again." });
+    return res.status(500).json({ error: "JARVIS server error: " + String(error?.message || error).slice(0, 300) });
   }
 }
