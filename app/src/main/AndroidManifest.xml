@@ -11,6 +11,7 @@
         <package android:name="org.telegram.messenger" />
         <package android:name="com.android.settings" />
         <package android:name="com.android.camera2" />
+        <package android:name="com.vivo.camera" />
         <package android:name="com.android.vending" />
         <package android:name="com.google.android.apps.messaging" />
         <package android:name="com.google.android.dialer" />
