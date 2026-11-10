@@ -92,7 +92,7 @@ export default async function handler(req, res) {
     }
     if (action === "create-code") {
       if (session.role !== "owner") return res.status(403).json({ error: "Only the owner device can create pairing codes." });
-      const code = randomToken(6).replace(/[^a-zA-Z0-9]/g, "").slice(0, 8).toUpperCase();
+      const code = randomToken(16).replace(/[^a-zA-Z0-9]/g, "").slice(0, 8).toUpperCase();
       await redisCommand("SET", JARVIS_PREFIX + "pair:" + hashToken(code), JSON.stringify({ createdBy: session.deviceId, createdAt: Date.now() }), "EX", "600", "NX");
       return res.status(200).json({ code, expiresIn: 600 });
     }
