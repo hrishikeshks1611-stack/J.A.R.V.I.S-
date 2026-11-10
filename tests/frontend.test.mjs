@@ -40,3 +40,43 @@ test("expired pairing is handled separately from offline AI fallback", async () 
   assert.ok(html.includes("if(err.status===401)"));
   assert.ok(html.includes("localStorage.removeItem('jarvisSessionToken')"));
 });
+
+test("alarm and reminder commands require clear times and call the native confirmation UI", async () => {
+  const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+  const start = html.indexOf("function handleCalendarOrAlarmCommand");
+  const end = html.indexOf("const scheduledReply=", start);
+  assert.ok(start >= 0 && end > start);
+  const source = html.slice(start, end);
+  const parse = new Function("window", source + "; return handleCalendarOrAlarmCommand;")({
+    AndroidJarvis: {
+      setAlarm: (...args) => ({ type: "alarm", args }),
+      createCalendarEvent: (...args) => ({ type: "event", args })
+    }
+  });
+  assert.deepEqual(parse("Remind me to take medicine at 7:30 pm"), {
+    type: "alarm", args: [19, 30, "Reminder: take medicine"]
+  });
+  assert.deepEqual(parse("Set alarm for 19:45 called Workout"), {
+    type: "alarm", args: [19, 45, "Workout"]
+  });
+  assert.equal(parse("Set alarm for 7:30"), null, "ambiguous 12-hour time should not set an alarm");
+  assert.match(parse("Set alarm for 25:70"), /invalid/i);
+});
+
+test("calendar event commands validate a future ISO date and open the native event editor", async () => {
+  const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+  const start = html.indexOf("function handleCalendarOrAlarmCommand");
+  const end = html.indexOf("const scheduledReply=", start);
+  const parse = new Function("window", html.slice(start, end) + "; return handleCalendarOrAlarmCommand;")({
+    AndroidJarvis: {
+      setAlarm: (...args) => ({ type: "alarm", args }),
+      createCalendarEvent: (...args) => ({ type: "event", args })
+    }
+  });
+  const result = parse("Create calendar event Dentist appointment on 2030-06-15 at 09:30");
+  assert.equal(result.type, "event");
+  assert.equal(result.args[0], "Dentist appointment");
+  assert.equal(result.args[2] - result.args[1], 60 * 60 * 1000);
+  assert.equal(result.args[3], "Created through J.A.R.V.I.S.");
+  assert.match(parse("Create event Invalid date on 2030-02-31 at 09:30"), /invalid/i);
+});
