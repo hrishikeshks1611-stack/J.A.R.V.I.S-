@@ -61,7 +61,7 @@ footer{text-align:center;color:#577c99;font-size:10px;letter-spacing:.12em;paddi
 <script>
 const $=id=>document.getElementById(id), core=$('core'), messages=$('messages');let history=[],voiceOn=true,pendingAttachment=null,deviceLocation=null,currentAudio=null;
 const JARVIS_API='https://jarvis-sigma-one-92.vercel.app/api';
-let sessionToken=localStorage.getItem('jarvisSessionToken')||'',sessionRole='',sessionDeviceId='';
+let sessionToken=localStorage.getItem('jarvisSessionToken')||'',sessionRole='',sessionDeviceId='',chatBusy=false,lastSharedHistorySignature='';
 async function pairApi(payload){
  const headers={'Content-Type':'application/json'};
  if(sessionToken)headers.Authorization='Bearer '+sessionToken;
@@ -78,6 +78,7 @@ function currentDeviceName(){
 async function restoreSharedHistory(){
  const data=await pairApi({action:'history'});history=Array.isArray(data.messages)?data.messages:[];
  messages.innerHTML='';
+ lastSharedHistorySignature=JSON.stringify(history);
  history.forEach(item=>add(item.text,item.role==='model'?'jarvis':'user'));
  if(!history.length)add('Good evening, Sir. J.A.R.V.I.S. is online. How may I assist?','jarvis');
 }
@@ -88,6 +89,16 @@ function storeSession(data){
  $('syncPanel').hidden=true;
  $('hint').textContent='Connected to your shared JARVIS memory, Sir.';
 }
+async function syncSharedHistory(){
+ if(!sessionToken||chatBusy||document.visibilityState==='hidden')return;
+ const data=await pairApi({action:'history'}),next=Array.isArray(data.messages)?data.messages:[];
+ const signature=JSON.stringify(next);
+ if(signature!==lastSharedHistorySignature){
+  history=next;lastSharedHistorySignature=signature;messages.innerHTML='';
+  history.forEach(item=>add(item.text,item.role==='model'?'jarvis':'user'));
+ }
+}
+setInterval(()=>syncSharedHistory().catch(()=>{}),10000);
 async function renderPairedDevices(){
  const data=await pairApi({action:'devices'}),list=$('deviceList');list.innerHTML='';
  (data.devices||[]).forEach(device=>{
@@ -346,7 +357,7 @@ $('form').onsubmit=async e=>{e.preventDefault();if(!sessionToken){openSyncPanel(
 const appCommand=message.match(/^\s*(?:jarvis[, ]+)?(?:please\s+)?(?:open|launch|start)\s+([a-z0-9 +.-]+?)(?:\s+app)?[.!?]*\s*$/i);
 const appAliases={'whatsapp':'whatsapp','you tube':'youtube','youtube':'youtube','chrome':'chrome','gmail':'gmail','google maps':'maps','maps':'maps','spotify':'spotify','instagram':'instagram','facebook':'facebook','telegram':'telegram','camera':'camera','play store':'play store','messages':'messages','message':'messages','phone':'phone','settings':'settings','phone settings':'settings','twitter':'twitter','x':'x','reddit':'reddit','photos':'photos','google photos':'photos','calendar':'calendar','google calendar':'calendar','keep':'keep','google keep':'keep','contacts':'contacts','drive':'drive','google drive':'drive','files':'files','file manager':'files','amazon':'amazon','flipkart':'flipkart','browser':'browser','calculator':'calculator','gallery':'gallery','swiggy':'swiggy','zomato':'zomato'};
 if(appCommand && window.AndroidJarvis){const appName=appAliases[appCommand[1].toLowerCase().trim()];if(appName){const reply=window.AndroidJarvis.openApp(appName);add(reply,'jarvis');history.push({role:'model',text:reply});$('hint').textContent='Ready when you are.';status('System ready');speak(reply);return;}}
-status('Thinking','thinking');$('hint').textContent='Processing your request…';try{const r=await fetch('https://jarvis-sigma-one-92.vercel.app/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:message||'Please examine the attached file and describe its contents.',history,mode:$('mode').value,attachment,deviceContext:getDeviceContext()})});const raw=await r.text();let data={};try{data=JSON.parse(raw)}catch{}if(!r.ok)throw Error(data.error||('AI service returned HTTP '+r.status));const reply=data.reply||'I have no response, Sir.';add(reply,'jarvis');history.push({role:'model',text:reply});history=history.slice(-20);$('hint').textContent='Ready when you are.';speak(reply);if(!voiceOn)status('System ready');}catch(err){const msg='I could not reach my intelligence service, Sir. '+err.message;add(msg,'jarvis');$('hint').textContent='The AI service needs to be configured.';status('Service unavailable');speak(msg)}};
+status('Thinking','thinking');$('hint').textContent='Processing your request…';chatBusy=true;try{const r=await fetch('https://jarvis-sigma-one-92.vercel.app/api/chat',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+sessionToken},body:JSON.stringify({message:message||'Please examine the attached file and describe its contents.',history,mode:$('mode').value,attachment,deviceContext:getDeviceContext()})});const raw=await r.text();let data={};try{data=JSON.parse(raw)}catch{}if(!r.ok)throw Error(data.error||('AI service returned HTTP '+r.status));const reply=data.reply||'I have no response, Sir.';chatBusy=false;add(reply,'jarvis');history.push({role:'model',text:reply});history=history.slice(-20);$('hint').textContent='Ready when you are.';speak(reply);if(!voiceOn)status('System ready');}catch(err){chatBusy=false;const msg='I could not reach my intelligence service, Sir. '+err.message;add(msg,'jarvis');$('hint').textContent='The AI service needs to be configured.';status('Service unavailable');speak(msg)}};
 window.jarvisNative={onSpeechResult:(transcript)=>{$('prompt').value=transcript;$('form').requestSubmit();},onAttachment:(raw)=>{try{const a=typeof raw==='string'?JSON.parse(raw):raw;pendingAttachment=a;renderAttachment();$('hint').textContent='Attachment ready, Sir. Add a question or send it as it is.'}catch(e){$('hint').textContent='I could not load that attachment, Sir.'}}};
 $('mic').onclick=()=>{if(window.AndroidJarvis){window.AndroidJarvis.startVoiceRecognition();return;}const SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(!SR){add('Voice recognition is not supported by this browser, Sir.','jarvis');return}const rec=new SR();rec.lang='en-GB';rec.interimResults=false;rec.onstart=()=>status('Listening','listening');rec.onresult=e=>{$('prompt').value=e.results[0][0].transcript;$('form').requestSubmit()};rec.onerror=()=>status('System ready');rec.onend=()=>{if(!$('prompt').value)status('System ready')};rec.start()};
 if('serviceWorker'in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('./sw.js').catch(()=>{});
