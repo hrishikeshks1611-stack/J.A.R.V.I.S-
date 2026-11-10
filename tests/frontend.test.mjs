@@ -15,6 +15,7 @@ test("saved-memory UI is explicit and has deletion controls", async () => {
   const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
   assert.ok(html.includes('id="memoryButton"'));
   assert.ok(html.includes("Only notes you explicitly save here"));
+  assert.ok(html.includes("Do not store passwords, API keys"));
   assert.ok(html.includes("action:'delete'"));
   assert.ok(html.includes("action:'clear',confirm:true"));
   assert.ok(html.includes('id="exportMemories"'));
