@@ -52,4 +52,4 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "jarvis-tv-${GITHUB_RUN_NUMBER}" app/build/outputs/apk/tv/debug/app-tv-debug.apk --title "JARVIS Android TV build ${GITHUB_RUN_NUMBER}" --notes "Android TV edition. Built for Android TV 11 and remote navigation. Debug-signed APK for sideload installation."
+          gh release create "jarvis-tv-${GITHUB_RUN_NUMBER}" app/build/outputs/apk/tv/debug/app-tv-debug.apk app/build/outputs/apk/phone/debug/app-phone-debug.apk --title "JARVIS Android and TV build ${GITHUB_RUN_NUMBER}" --notes "Includes the Android phone edition and Android TV edition. Debug-signed APKs for sideload installation."
