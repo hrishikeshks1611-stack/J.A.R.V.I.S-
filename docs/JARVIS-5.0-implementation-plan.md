@@ -2,6 +2,29 @@
 
 This document is the release acceptance checklist. A capability is not considered complete merely because its UI exists or a workflow succeeds.
 
+## Current implementation status (development branch)
+
+Implemented and covered by passing GitHub Actions tests:
+- Atomic Redis/Lua append for completed chat turns to prevent stale read/replace writes from silently losing another device's turn.
+- Explicit saved-memory store with add, edit, list, delete, and clear operations; bounded to 100 notes of at most 1,000 characters each.
+- Saved memories are included as bounded context (latest 15 notes, 300 characters each) and are never automatically created from conversations.
+- Saved-memory UI includes edit, delete, clear, and JSON export-to-clipboard controls, plus a warning not to store credentials or highly sensitive information.
+- Owner transfer between paired devices, allowing a new device to become owner before a future app reinstall.
+- Offline command fallback is now connected to the chat failure path for local time/date, greetings, known website lookups, and location when permissioned.
+- Automated tests cover shared-store bounds, atomic append invocation, memory lifecycle, owner transfer, API authorization/CORS, explicit clear confirmation, and inline frontend JavaScript syntax.
+
+Still not complete or not physically verified:
+- Real Upstash integration/concurrency stress test; current CI uses mocked Redis responses.
+- Full backup and restore of conversation plus memory, beyond copying saved-memory JSON.
+- Continuous wake-word listening and foreground microphone service.
+- Native MediaProjection screen mirroring.
+- Calendar/reminder/notification integrations.
+- A local language model; offline fallback is command-only, not offline conversational AI.
+- Stable Android signing key and in-place update path; current workflow uses ephemeral debug signing.
+- Physical testing on the user's phone and Android TV.
+
+This branch is not production. Keep it isolated until the remaining acceptance tests, release-signing migration, and deployment verification are complete.
+
 ## Preserve throughout
 - Gemini TTS model, Algieba voice, and en-GB delivery remain the primary online voice.
 - Preserve the British butler persona, animated reactor/HUD, attachments, local clock and permissioned location, device pairing, and all three form factors.
