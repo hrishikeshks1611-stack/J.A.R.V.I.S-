@@ -2,7 +2,7 @@ name: JARVIS quality checks
 
 on:
   push:
-    branches: [ main, jarvis-5.0-development ]
+    branches: [ main, jarvis-5.0-development, jarvis-6.0-development ]
   pull_request:
     branches: [ main ]
 
