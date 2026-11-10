@@ -1,5 +1,5 @@
 // J.A.R.V.I.S. server-side AI endpoint. Gemini credentials and shared history stay server-side.
-import { getSession, readHistory, saveHistory } from "../lib/jarvis-store.js";
+import { getSession, readHistory, appendConversationTurn } from "../lib/jarvis-store.js";
 
 export default async function handler(req, res) {
   const origin = req.headers.origin || "";
@@ -184,12 +184,7 @@ export default async function handler(req, res) {
       const reason = data.promptFeedback?.blockReason || data.candidates?.[0]?.finishReason || "No text was returned.";
       return res.status(502).json({ error: "Gemini returned no answer: " + reason });
     }
-    const updatedHistory = [
-      ...sharedHistory,
-      { role: "user", text: message, createdAt: Date.now() },
-      { role: "model", text: reply, createdAt: Date.now() }
-    ];
-    await saveHistory(updatedHistory);
+    await appendConversationTurn(message, reply);
     return res.status(200).json({ reply, deviceId: session.deviceId });
   } catch (error) {
     console.error("JARVIS API failure:", error);
