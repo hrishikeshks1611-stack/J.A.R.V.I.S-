@@ -49,6 +49,7 @@ export default async function handler(req, res) {
       "Answer open-ended questions with real reasoning. Explain calculations and educational topics step by step when useful.",
       "If uncertain, say so. Never fabricate facts, actions, sources, or device access.",
       "You cannot control the user's phone, laptop, or TV unless a real tool explicitly provides that capability.",
+      "Use the live device context supplied with the user message for current local time, date, and time zone. If precise coordinates are supplied, use them to answer location questions cautiously; never invent a street address or claim GPS accuracy better than the reported accuracy. If context is absent, say you do not have live device location/time rather than guessing.",
       "When an image or document is attached, inspect its actual contents and answer the user’s question about it. Do not claim to see an attachment unless one is present. Keep answers appropriately concise, but give enough detail to be genuinely useful."
     ].join(" ");
 
@@ -86,6 +87,26 @@ export default async function handler(req, res) {
           inline_data: { mime_type: mimeType, data: encoded }
         });
       }
+    }
+
+    // Add the phone's local clock and explicitly permissioned GPS coordinates to the request.
+    // The app sends coordinates only after the user taps Enable precise location and grants access.
+    const deviceContext = body.deviceContext && typeof body.deviceContext === "object" ? body.deviceContext : {};
+    const contextLines = [];
+    if (typeof deviceContext.localTime === "string") contextLines.push("Phone local time: " + deviceContext.localTime.slice(0, 120));
+    if (typeof deviceContext.isoTime === "string") contextLines.push("Phone timestamp: " + deviceContext.isoTime.slice(0, 40));
+    if (typeof deviceContext.timeZone === "string") contextLines.push("Phone time zone: " + deviceContext.timeZone.slice(0, 80));
+    const loc = deviceContext.location;
+    if (loc && Number.isFinite(Number(loc.latitude)) && Number.isFinite(Number(loc.longitude))) {
+      const lat = Number(loc.latitude), lon = Number(loc.longitude), accuracy = Number(loc.accuracyMeters);
+      if (Math.abs(lat) <= 90 && Math.abs(lon) <= 180) {
+        contextLines.push("Permissioned current GPS coordinates: latitude " + lat + ", longitude " + lon +
+          (Number.isFinite(accuracy) ? ", reported accuracy about " + Math.max(0, accuracy) + " metres" : "") +
+          ". These are coordinates, not a street address.");
+      }
+    }
+    if (contextLines.length && contents.length) {
+      contents[contents.length - 1].parts.push({ text: "[Live device context — use this for time/location questions; do not guess beyond it.]\n" + contextLines.join("\n") });
     }
 
     // Try the current stable Flash model first, then two compatible fallbacks.
