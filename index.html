@@ -93,6 +93,64 @@ async function saveCachedSpeech(key,blob){
     cursor.onerror=resolve;
   });
 }
+let speechAudioContext=null;
+function pcmToWav(pcm){
+  const wav=new ArrayBuffer(44+pcm.length),view=new DataView(wav);
+  const put=(s,o)=>{for(let i=0;i<s.length;i++)view.setUint8(o+i,s.charCodeAt(i));};
+  put('RIFF',0);view.setUint32(4,36+pcm.length,true);put('WAVE',8);put('fmt ',12);
+  view.setUint32(16,16,true);view.setUint16(20,1,true);view.setUint16(22,1,true);
+  view.setUint32(24,24000,true);view.setUint32(28,48000,true);view.setUint16(32,2,true);
+  view.setUint16(34,16,true);put('data',36);view.setUint32(40,pcm.length,true);
+  new Uint8Array(wav,44).set(pcm);return new Blob([wav],{type:'audio/wav'});
+}
+async function playPcmStream(response,cacheKey){
+  const AudioCtx=window.AudioContext||window.webkitAudioContext;
+  if(!AudioCtx)throw new Error('This device does not support low-latency audio playback.');
+  if(!speechAudioContext)speechAudioContext=new AudioCtx({sampleRate:24000});
+  const ctx=speechAudioContext;
+  if(ctx.state==='suspended')await ctx.resume();
+  const sources=new Set(),parts=[];
+  let nextStart=ctx.currentTime+0.06,carry=null,stopped=false,streamDone=false;
+  const controller={
+    pause(){stopped=true;sources.forEach(source=>{try{source.stop()}catch(e){}});sources.clear();}
+  };
+  currentAudio=controller;
+  const queuePcm=(chunk)=>{
+    if(stopped||!chunk.length)return;
+    let bytes=chunk;
+    if(carry){const joined=new Uint8Array(bytes.length+1);joined[0]=carry[0];joined.set(bytes,1);bytes=joined;carry=null;}
+    if(bytes.length%2){carry=bytes.slice(-1);bytes=bytes.slice(0,-1);}
+    if(!bytes.length)return;
+    const samples=new Int16Array(bytes.buffer,bytes.byteOffset,bytes.byteLength/2);
+    const floats=new Float32Array(samples.length);
+    for(let i=0;i<samples.length;i++)floats[i]=samples[i]/32768;
+    const buffer=ctx.createBuffer(1,floats.length,24000);buffer.copyToChannel(floats,0);
+    const source=ctx.createBufferSource();source.buffer=buffer;source.connect(ctx.destination);
+    const startAt=Math.max(nextStart,ctx.currentTime+0.025);nextStart=startAt+buffer.duration;
+    sources.add(source);
+    source.onended=()=>{sources.delete(source);if(streamDone&&!sources.size&&!stopped&&currentAudio===controller){currentAudio=null;status('System ready');}};
+    source.start(startAt);
+    if(!sources.size||startAt<=ctx.currentTime+0.1)status('Speaking','speaking');
+  };
+  const reader=response.body?.getReader?.();
+  if(reader){
+    while(true){const {value,done}=await reader.read();if(done)break;if(stopped)break;
+      const chunk=value instanceof Uint8Array?value:new Uint8Array(value);
+      if(chunk.length){parts.push(chunk.slice());queuePcm(chunk);}
+    }
+  }else{
+    const chunk=new Uint8Array(await response.arrayBuffer());if(chunk.length){parts.push(chunk);queuePcm(chunk);}
+  }
+  if(stopped)return;
+  streamDone=true;
+  if(carry)throw new Error('The speech stream ended unexpectedly.');
+  const total=parts.reduce((sum,p)=>sum+p.length,0),joined=new Uint8Array(total);
+  let offset=0;for(const part of parts){joined.set(part,offset);offset+=part.length;}
+  if(!total)throw new Error('Gemini returned an empty speech stream.');
+  // Save in the background: never delay the first spoken syllable for cache writes.
+  saveCachedSpeech(cacheKey,pcmToWav(joined)).catch(()=>{});
+  if(!sources.size&&currentAudio===controller){currentAudio=null;status('System ready');}
+}
 async function speak(text){
   if(!voiceOn)return;
   if(currentAudio){currentAudio.pause();currentAudio=null;}
@@ -101,27 +159,23 @@ async function speak(text){
   const cacheKey=speechCacheKey(spoken);
   status('Preparing voice','thinking');
   try{
-    let blob=await getCachedSpeech(cacheKey);
-    if(blob){$('hint').textContent='Using the saved Alfred voice recording, Sir.';}
-    else{
-      status('Generating voice','thinking');
-      const response=await fetch('https://jarvis-sigma-one-92.vercel.app/api/speech',{
-        method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({text:spoken})
-      });
-      if(!response.ok){
-        const raw=await response.text();let data={};try{data=JSON.parse(raw)}catch{}
-        throw new Error(data.error||('Speech service returned HTTP '+response.status));
-      }
-      blob=new Blob([await response.arrayBuffer()],{type:'audio/wav'});
-      await saveCachedSpeech(cacheKey,blob);
+    const cached=await getCachedSpeech(cacheKey);
+    if(cached){
+      $('hint').textContent='Using the saved Alfred voice recording, Sir.';
+      const audioUrl=URL.createObjectURL(cached),audio=new Audio(audioUrl);currentAudio=audio;
+      audio.onended=()=>{URL.revokeObjectURL(audioUrl);if(currentAudio===audio)currentAudio=null;status('System ready');};
+      audio.onerror=()=>{URL.revokeObjectURL(audioUrl);if(currentAudio===audio)currentAudio=null;status('Speech playback failed');$('hint').textContent='I generated the voice, but this device could not play the audio, Sir.';};
+      await audio.play();status('Speaking','speaking');return;
     }
-    const audioUrl=URL.createObjectURL(blob);
-    const audio=new Audio(audioUrl);currentAudio=audio;
-    audio.onended=()=>{URL.revokeObjectURL(audioUrl);if(currentAudio===audio)currentAudio=null;status('System ready');};
-    audio.onerror=()=>{URL.revokeObjectURL(audioUrl);if(currentAudio===audio)currentAudio=null;status('Speech playback failed');$('hint').textContent='I generated the voice, but this device could not play the audio, Sir.';};
-    await audio.play();
-    status('Speaking','speaking');
+    status('Generating voice','thinking');
+    const response=await fetch('https://jarvis-sigma-one-92.vercel.app/api/speech',{
+      method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:spoken})
+    });
+    if(!response.ok){
+      const raw=await response.text();let data={};try{data=JSON.parse(raw)}catch{}
+      throw new Error(data.error||('Speech service returned HTTP '+response.status));
+    }
+    await playPcmStream(response,cacheKey);
   }catch(error){
     currentAudio=null;status('Voice service unavailable');
     $('hint').textContent='I could not generate speech, Sir. '+error.message;
