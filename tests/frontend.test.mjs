@@ -88,6 +88,17 @@ test("calendar event commands validate a future ISO date and open the native eve
 });
 
 
+test("older Android bridges receive clear guidance instead of throwing for new native actions", async () => {
+  const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+  const start = html.indexOf("function handleCalendarOrAlarmCommand");
+  const end = html.indexOf("const scheduledReply=", start);
+  const parse = new Function("window", html.slice(start, end) + "; return handleCalendarOrAlarmCommand;")({
+    AndroidJarvis: {}
+  });
+  assert.match(parse("Set alarm for 7 pm"), /does not include native Clock controls yet/i);
+  assert.match(parse("Create calendar event Meeting on 2030-06-15 at 09:30"), /does not include native Calendar controls yet/i);
+});
+
 test("offline fallback recognises natural-language commands", async () => {
   const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
   const start = html.indexOf("function offlineReply");
