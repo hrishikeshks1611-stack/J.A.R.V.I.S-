@@ -1,5 +1,5 @@
 name: Build JARVIS Android and TV APKs
-# Package the latest JARVIS phone and TV clients with current published Alfred speech improvements.
+# Build fresh phone and Android TV APKs containing the shared-device pairing release.
 on:
   workflow_dispatch:
   push:
