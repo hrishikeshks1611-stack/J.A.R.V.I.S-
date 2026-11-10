@@ -23,6 +23,7 @@ main{flex:1;display:flex;flex-direction:column;align-items:center}
 .greeting{text-align:center;margin-top:-7px}.greeting h1{font-size:clamp(22px,5vw,32px);font-weight:400;letter-spacing:.14em;margin:0}.greeting p{color:var(--muted);font-size:13px;margin:7px 0}
 .controls{display:flex;gap:9px;flex-wrap:wrap;justify-content:center;margin:18px 0}.control,select{background:#0b1a2d;color:#c8eaff;border:1px solid #24506e;border-radius:20px;padding:9px 14px;font:inherit;font-size:12px}.control:active,.control.active{border-color:var(--cyan);background:#102c45}
 .chat{width:100%;max-width:720px;display:flex;flex-direction:column;gap:12px;margin:8px 0 14px}.messages{display:flex;flex-direction:column;gap:10px;max-height:32vh;overflow:auto;padding:2px}.msg{max-width:88%;padding:11px 14px;border:1px solid #1c3b56;border-radius:14px;background:#091629;white-space:pre-wrap;overflow-wrap:anywhere}.msg.user{align-self:flex-end;background:#102b45;border-color:#23628a}.msg.jarvis{align-self:flex-start}.composer{display:flex;gap:7px;align-items:center;background:#081426;border:1px solid #1b4564;border-radius:17px;padding:7px}.composer input{min-width:0;flex:1;background:transparent;border:0;outline:0;color:white;padding:8px;font:inherit}.send{border:0;border-radius:12px;background:linear-gradient(135deg,#087dcb,#1c55aa);color:white;padding:0 17px;font-weight:600}.mic,.attach-btn{width:42px;min-width:42px;height:42px;border-radius:12px;border:1px solid #286083;background:#102c45;color:#a8e9ff;font-size:18px}.attach-btn{font-size:20px}.copy-btn{display:block;margin:9px 0 0 auto;border:1px solid #24506e;border-radius:8px;background:#0b1a2d;color:#a8dfff;padding:5px 10px;font-size:11px}.attachment-chip{display:flex;align-items:center;gap:8px;padding:8px 12px;margin:0 0 8px;border:1px solid #24506e;border-radius:12px;background:#0b1a2d;color:#bdeaff;font-size:12px}.attachment-chip button{margin-left:auto;border:0;background:transparent;color:#ff9a9a;font-size:18px}.msg img{display:block;max-width:180px;max-height:150px;object-fit:cover;border-radius:8px;margin-top:7px}
+.sync-panel{position:fixed;inset:0;z-index:50;background:#020711ed;display:grid;place-items:center;padding:18px}.sync-panel[hidden]{display:none}.sync-card{width:min(520px,100%);max-height:88dvh;overflow:auto;background:linear-gradient(145deg,#0d2037,#07101e);border:1px solid #28719b;border-radius:20px;padding:22px;box-shadow:0 0 55px #168bff33}.sync-card h2{margin:0 0 8px;letter-spacing:.08em}.sync-card p{color:#a8c7df;font-size:13px}.sync-card input{width:100%;padding:13px;margin:8px 0;background:#061324;border:1px solid #24506e;border-radius:10px;color:white;font:inherit}.sync-actions{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}.sync-actions button,.sync-device button{background:#0d3150;color:#d8f4ff;border:1px solid #2d7198;border-radius:10px;padding:11px 14px;font:inherit}.sync-primary{background:linear-gradient(135deg,#087dcb,#1c55aa)!important}.sync-code{font-size:26px!important;letter-spacing:.22em;text-align:center;color:#8cecff!important;font-weight:800}.sync-device{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid #17334b;font-size:13px}.sync-device button{padding:7px 10px;color:#ffb3b3;border-color:#70404a}.sync-muted{color:#779bb7!important;font-size:11px!important}
 footer{text-align:center;color:#577c99;font-size:10px;letter-spacing:.12em;padding-top:10px}
 @media(max-width:520px){.shell{padding:10px 12px calc(12px + env(safe-area-inset-bottom))}.core-wrap{height:clamp(138px,22vh,205px);min-height:138px}.core{width:min(154px,46vw);height:min(154px,46vw)}.reactor{width:96px;height:96px}.reactor-core{width:36px;height:36px}.greeting h1{font-size:clamp(19px,5vw,26px)}.greeting p{font-size:12px;margin:4px 0}.controls{gap:7px;margin:10px 0}.control{padding:8px 11px;font-size:11px}.messages{max-height:26vh}.chat{margin:4px 0 10px}.composer{gap:5px;padding:5px}.mic,.attach-btn{width:38px;min-width:38px;height:38px}.send{padding:0 12px}}
 </style></head>
@@ -30,11 +31,111 @@ footer{text-align:center;color:#577c99;font-size:10px;letter-spacing:.12em;paddi
 <header><div class="brand">J.A.R.V.I.S.<small>PERSONAL INTELLIGENCE SYSTEM</small></div><div class="status" id="status">● SYSTEM READY</div></header>
 <main><div class="core-wrap"><div class="core" id="core"><div class="ring"></div><div class="ring two"></div><div class="reactor"><div class="reactor-cross"></div><div class="reactor-core"></div></div></div></div>
 <div class="greeting"><h1>AT YOUR SERVICE, SIR.</h1><p id="hint">Your personal assistant is standing by.</p></div>
-<div class="controls"><select id="mode" aria-label="Personality mode"><option value="professional">Professional</option><option value="witty" selected>Witty</option><option value="philosophical">Philosophical</option></select><button class="control" id="testVoice">Test Alfred voice</button><button class="control" id="voiceToggle">Voice: On</button><button class="control" id="locationEnable">Enable precise location</button><button class="control" id="clear">Clear conversation</button></div>
+<div class="controls"><select id="mode" aria-label="Personality mode"><option value="professional">Professional</option><option value="witty" selected>Witty</option><option value="philosophical">Philosophical</option></select><button class="control" id="testVoice">Test Alfred voice</button><button class="control" id="voiceToggle">Voice: On</button><button class="control" id="locationEnable">Enable precise location</button><button class="control" id="syncButton">Devices &amp; Sync</button><button class="control" id="clear">Clear conversation</button></div>
 <section class="chat"><div class="messages" id="messages" aria-live="polite"><div class="msg jarvis">Good evening, Sir. J.A.R.V.I.S. is online. How may I assist?</div></div><div id="attachmentChip" class="attachment-chip" hidden></div><form class="composer" id="form"><button class="mic" type="button" id="mic" aria-label="Speak">🎙</button><button class="attach-btn" type="button" id="attach" aria-label="Attach a file" title="Attach a file">＋</button><button class="attach-btn" type="button" id="camera" aria-label="Take a photo" title="Take a photo">▣</button><input id="prompt" autocomplete="off" placeholder="Ask me anything, Sir…" maxlength="12000"><button class="send" type="submit">SEND</button></form><input id="fileInput" type="file" accept="image/*,application/pdf,text/plain,text/csv,application/json,text/markdown" hidden><input id="cameraInput" type="file" accept="image/*" capture="environment" hidden></section>
 </main><footer>J.A.R.V.I.S. · PERSONAL AI · VOICE-FIRST INTERFACE</footer></div>
+<section class="sync-panel" id="syncPanel" hidden aria-modal="true" role="dialog" aria-labelledby="syncTitle">
+ <div class="sync-card">
+  <h2 id="syncTitle">J.A.R.V.I.S. · DEVICES &amp; SYNC</h2>
+  <p id="syncStatus">Connecting to your shared JARVIS memory…</p>
+  <div id="setupArea" hidden>
+   <p>Claim this first device as the owner. Enter the one-time owner setup code supplied to you.</p>
+   <input id="setupCode" type="password" autocomplete="off" placeholder="Owner setup code">
+   <div class="sync-actions"><button class="sync-primary" id="claimDevice" type="button">Make this the owner device</button></div>
+  </div>
+  <div id="pairArea" hidden>
+   <p>Enter the temporary pairing code generated on your owner device.</p>
+   <input id="pairCode" autocomplete="off" maxlength="12" placeholder="8-character pairing code">
+   <div class="sync-actions"><button class="sync-primary" id="pairDevice" type="button">Pair this device</button></div>
+  </div>
+  <div id="ownerArea" hidden>
+   <p>This is your owner device. Generate a temporary code to connect your other devices.</p>
+   <div class="sync-actions"><button class="sync-primary" id="createPairCode" type="button">Generate pairing code</button></div>
+   <p id="pairDisplay" class="sync-code"></p>
+   <p class="sync-muted">Each code expires after 10 minutes and can be used once.</p>
+   <h3>Paired devices</h3><div id="deviceList"></div>
+  </div>
+  <div class="sync-actions"><button id="closeSync" type="button">Close</button></div>
+ </div>
+</section>
 <script>
 const $=id=>document.getElementById(id), core=$('core'), messages=$('messages');let history=[],voiceOn=true,pendingAttachment=null,deviceLocation=null,currentAudio=null;
+const JARVIS_API='https://jarvis-sigma-one-92.vercel.app/api';
+let sessionToken=localStorage.getItem('jarvisSessionToken')||'',sessionRole='',sessionDeviceId='';
+async function pairApi(payload){
+ const headers={'Content-Type':'application/json'};
+ if(sessionToken)headers.Authorization='Bearer '+sessionToken;
+ const response=await fetch(JARVIS_API+'/pair',{method:'POST',headers,body:JSON.stringify(payload)});
+ const raw=await response.text();let data={};try{data=JSON.parse(raw)}catch{}
+ if(!response.ok)throw new Error(data.error||'Pairing service returned HTTP '+response.status);
+ return data;
+}
+function currentDeviceName(){
+ const ua=navigator.userAgent||'';
+ if(window.AndroidJarvis)return /Mobile/i.test(ua)?'Android phone':'Android TV';
+ return /Android/i.test(ua)?'Android device':'Laptop browser';
+}
+async function restoreSharedHistory(){
+ const data=await pairApi({action:'history'});history=Array.isArray(data.messages)?data.messages:[];
+ messages.innerHTML='';
+ history.forEach(item=>add(item.text,item.role==='model'?'jarvis':'user'));
+ if(!history.length)add('Good evening, Sir. J.A.R.V.I.S. is online. How may I assist?','jarvis');
+}
+function storeSession(data){
+ sessionToken=data.token;sessionRole=data.role;sessionDeviceId=data.deviceId;
+ localStorage.setItem('jarvisSessionToken',sessionToken);
+ localStorage.setItem('jarvisDeviceId',sessionDeviceId);
+ $('syncPanel').hidden=true;
+ $('hint').textContent='Connected to your shared JARVIS memory, Sir.';
+}
+async function renderPairedDevices(){
+ const data=await pairApi({action:'devices'}),list=$('deviceList');list.innerHTML='';
+ (data.devices||[]).forEach(device=>{
+  const row=document.createElement('div');row.className='sync-device';
+  const label=document.createElement('span');label.textContent=device.deviceName+(device.role==='owner'?' · Owner':'');
+  row.appendChild(label);
+  if(device.role!=='owner'){
+   const revoke=document.createElement('button');revoke.type='button';revoke.textContent='Revoke';
+   revoke.onclick=async()=>{if(!confirm('Revoke access for '+device.deviceName+'?'))return;try{await pairApi({action:'revoke',deviceId:device.deviceId});await renderPairedDevices()}catch(e){$('syncStatus').textContent=e.message}};
+   row.appendChild(revoke);
+  }
+  list.appendChild(row);
+ });
+}
+async function openSyncPanel(){
+ $('syncPanel').hidden=false;$('setupArea').hidden=true;$('pairArea').hidden=true;$('ownerArea').hidden=true;
+ try{
+  if(sessionToken){
+   const v=await pairApi({action:'verify'});sessionRole=v.role;sessionDeviceId=v.deviceId;
+   $('syncStatus').textContent='Connected as '+v.deviceName+'. Shared conversation sync is active.';
+   if(v.role==='owner'){$('ownerArea').hidden=false;await renderPairedDevices();}
+   else $('pairArea').hidden=true;
+   return;
+  }
+  const statusData=await pairApi({action:'status'});
+  $('syncStatus').textContent=statusData.ownerClaimed?'This JARVIS system already has an owner. Pair this device using a code from the owner device.':'This is the first device. Claim it as the owner to initialise your private JARVIS memory.';
+  $('setupArea').hidden=statusData.ownerClaimed;
+  $('pairArea').hidden=!statusData.ownerClaimed;
+ }catch(e){$('syncStatus').textContent=e.message}
+}
+$('syncButton').onclick=openSyncPanel;
+$('closeSync').onclick=()=>{if(sessionToken)$('syncPanel').hidden=true};
+$('claimDevice').onclick=async()=>{
+ try{const data=await pairApi({action:'claim',setupCode:$('setupCode').value,deviceName:currentDeviceName()});storeSession(data);await restoreSharedHistory();$('hint').textContent=data.message+' Shared memory is ready, Sir.';}
+ catch(e){$('syncStatus').textContent=e.message}
+};
+$('pairDevice').onclick=async()=>{
+ try{const data=await pairApi({action:'pair',pairingCode:$('pairCode').value,deviceName:currentDeviceName()});storeSession(data);await restoreSharedHistory();$('hint').textContent=data.message+' Shared memory is ready, Sir.';}
+ catch(e){$('syncStatus').textContent=e.message}
+};
+$('createPairCode').onclick=async()=>{
+ try{const data=await pairApi({action:'create-code'});$('pairDisplay').textContent=data.code;$('syncStatus').textContent='Give this code to the device you wish to pair. It expires in 10 minutes.';await renderPairedDevices();}
+ catch(e){$('syncStatus').textContent=e.message}
+};
+(async()=>{
+ if(sessionToken){try{const v=await pairApi({action:'verify'});sessionRole=v.role;sessionDeviceId=v.deviceId;await restoreSharedHistory();$('hint').textContent='Connected to your shared JARVIS memory, Sir.';}catch(e){sessionToken='';localStorage.removeItem('jarvisSessionToken');localStorage.removeItem('jarvisDeviceId');openSyncPanel();}}
+ else openSyncPanel();
+})();
 function status(s,cls=''){ $('status').textContent='● '+s.toUpperCase();core.className='core '+cls}
 function add(text,who,attachment){const d=document.createElement('div');d.className='msg '+who;const body=document.createElement('div');body.textContent=text;d.appendChild(body);if(attachment&&attachment.mimeType&&attachment.mimeType.startsWith('image/')){const img=document.createElement('img');img.alt=attachment.name||'Attached image';img.src='data:'+attachment.mimeType+';base64,'+attachment.data;d.appendChild(img)}if(who==='jarvis'){const copy=document.createElement('button');copy.className='copy-btn';copy.type='button';copy.textContent='▢ Copy';copy.onclick=async()=>{try{await navigator.clipboard.writeText(text)}catch(e){const t=document.createElement('textarea');t.value=text;document.body.appendChild(t);t.select();document.execCommand('copy');t.remove()}copy.textContent='✓ Copied';setTimeout(()=>copy.textContent='▢ Copy',1500)};d.appendChild(copy)}messages.appendChild(d);messages.scrollTop=messages.scrollHeight;return d}
 
@@ -219,7 +320,7 @@ async function speak(text){
     }
     status('Generating voice','thinking');
     const response=await fetch('https://jarvis-sigma-one-92.vercel.app/api/speech',{
-      method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:spoken})
+      method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+sessionToken},body:JSON.stringify({text:spoken})
     });
     if(!response.ok){
       const raw=await response.text();let data={};try{data=JSON.parse(raw)}catch{}
@@ -240,8 +341,8 @@ async function speak(text){
 }
 $('testVoice').onclick=()=>{speak('Good evening, Sir. I am JARVIS. How may I assist you today?');$('hint').textContent='Testing the British voice…';};
 $('voiceToggle').onclick=()=>{voiceOn=!voiceOn;$('voiceToggle').textContent='Voice: '+(voiceOn?'On':'Off');if(!voiceOn){if(currentAudio){currentAudio.pause();currentAudio=null;}}};
-$('clear').onclick=()=>{history=[];messages.innerHTML='';add('Conversation cleared, Sir. What shall we discuss?','jarvis')};
-$('form').onsubmit=async e=>{e.preventDefault();const message=$('prompt').value.trim();if(!message&&!pendingAttachment)return;$('prompt').value='';const attachment=pendingAttachment;pendingAttachment=null;renderAttachment();add(message||'Please examine this attachment, Sir.', 'user',attachment);history.push({role:'user',text:message||'Please examine the attached file.'});
+$('clear').onclick=async()=>{if(!sessionToken){openSyncPanel();return;}try{await pairApi({action:'clear'});history=[];messages.innerHTML='';add('Conversation cleared across all your devices, Sir. What shall we discuss?','jarvis')}catch(e){$('hint').textContent=e.message}};
+$('form').onsubmit=async e=>{e.preventDefault();if(!sessionToken){openSyncPanel();$('syncStatus').textContent='Pair this device before sending messages.';return;}const message=$('prompt').value.trim();if(!message&&!pendingAttachment)return;$('prompt').value='';const attachment=pendingAttachment;pendingAttachment=null;renderAttachment();add(message||'Please examine this attachment, Sir.', 'user',attachment);history.push({role:'user',text:message||'Please examine the attached file.'});
 const appCommand=message.match(/^\s*(?:jarvis[, ]+)?(?:please\s+)?(?:open|launch|start)\s+([a-z0-9 +.-]+?)(?:\s+app)?[.!?]*\s*$/i);
 const appAliases={'whatsapp':'whatsapp','you tube':'youtube','youtube':'youtube','chrome':'chrome','gmail':'gmail','google maps':'maps','maps':'maps','spotify':'spotify','instagram':'instagram','facebook':'facebook','telegram':'telegram','camera':'camera','play store':'play store','messages':'messages','message':'messages','phone':'phone','settings':'settings','phone settings':'settings','twitter':'twitter','x':'x','reddit':'reddit','photos':'photos','google photos':'photos','calendar':'calendar','google calendar':'calendar','keep':'keep','google keep':'keep','contacts':'contacts','drive':'drive','google drive':'drive','files':'files','file manager':'files','amazon':'amazon','flipkart':'flipkart','browser':'browser','calculator':'calculator','gallery':'gallery','swiggy':'swiggy','zomato':'zomato'};
 if(appCommand && window.AndroidJarvis){const appName=appAliases[appCommand[1].toLowerCase().trim()];if(appName){const reply=window.AndroidJarvis.openApp(appName);add(reply,'jarvis');history.push({role:'model',text:reply});$('hint').textContent='Ready when you are.';status('System ready');speak(reply);return;}}
