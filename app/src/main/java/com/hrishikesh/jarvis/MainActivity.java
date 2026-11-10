@@ -330,29 +330,6 @@ public class MainActivity extends Activity {
             return "Your selected British voice is ready, Sir.";
         }
 
-        @JavascriptInterface public String openCastSettings() {
-            runOnUiThread(() -> {
-                Intent intent = new Intent("android.settings.CAST_SETTINGS");
-                if (intent.resolveActivity(getPackageManager()) == null) {
-                    intent = new Intent("android.settings.WIFI_DISPLAY_SETTINGS");
-                }
-                if (intent.resolveActivity(getPackageManager()) == null) {
-                    Toast.makeText(MainActivity.this,
-                            "Open Quick Settings and choose Cast, Screen Cast, Smart View or Wireless Display, Sir.",
-                            Toast.LENGTH_LONG).show();
-                    return;
-                }
-                try {
-                    startActivity(intent);
-                } catch (Exception e) {
-                    Toast.makeText(MainActivity.this,
-                            "Please open Quick Settings and choose Cast or Screen Cast, Sir.",
-                            Toast.LENGTH_LONG).show();
-                }
-            });
-            return "Opening your phone's screen-casting settings, Sir. Choose a compatible TV.";
-        }
-
         @JavascriptInterface public void openLocationSettings() {
             runOnUiThread(() -> {
                 try {
