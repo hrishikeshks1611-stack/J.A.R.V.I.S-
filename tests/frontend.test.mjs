@@ -110,4 +110,5 @@ test("full backup UI exports and restores shared conversation plus memories with
   assert.ok(html.includes("backupApi({action:'restore',backup,confirm:true})"));
   assert.ok(html.includes("Restore this backup? It will replace the shared conversation and saved memories"));
   assert.ok(html.includes("await restoreSharedHistory();await renderMemories();"));
+  assert.ok(html.includes("sessionRole!=='owner'"));
 });
