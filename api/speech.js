@@ -1,6 +1,6 @@
 // J.A.R.V.I.S. low-latency streaming speech endpoint.
 // Keeps the exact Gemini 3.1 Flash TTS model, Algieba voice and en-GB locale.
-import { getSession } from "./lib/jarvis-store.js";
+import { getSession } from "../lib/jarvis-store.js";
 
 export default async function handler(req, res) {
   const origin = req.headers.origin || "";
