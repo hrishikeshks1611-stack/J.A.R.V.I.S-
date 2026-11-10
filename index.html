@@ -163,6 +163,10 @@ $('castButton').onclick=()=>{
   if(window.AndroidJarvis&&typeof window.AndroidJarvis.openCastSettings==='function'){
     const result=window.AndroidJarvis.openCastSettings();
     if(result)$('hint').textContent=result;
+  }else if(window.AndroidJarvis&&typeof window.AndroidJarvis.openApp==='function'){
+    const result=window.AndroidJarvis.openApp('settings');
+    $('hint').textContent='Android Settings is open. Look for Connected devices, Connection & sharing, or Cast / Wireless display.';
+    add((result||'Opening Android Settings, Sir.')+' Then choose Cast / Screen Cast / Wireless display to select a compatible TV.','jarvis');
   }else{
     $('hint').textContent='To mirror this phone, open Android Quick Settings and choose Cast, Screen Cast, Smart View or Wireless Display. Your TV must support a compatible wireless-display standard.';
     add('Sir, open your phone’s Quick Settings, tap Cast / Screen Cast / Smart View, then select the TV. The TV and phone may need to be on the same Wi-Fi network.','jarvis');
