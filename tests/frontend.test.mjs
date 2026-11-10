@@ -27,7 +27,7 @@ test("saved-memory UI is explicit and has deletion controls", async () => {
 
 test("service worker cache version is bumped and script parses", async () => {
   const source = await readFile(new URL("../sw.js", import.meta.url), "utf8");
-  assert.ok(source.includes('const CACHE="jarvis-shell-v20"'));
+  assert.ok(source.includes('const CACHE="jarvis-shell-v21"'));
   assert.doesNotThrow(() => new Function(source));
 });
 
