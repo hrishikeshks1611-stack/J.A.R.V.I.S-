@@ -10,7 +10,7 @@ Implemented and covered by passing GitHub Actions tests:
 - Saved memories are included as bounded context (latest 15 notes, 300 characters each) and are never automatically created from conversations.
 - Saved-memory UI includes edit, delete, clear, and JSON export-to-clipboard controls, plus a warning not to store credentials or highly sensitive information.
 - Owner transfer between paired devices, allowing a new device to become owner before a future app reinstall.
-- Offline command fallback is now connected to the chat failure path for local time/date, greetings, known website lookups, and location when permissioned. Native Android app-launch results are also appended to the shared conversation so phone/TV/laptop history stays coherent.
+- Offline command fallback is now connected to the chat failure path for local time/date, greetings, known website lookups, and location when permissioned. Native Android app launches, alarm requests, and calendar-event requests are handled locally and appended to shared conversation history; Clock/Calendar actions require user confirmation.
 - Automated tests cover shared-store bounds, atomic append invocation, memory lifecycle, owner transfer, API authorization/CORS, explicit clear confirmation, and inline frontend JavaScript syntax.
 
 Still not complete or not physically verified:
@@ -18,7 +18,7 @@ Still not complete or not physically verified:
 - Full backup and restore of conversation plus memory, beyond copying saved-memory JSON.
 - Continuous wake-word listening and foreground microphone service.
 - Native MediaProjection screen mirroring.
-- Calendar/reminder/notification integrations.
+- Background notification scheduling, recurring reminders, and automatic reminder delivery. Basic alarm handoff and calendar-event creation are implemented through Android Clock/Calendar confirmation screens; the user must review and save them.
 - A local language model; offline fallback is command-only, not offline conversational AI.
 - Stable Android signing key and in-place update path; current workflow uses ephemeral debug signing.
 - Physical testing on the user's phone and Android TV.
