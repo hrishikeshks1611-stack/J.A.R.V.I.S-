@@ -1,4 +1,5 @@
-// J.A.R.V.I.S. cloud speech endpoint. The Gemini key remains server-side.
+// J.A.R.V.I.S. low-latency streaming speech endpoint.
+// Keeps the exact Gemini 3.1 Flash TTS model, Algieba voice and en-GB locale.
 export default async function handler(req, res) {
   const origin = req.headers.origin || "";
   const allowedOrigin =
@@ -36,8 +37,8 @@ export default async function handler(req, res) {
       spokenText
     ].join("\n");
 
-    const response = await fetch(
-      "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-tts-preview:generateContent",
+    const upstream = await fetch(
+      "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-tts-preview:streamGenerateContent?alt=sse",
       {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
@@ -54,46 +55,75 @@ export default async function handler(req, res) {
       }
     );
 
-    const raw = await response.text();
-    let data = {};
-    try { data = JSON.parse(raw); } catch { }
-    if (!response.ok) {
+    if (!upstream.ok) {
+      const raw = await upstream.text();
+      let data = {};
+      try { data = JSON.parse(raw); } catch { }
       const detail = data?.error?.message || raw.slice(0, 500) || "Google returned no error detail.";
-      console.error("Gemini TTS error:", response.status, detail);
-      return res.status(response.status === 429 ? 429 : 502).json({
-        error: "The speech service returned HTTP " + response.status + ": " + detail
+      console.error("Gemini streaming TTS error:", upstream.status, detail);
+      return res.status(upstream.status === 429 ? 429 : 502).json({
+        error: "The speech service returned HTTP " + upstream.status + ": " + detail
       });
     }
 
-    const encoded = data?.candidates?.[0]?.content?.parts?.find(part => part.inlineData?.data)?.inlineData?.data;
-    if (!encoded) {
-      return res.status(502).json({ error: "Gemini returned no audio. Please try the speech test again." });
+    if (!upstream.body) return res.status(502).json({ error: "Gemini did not provide a speech stream." });
+
+    res.setHeader("Content-Type", "application/octet-stream");
+    res.setHeader("X-Jarvis-Audio-Format", "pcm_s16le;rate=24000;channels=1");
+    res.setHeader("Cache-Control", "no-store");
+    res.setHeader("X-Accel-Buffering", "no");
+    const reader = upstream.body.getReader();
+    const decoder = new TextDecoder();
+    let pending = "";
+    let sentAudio = false;
+    let ended = false;
+
+    const emitEvent = (eventText) => {
+      const dataLines = eventText.split(/\r?\n/).filter(line => line.startsWith("data:"));
+      if (!dataLines.length) return;
+      const payload = dataLines.map(line => line.slice(5).trim()).join("\n");
+      if (!payload || payload === "[DONE]") return;
+      let event;
+      try { event = JSON.parse(payload); } catch { return; }
+      const parts = event?.candidates?.[0]?.content?.parts || [];
+      for (const part of parts) {
+        const encoded = part?.inlineData?.data || part?.inline_data?.data;
+        if (!encoded) continue;
+        const pcm = Buffer.from(encoded, "base64");
+        if (!pcm.length) continue;
+        if (!sentAudio) {
+          sentAudio = true;
+          res.flushHeaders?.();
+        }
+        res.write(pcm);
+      }
+      if (event?.error) console.error("Gemini TTS stream event error:", event.error);
+    };
+
+    try {
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        pending += decoder.decode(value, { stream: true });
+        const events = pending.split(/\r?\n\r?\n/);
+        pending = events.pop() || "";
+        for (const eventText of events) emitEvent(eventText);
+      }
+      pending += decoder.decode();
+      if (pending.trim()) emitEvent(pending);
+      ended = true;
+    } finally {
+      if (!ended) await reader.cancel().catch(() => {});
     }
 
-    const pcm = Buffer.from(encoded, "base64");
-    // Gemini returns mono, 24 kHz, signed 16-bit little-endian PCM. Wrap it in a WAV header for WebView playback.
-    const wav = Buffer.alloc(44 + pcm.length);
-    wav.write("RIFF", 0);
-    wav.writeUInt32LE(36 + pcm.length, 4);
-    wav.write("WAVE", 8);
-    wav.write("fmt ", 12);
-    wav.writeUInt32LE(16, 16);
-    wav.writeUInt16LE(1, 20);
-    wav.writeUInt16LE(1, 22);
-    wav.writeUInt32LE(24000, 24);
-    wav.writeUInt32LE(48000, 28);
-    wav.writeUInt16LE(2, 32);
-    wav.writeUInt16LE(16, 34);
-    wav.write("data", 36);
-    wav.writeUInt32LE(pcm.length, 40);
-    pcm.copy(wav, 44);
-
-    res.setHeader("Content-Type", "audio/wav");
-    res.setHeader("Cache-Control", "no-store");
-    res.setHeader("Content-Length", String(wav.length));
-    return res.status(200).send(wav);
+    if (!sentAudio) {
+      if (!res.headersSent) return res.status(502).json({ error: "Gemini returned no audio. Please try again." });
+      return res.end();
+    }
+    return res.end();
   } catch (error) {
-    console.error("JARVIS speech failure:", error);
-    return res.status(500).json({ error: "JARVIS could not generate speech: " + String(error?.message || error).slice(0, 250) });
+    console.error("JARVIS streaming speech failure:", error);
+    if (!res.headersSent) return res.status(500).json({ error: "JARVIS could not generate speech: " + String(error?.message || error).slice(0, 250) });
+    return res.end();
   }
 }
