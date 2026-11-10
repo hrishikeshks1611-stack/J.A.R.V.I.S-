@@ -44,7 +44,7 @@ test("expired pairing is handled separately from offline AI fallback", async () 
 test("alarm and reminder commands require clear times and call the native confirmation UI", async () => {
   const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
   const start = html.indexOf("function handleCalendarOrAlarmCommand");
-  const end = html.indexOf("const scheduledReply=", start);
+  const end = html.indexOf("// Cache exact Algieba recordings", start);
   assert.ok(start >= 0 && end > start);
   const source = html.slice(start, end);
   const parse = new Function("window", source + "; return handleCalendarOrAlarmCommand;")({
@@ -66,7 +66,7 @@ test("alarm and reminder commands require clear times and call the native confir
 test("calendar event commands validate a future ISO date and open the native event editor", async () => {
   const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
   const start = html.indexOf("function handleCalendarOrAlarmCommand");
-  const end = html.indexOf("const scheduledReply=", start);
+  const end = html.indexOf("// Cache exact Algieba recordings", start);
   const parse = new Function("window", html.slice(start, end) + "; return handleCalendarOrAlarmCommand;")({
     AndroidJarvis: {
       setAlarm: (...args) => ({ type: "alarm", args }),
@@ -85,7 +85,7 @@ test("calendar event commands validate a future ISO date and open the native eve
 test("offline fallback recognises natural-language commands", async () => {
   const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
   const start = html.indexOf("function offlineReply");
-  const end = html.indexOf("}\\n// Cache", start) + 1;
+  const end = html.indexOf("// Cache exact Algieba recordings", start);
   assert.ok(start >= 0 && end > start);
   const reply = new Function("deviceLocation", html.slice(start, end) + "; return offlineReply;")(null);
   assert.match(reply("hello", "witty"), /Good day, Sir/);
