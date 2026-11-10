@@ -9,14 +9,14 @@ Implemented and covered by automated tests:
 - Explicit saved-memory store with add, edit, list, delete, and clear operations; bounded to 100 notes of at most 1,000 characters each.
 - Saved memories are included as bounded context (latest 15 notes, 300 characters each) and are never automatically created from conversations.
 - Saved-memory UI includes edit, delete, clear, and JSON export-to-clipboard controls, plus a warning not to store credentials or highly sensitive information.
+- Authenticated full backup export and restore for the recent shared conversation and saved memories, with format/version checks, bounded validation, explicit destructive-action confirmation, and an atomic two-key Redis restore.
 - Owner transfer between paired devices, allowing a new device to become owner before a future app reinstall.
 - Offline command fallback is connected to the chat failure path for local time/date, greetings, known website lookups, and location when permissioned. Native Android app launches, alarm requests, and calendar-event requests are handled locally and appended to shared conversation history; Clock/Calendar actions require user confirmation.
-- Automated tests cover shared-store bounds, atomic append invocation, memory lifecycle, owner transfer, API authorization/CORS, explicit clear confirmation, native bridge contracts, Android version metadata, and inline frontend JavaScript syntax.
+- Automated tests cover shared-store bounds, atomic append invocation, memory lifecycle, owner transfer, backup export/restore validation and atomicity, API authorization/CORS, explicit clear confirmation, native bridge contracts, Android version metadata, APK release safety, and inline frontend JavaScript syntax.
 - Android version metadata is set to versionCode 500 and versionName 5.0.0 so a correctly signed release can advance beyond the existing versionCode 1.
 
 Still not complete or not physically verified:
 - High-volume real Upstash concurrency stress test; CI uses mocked Redis responses, but the actual atomic append, memory add/edit/delete, and owner-transfer Lua scripts have passed isolated smoke tests on temporary keys in the connected Upstash database. All temporary QA keys were deleted afterward.
-- Full backup and restore of conversation plus memory, beyond copying saved-memory JSON.
 - Continuous wake-word listening and foreground microphone service.
 - Native MediaProjection screen mirroring.
 - Background notification scheduling, recurring reminders, and automatic reminder delivery. Basic alarm handoff and calendar-event creation are implemented through Android Clock/Calendar confirmation screens; the user must review and save them.
@@ -45,7 +45,7 @@ This branch is not production. Keep it isolated until the remaining acceptance t
 - Replace the single blind read/modify/write conversation update with atomic or version-checked writes so concurrent devices cannot silently erase each other's turns.
 - Add durable user-approved memory records separately from recent chat history; include review, edit, delete, export, and retention controls.
 - Add bounded retrieval and explicit context provenance; never silently infer sensitive personal facts.
-- Add backups/restore verification and operational health checks.
+- Add backups/restore verification and operational health checks. A version-1 full backup endpoint and UI are now implemented; real-data recovery drills remain a release acceptance task.
 - Acceptance: concurrent-write tests, session/revocation tests, memory permission/deletion tests, and recovery test pass.
 
 ## 3.0 — Alfred mode and voice
