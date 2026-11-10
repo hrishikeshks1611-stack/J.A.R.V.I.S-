@@ -52,26 +52,35 @@ public class MainActivity extends Activity {
         voicePrefs = getSharedPreferences("jarvis_voice", MODE_PRIVATE);
         textToSpeech = new TextToSpeech(this, status -> {
             if (status == TextToSpeech.SUCCESS) {
-                // Restore an explicitly selected British voice first. Otherwise retain the
-                // voice already configured as the Android TTS engine's system default.
-                // Android does not expose reliable gender metadata for every installed voice.
+                // Never silently switch to a US, Indian, or other non-British voice.
+                // Restore only a voice the user explicitly selected on this device.
                 Voice selected = findVoice(voicePrefs.getString("voice_name", ""));
-                if (selected == null) selected = textToSpeech.getDefaultVoice();
                 if (selected != null && textToSpeech.setVoice(selected) != TextToSpeech.ERROR) {
                     voiceChosen = true;
                 } else {
-                    // Keep speech available using the system's configured English (UK) voice.
-                    int languageResult = textToSpeech.setLanguage(Locale.UK);
-                    voiceChosen = languageResult != TextToSpeech.LANG_MISSING_DATA
-                            && languageResult != TextToSpeech.LANG_NOT_SUPPORTED;
+                    voiceChosen = false;
+                    // Set the engine's requested locale to English (UK), but do not speak
+                    // until the user auditions and confirms an available British voice.
+                    textToSpeech.setLanguage(Locale.UK);
                 }
-                textToSpeech.setSpeechRate(1.0f);
-                textToSpeech.setPitch(1.0f);
+                textToSpeech.setSpeechRate(0.94f);
+                textToSpeech.setPitch(0.92f);
                 ttsReady = true;
-                if (pendingSpeech != null) {
+                if (pendingSpeech != null && voiceChosen) {
                     textToSpeech.speak(pendingSpeech, TextToSpeech.QUEUE_FLUSH, null, "JARVIS_STARTUP");
                     pendingSpeech = null;
                 }
+                if (!voiceChosen) {
+                    runOnUiThread(() -> Toast.makeText(MainActivity.this,
+                            "Please choose and test an English (UK) voice in JARVIS settings.",
+                            Toast.LENGTH_LONG).show());
+                }
+            } else {
+                ttsReady = false;
+                voiceChosen = false;
+                runOnUiThread(() -> Toast.makeText(MainActivity.this,
+                        "No working Android text-to-speech engine was found. Enable one in Text-to-speech settings.",
+                        Toast.LENGTH_LONG).show());
             }
         });
         webView = new WebView(this);
@@ -261,6 +270,30 @@ public class MainActivity extends Activity {
             return availableBritishVoices().toString();
         }
 
+        @JavascriptInterface public String getSpeechStatus() {
+            if (!ttsReady) return "Android speech engine is still starting, Sir.";
+            if (textToSpeech == null) return "No Android speech engine is available, Sir.";
+            if (availableBritishVoices().length() == 0) {
+                return "No English (UK) voice is installed. Install or enable a British voice in Android Text-to-speech settings, Sir.";
+            }
+            if (!voiceChosen) return "Choose a British voice, test it, then select Use this voice, Sir.";
+            return "Your selected British voice is ready, Sir.";
+        }
+
+        @JavascriptInterface public void openTextToSpeechSettings() {
+            runOnUiThread(() -> {
+                try {
+                    Intent intent = new Intent("com.android.settings.TTS_SETTINGS");
+                    if (intent.resolveActivity(getPackageManager()) == null) {
+                        intent = new Intent(android.provider.Settings.ACTION_SETTINGS);
+                    }
+                    startActivity(intent);
+                } catch (Exception e) {
+                    Toast.makeText(MainActivity.this, "Open Settings and search for Text-to-speech output, Sir.", Toast.LENGTH_LONG).show();
+                }
+            });
+        }
+
         @JavascriptInterface public String previewBritishVoice(String voiceName) {
             if (!ttsReady || voiceName == null) return "Voice engine is not ready, Sir.";
             Voice candidate = findVoice(voiceName);
@@ -301,7 +334,12 @@ public class MainActivity extends Activity {
                     pendingSpeech = message;
                     return;
                 }
-                if (!voiceChosen) return;
+                if (!voiceChosen) {
+                    Toast.makeText(MainActivity.this,
+                            "Please choose, test, and activate an English (UK) voice first, Sir.",
+                            Toast.LENGTH_LONG).show();
+                    return;
+                }
                 textToSpeech.speak(message, TextToSpeech.QUEUE_FLUSH, null, "JARVIS_" + System.currentTimeMillis());
             });
         }
