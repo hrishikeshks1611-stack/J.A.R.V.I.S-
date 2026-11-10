@@ -137,9 +137,9 @@ export default async function handler(req, res) {
     // The app sends coordinates only after the user taps Enable precise location and grants access.
     const deviceContext = body.deviceContext && typeof body.deviceContext === "object" ? body.deviceContext : {};
     const contextLines = [];
-    if (typeof deviceContext.localTime === "string") contextLines.push("Device local time: " + deviceContext.localTime.replace(/[\\r\\n\\u0000-\\u001f]/g, " ").slice(0, 120));
-    if (typeof deviceContext.isoTime === "string") contextLines.push("Device timestamp: " + deviceContext.isoTime.replace(/[\\r\\n\\u0000-\\u001f]/g, "").slice(0, 40));
-    if (typeof deviceContext.timeZone === "string") contextLines.push("Device time zone: " + deviceContext.timeZone.replace(/[^a-zA-Z0-9_+\\/-]/g, "").slice(0, 80));
+    if (typeof deviceContext.localTime === "string") contextLines.push("Device local time: " + deviceContext.localTime.replace(/[\r\n\u0000-\u001f]/g, " ").slice(0, 120));
+    if (typeof deviceContext.isoTime === "string") contextLines.push("Device timestamp: " + deviceContext.isoTime.replace(/[\r\n\u0000-\u001f]/g, "").slice(0, 40));
+    if (typeof deviceContext.timeZone === "string") contextLines.push("Device time zone: " + deviceContext.timeZone.replace(/[^a-zA-Z0-9_+/-]/g, "").slice(0, 80));
     if (typeof deviceContext.deviceType === "string") contextLines.push("Device type: " + deviceContext.deviceType.replace(/[^a-zA-Z0-9 _/-]/g, "").slice(0, 60));
     if (typeof deviceContext.deviceName === "string") contextLines.push("Device name: " + deviceContext.deviceName.replace(/[^a-zA-Z0-9 _-]/g, "").slice(0, 60));
     if (typeof deviceContext.networkOnline === "boolean") contextLines.push("Device reports network: " + (deviceContext.networkOnline ? "online" : "offline"));
