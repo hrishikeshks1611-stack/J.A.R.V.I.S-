@@ -116,6 +116,7 @@ export default async function handler(req, res) {
     let response;
     let data = {};
     let lastUnavailable = "";
+    let lastFailureStatus = 503;
 
     for (const model of models) {
       response = await fetch(
@@ -138,20 +139,24 @@ export default async function handler(req, res) {
 
       const detail = data?.error?.message || raw.slice(0, 500) || "No error detail returned by Google.";
       console.error("Gemini model error:", model, response.status, detail);
+      lastUnavailable = detail;
+      lastFailureStatus = response.status;
 
-      if (response.status === 503) {
-        lastUnavailable = detail;
-        continue;
-      }
+      // Capacity pressure and per-model rate limits may not affect every
+      // eligible model equally. Try the remaining configured Gemini models.
+      if (response.status === 503 || response.status === 429) continue;
 
-      return res.status(response.status === 429 ? 429 : 502).json({
+      return res.status(502).json({
         error: `Gemini rejected the request (HTTP ${response.status}): ${detail}`
       });
     }
 
     if (!response?.ok) {
-      return res.status(503).json({
-        error: "Sir, Google's Gemini models are temporarily at capacity. I tried the primary model and two fallbacks. Please try again shortly. " + (lastUnavailable || "")
+      const limited = lastFailureStatus === 429;
+      return res.status(limited ? 429 : 503).json({
+        error: limited
+          ? "Sir, Google's request limit was reached on the available Gemini models. I tried the primary model and two fallbacks; please wait for the limit to reset. " + (lastUnavailable || "")
+          : "Sir, Google's Gemini models are temporarily at capacity. I tried the primary model and two fallbacks. Please try again shortly. " + (lastUnavailable || "")
       });
     }
 
