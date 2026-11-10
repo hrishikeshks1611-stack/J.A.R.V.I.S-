@@ -259,6 +259,27 @@ public class MainActivity extends Activity {
         }
 
 
+        @JavascriptInterface public String openCastSettings() {
+            runOnUiThread(() -> {
+                Intent cast = new Intent(android.provider.Settings.ACTION_CAST_SETTINGS);
+                try {
+                    if (cast.resolveActivity(getPackageManager()) != null) {
+                        startActivity(cast);
+                    } else {
+                        startActivity(new Intent(android.provider.Settings.ACTION_SETTINGS));
+                        Toast.makeText(MainActivity.this,
+                                "Choose Cast, Screen Cast, Smart View, or Wireless Display if your device provides it, Sir.",
+                                Toast.LENGTH_LONG).show();
+                    }
+                } catch (ActivityNotFoundException e) {
+                    Toast.makeText(MainActivity.this,
+                            "Open Android Quick Settings and choose Cast or Screen Cast, Sir.",
+                            Toast.LENGTH_LONG).show();
+                }
+            });
+            return "Opening Android's Cast settings, Sir. Select a compatible TV or wireless display.";
+        }
+
         @JavascriptInterface public String setAlarm(int hour, int minute, String label) {
             if (hour < 0 || hour > 23 || minute < 0 || minute > 59) {
                 return "That alarm time is invalid, Sir.";
