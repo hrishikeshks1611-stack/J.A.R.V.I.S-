@@ -494,6 +494,7 @@ function handleCalendarOrAlarmCommand(text){
  const alarm=text.match(/^\s*(?:jarvis[, ]+)?(?:please\s+)?(?:set|create)\s+(?:an?\s+)?alarm\s+(?:for|at)\s+(\d{1,2})(?::(\d{2}))?\s*(am|pm)?(?:\s+(?:called|named|labelled)\s+(.+?))?[.!?]*\s*$/i);
  const match=reminder||alarm;
  if(match){
+  if(typeof window.AndroidJarvis.setAlarm!=='function')return 'Sir, this installed JARVIS version does not include native Clock controls yet. Please open the Clock app to set that alarm.';
   let hour=Number(reminder?match[2]:match[1]),minute=Number(reminder?match[3]||0:match[2]||0);
   const period=reminder?match[4]?.toLowerCase():match[3]?.toLowerCase();
   if(minute>59||(period&&(hour<1||hour>12))||(!period&&(hour<0||hour>23)))return 'That alarm time is invalid, Sir.';
@@ -506,6 +507,7 @@ function handleCalendarOrAlarmCommand(text){
  const datedReminder=text.match(/^\s*(?:jarvis[, ]+)?(?:please\s+)?remind me to (.+?) on (\d{4})-(\d{2})-(\d{2}) at (\d{1,2}):(\d{2})\s*$/i);
  const scheduled=event||datedReminder;
  if(scheduled){
+  if(typeof window.AndroidJarvis.createCalendarEvent!=='function')return 'Sir, this installed JARVIS version does not include native Calendar controls yet. Please open Calendar to add that event.';
   const title=(datedReminder?'Reminder: ':'')+scheduled[1].trim();
   const year=Number(scheduled[2]),month=Number(scheduled[3]),day=Number(scheduled[4]),hour=Number(scheduled[5]),minute=Number(scheduled[6]);
   const start=new Date(year,month-1,day,hour,minute,0,0);
