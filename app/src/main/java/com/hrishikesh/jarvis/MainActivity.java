@@ -75,6 +75,8 @@ public class MainActivity extends Activity {
             }
         });
         webView = new WebView(this);
+        webView.setFocusable(true);
+        webView.setFocusableInTouchMode(true);
         webView.setBackgroundColor(android.graphics.Color.rgb(5, 11, 24));
         webView.getSettings().setJavaScriptEnabled(true);
         webView.getSettings().setDomStorageEnabled(true);
@@ -84,6 +86,24 @@ public class MainActivity extends Activity {
         webView.addJavascriptInterface(new JarvisBridge(), "AndroidJarvis");
         webView.setWebChromeClient(new WebChromeClient());
         webView.setWebViewClient(new WebViewClient() {
+            @Override public void onPageFinished(WebView view, String url) {
+                super.onPageFinished(view, url);
+                if (BuildConfig.JARVIS_TV) {
+                    String js = "(function(){document.documentElement.classList.add('jarvis-tv-mode');" +
+                        "var s=document.createElement('style');s.textContent=" +
+                        "'body{font-size:19px!important}.shell{max-width:1180px!important;padding:24px 34px!important}" +
+                        ".core-wrap{height:340px!important}.core{transform:scale(1.12)}" +
+                        ".controls{gap:14px!important;margin:24px 0!important}" +
+                        ".control,select{font-size:16px!important;padding:14px 20px!important;min-height:54px}" +
+                        ".composer{padding:10px!important;gap:10px!important}.composer input{font-size:19px!important}" +
+                        ".mic,.attach-btn,.send{min-width:58px!important;min-height:54px!important;font-size:20px!important}" +
+                        "button:focus,select:focus,input:focus{outline:3px solid #62d9ff!important;outline-offset:4px!important;box-shadow:0 0 20px #218bff99!important}" +
+                        ".messages{max-height:34vh!important}.msg{font-size:17px!important;padding:14px 18px!important}';" +
+                        "document.head.appendChild(s);document.querySelectorAll('button,select,input').forEach(function(e){e.tabIndex=0});" +
+                        "var first=document.getElementById('mic');if(first)first.focus({preventScroll:true});})();";
+                    view.evaluateJavascript(js, null);
+                }
+            }
             @Override public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 Uri uri = request.getUrl();
                 String host = uri.getHost() == null ? "" : uri.getHost();
@@ -94,6 +114,8 @@ public class MainActivity extends Activity {
             }
         });
         setContentView(webView);
+        webView.requestFocus();
+        if (BuildConfig.JARVIS_TV) applyTvImmersiveMode();
         webView.loadUrl("https://hrishikeshks1611-stack.github.io/J.A.R.V.I.S-/");
     }
 
@@ -387,6 +409,21 @@ public class MainActivity extends Activity {
             if (webView != null) webView.evaluateJavascript(
                     "window.jarvisNative && window.jarvisNative.onAttachment(" + argument + ")", null);
         });
+    }
+
+    private void applyTvImmersiveMode() {
+        getWindow().getDecorView().setSystemUiVisibility(
+                android.view.View.SYSTEM_UI_FLAG_FULLSCREEN
+                | android.view.View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                | android.view.View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+                | android.view.View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                | android.view.View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                | android.view.View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION);
+    }
+
+    @Override public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+        if (hasFocus && BuildConfig.JARVIS_TV) applyTvImmersiveMode();
     }
 
     @Override protected void onDestroy() {
