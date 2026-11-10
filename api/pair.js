@@ -1,7 +1,7 @@
 import {
   getSession, hashToken, randomToken, redisCommand, safeEqual,
   readHistory, saveHistory, JARVIS_PREFIX, JARVIS_SESSION_TTL
-} from "./lib/jarvis-store.js";
+} from "../lib/jarvis-store.js";
 
 function cors(req, res) {
   const origin = req.headers.origin || "";
