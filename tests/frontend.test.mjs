@@ -85,7 +85,7 @@ test("calendar event commands validate a future ISO date and open the native eve
 test("offline fallback recognises natural-language commands", async () => {
   const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
   const start = html.indexOf("function offlineReply");
-  const end = html.indexOf("const scheduledReply=", start);
+  const end = html.indexOf("// Cache exact Algieba recordings", start);
   assert.ok(start >= 0 && end > start);
   const reply = new Function("deviceLocation", html.slice(start, end) + "; return offlineReply;")(null);
   assert.match(reply("hello", "witty"), /Good day, Sir/);
