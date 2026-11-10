@@ -64,7 +64,7 @@ footer{text-align:center;color:#577c99;font-size:10px;letter-spacing:.12em;paddi
   <p id="memoryStatus">Loading your shared saved memories…</p>
   <p class="sync-muted">Only notes you explicitly save here become long-term memory. JARVIS does not automatically save every conversation.</p>
   <textarea id="memoryText" maxlength="1000" rows="3" placeholder="Write exactly what you want JARVIS to remember…"></textarea>
-  <div class="sync-actions"><button class="sync-primary" id="saveMemory" type="button">Save memory</button><button id="clearMemories" type="button">Clear all memories</button></div>
+  <div class="sync-actions"><button class="sync-primary" id="saveMemory" type="button">Save memory</button><button id="cancelMemoryEdit" type="button" hidden>Cancel edit</button><button id="exportMemories" type="button">Copy export JSON</button><button id="clearMemories" type="button">Clear all memories</button></div>
   <h3>Your saved notes</h3><div id="memoryList"></div>
   <div class="sync-actions"><button id="closeMemory" type="button">Close</button></div>
  </div>
@@ -73,6 +73,7 @@ footer{text-align:center;color:#577c99;font-size:10px;letter-spacing:.12em;paddi
 const $=id=>document.getElementById(id), core=$('core'), messages=$('messages');let history=[],voiceOn=true,pendingAttachment=null,deviceLocation=null,currentAudio=null;
 const JARVIS_API='https://jarvis-sigma-one-92.vercel.app/api';
 let sessionToken=localStorage.getItem('jarvisSessionToken')||'',sessionRole='',sessionDeviceId='',chatBusy=false,lastSharedHistorySignature='';
+let editingMemoryId=null;
 async function memoryApi(payload){
  const headers={'Content-Type':'application/json'};
  if(sessionToken)headers.Authorization='Bearer '+sessionToken;
@@ -88,8 +89,11 @@ async function renderMemories(){
  items.forEach(item=>{
   const row=document.createElement('div');row.className='memory-item';
   const note=document.createElement('span');note.textContent=item.text||'';row.appendChild(note);
+  const edit=document.createElement('button');edit.type='button';edit.textContent='Edit';
+  edit.onclick=()=>{editingMemoryId=item.id;$('memoryText').value=item.text||'';$('saveMemory').textContent='Update memory';$('cancelMemoryEdit').hidden=false;$('memoryStatus').textContent='Editing this saved note. Save when ready, Sir.';$('memoryText').focus();};
+  row.appendChild(edit);
   const remove=document.createElement('button');remove.type='button';remove.textContent='Delete';
-  remove.onclick=async()=>{if(!confirm('Delete this saved memory?'))return;try{await memoryApi({action:'delete',id:item.id});await renderMemories();$('memoryStatus').textContent='Memory deleted across your devices.';}catch(e){$('memoryStatus').textContent=e.message}};
+  remove.onclick=async()=>{if(!confirm('Delete this saved memory?'))return;try{await memoryApi({action:'delete',id:item.id});if(editingMemoryId===item.id)resetMemoryEditor();await renderMemories();$('memoryStatus').textContent='Memory deleted across your devices.';}catch(e){$('memoryStatus').textContent=e.message}};
   row.appendChild(remove);list.appendChild(row);
  });
 }
@@ -103,10 +107,24 @@ async function openMemoryPanel(){
 }
 $('memoryButton').onclick=openMemoryPanel;
 $('closeMemory').onclick=()=>$('memoryPanel').hidden=true;
+function resetMemoryEditor(){editingMemoryId=null;$('memoryText').value='';$('saveMemory').textContent='Save memory';$('cancelMemoryEdit').hidden=true;}
+$('cancelMemoryEdit').onclick=()=>resetMemoryEditor();
 $('saveMemory').onclick=async()=>{
  const value=$('memoryText').value.trim();if(!value){$('memoryStatus').textContent='Write a note first, Sir.';return;}
- try{await memoryApi({action:'add',text:value});$('memoryText').value='';await renderMemories();$('memoryStatus').textContent='Saved across your paired JARVIS devices, Sir.';}
- catch(e){$('memoryStatus').textContent=e.message;}
+ try{
+  const action=editingMemoryId?'update':'add';
+  const payload=editingMemoryId?{action,id:editingMemoryId,text:value}:{action,text:value};
+  await memoryApi(payload);resetMemoryEditor();await renderMemories();
+  $('memoryStatus').textContent=action==='update'?'Saved memory updated across your devices, Sir.':'Saved across your paired JARVIS devices, Sir.';
+ }catch(e){$('memoryStatus').textContent=e.message;}
+};
+$('exportMemories').onclick=async()=>{
+ try{
+  const data=await memoryApi({action:'list'}),json=JSON.stringify({exportedAt:new Date().toISOString(),memories:data.memories||[]},null,2);
+  if(navigator.clipboard&&navigator.clipboard.writeText){await navigator.clipboard.writeText(json);}
+  else{const box=document.createElement('textarea');box.value=json;document.body.appendChild(box);box.select();document.execCommand('copy');box.remove();}
+  $('memoryStatus').textContent='Your saved memories have been copied as JSON. Paste them into a file to keep a backup, Sir.';
+ }catch(e){$('memoryStatus').textContent=e.message;}
 };
 $('clearMemories').onclick=async()=>{
  if(!confirm('Clear every saved memory on all paired JARVIS devices? This cannot be undone.'))return;
