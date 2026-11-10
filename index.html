@@ -448,14 +448,23 @@ $('form').onsubmit=async e=>{e.preventDefault();if(!sessionToken){openSyncPanel(
 const appCommand=message.match(/^\s*(?:jarvis[, ]+)?(?:please\s+)?(?:open|launch|start)\s+([a-z0-9 +.-]+?)(?:\s+app)?[.!?]*\s*$/i);
 const appAliases={'whatsapp':'whatsapp','you tube':'youtube','youtube':'youtube','chrome':'chrome','gmail':'gmail','google maps':'maps','maps':'maps','spotify':'spotify','instagram':'instagram','facebook':'facebook','telegram':'telegram','camera':'camera','play store':'play store','messages':'messages','message':'messages','phone':'phone','settings':'settings','phone settings':'settings','twitter':'twitter','x':'x','reddit':'reddit','photos':'photos','google photos':'photos','calendar':'calendar','google calendar':'calendar','keep':'keep','google keep':'keep','contacts':'contacts','drive':'drive','google drive':'drive','files':'files','file manager':'files','amazon':'amazon','flipkart':'flipkart','browser':'browser','calculator':'calculator','gallery':'gallery','swiggy':'swiggy','zomato':'zomato'};
 if(appCommand && window.AndroidJarvis){const appName=appAliases[appCommand[1].toLowerCase().trim()];if(appName){const reply=window.AndroidJarvis.openApp(appName);add(reply,'jarvis');history.push({role:'model',text:reply});history=history.slice(-20);pairApi({action:'append-local',message,reply}).catch(()=>{});$('hint').textContent='Ready when you are.';status('System ready');speak(reply);return;}}
-status('Thinking','thinking');$('hint').textContent='Processing your request…';chatBusy=true;try{const r=await fetch('https://jarvis-sigma-one-92.vercel.app/api/chat',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+sessionToken},body:JSON.stringify({message:message||'Please examine the attached file and describe its contents.',history,mode:$('mode').value,attachment,deviceContext:getDeviceContext()})});const raw=await r.text();let data={};try{data=JSON.parse(raw)}catch{}if(!r.ok)throw Error(data.error||('AI service returned HTTP '+r.status));const reply=data.reply||'I have no response, Sir.';chatBusy=false;add(reply,'jarvis');history.push({role:'model',text:reply});history=history.slice(-20);$('hint').textContent='Ready when you are.';speak(reply);if(!voiceOn)status('System ready');}catch(err){
+status('Thinking','thinking');$('hint').textContent='Processing your request…';chatBusy=true;try{const r=await fetch('https://jarvis-sigma-one-92.vercel.app/api/chat',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+sessionToken},body:JSON.stringify({message:message||'Please examine the attached file and describe its contents.',history,mode:$('mode').value,attachment,deviceContext:getDeviceContext()})});const raw=await r.text();let data={};try{data=JSON.parse(raw)}catch{}if(!r.ok){const error=new Error(data.error||('AI service returned HTTP '+r.status));error.status=r.status;throw error;}const reply=data.reply||'I have no response, Sir.';chatBusy=false;add(reply,'jarvis');history.push({role:'model',text:reply});history=history.slice(-20);$('hint').textContent='Ready when you are.';speak(reply);if(!voiceOn)status('System ready');}catch(err){
  chatBusy=false;
- const fallback=attachment
-  ?'Sir, I cannot inspect this attachment while the intelligence service is offline. Please reconnect and send it again.'
-  :offlineReply(message,$('mode').value);
+ let fallback;
+ if(err.status===401){
+  sessionToken='';localStorage.removeItem('jarvisSessionToken');localStorage.removeItem('jarvisDeviceId');
+  openSyncPanel();fallback='Sir, this device needs to be paired with your JARVIS owner device again before I can access the shared brain.';
+ }else if(err.status && err.status<500 && err.status!==429){
+  fallback=err.message||'That request could not be completed, Sir.';
+ }else{
+  fallback=attachment
+   ?'Sir, I cannot inspect this attachment while the intelligence service is offline. Please reconnect and send it again.'
+   :offlineReply(message,$('mode').value);
+  $('hint').textContent='The online intelligence service is unavailable. Basic local commands remain available; open-ended reasoning requires a connection, Sir.';
+  status('Offline mode');
+ }
  add(fallback,'jarvis');history.push({role:'model',text:fallback});
- $('hint').textContent='The online intelligence service is unavailable. Basic local commands remain available; open-ended reasoning requires a connection, Sir.';
- status('Offline mode');speak(fallback);
+ speak(fallback);
 }};
 window.jarvisNative={onSpeechResult:(transcript)=>{$('prompt').value=transcript;$('form').requestSubmit();},onAttachment:(raw)=>{try{const a=typeof raw==='string'?JSON.parse(raw):raw;pendingAttachment=a;renderAttachment();$('hint').textContent='Attachment ready, Sir. Add a question or send it as it is.'}catch(e){$('hint').textContent='I could not load that attachment, Sir.'}}};
 $('mic').onclick=()=>{if(window.AndroidJarvis){window.AndroidJarvis.startVoiceRecognition();return;}const SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(!SR){add('Voice recognition is not supported by this browser, Sir.','jarvis');return}const rec=new SR();rec.lang='en-GB';rec.interimResults=false;rec.onstart=()=>status('Listening','listening');rec.onresult=e=>{$('prompt').value=e.results[0][0].transcript;$('form').requestSubmit()};rec.onerror=()=>status('System ready');rec.onend=()=>{if(!$('prompt').value)status('System ready')};rec.start()};
