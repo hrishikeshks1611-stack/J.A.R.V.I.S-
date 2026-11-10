@@ -94,3 +94,27 @@ test("getSession rejects missing bearer credentials without contacting Redis", a
   assert.equal(result, null);
   assert.equal(calls.length, 0);
 });
+
+test("appendConversationTurn uses one atomic Redis script and returns the updated history", async () => {
+  let commandSeen;
+  const expected = [
+    { role: "user", text: "Hello from phone", createdAt: 1234 },
+    { role: "model", text: "Good evening, Sir.", createdAt: 1234 }
+  ];
+  mockRedis(async command => {
+    commandSeen = command;
+    return JSON.stringify(expected);
+  });
+  const result = await appendConversationTurn("Hello from phone", "Good evening, Sir.", 1234);
+  assert.deepEqual(result, expected);
+  assert.equal(commandSeen[0], "EVAL");
+  assert.equal(commandSeen[2], "1");
+  assert.equal(commandSeen[3], "jarvis:v1:conversation:main");
+  assert.match(commandSeen[1], /redis\\.call\\('GET'/);
+  assert.match(commandSeen[1], /redis\\.call\\('SET'/);
+  assert.match(commandSeen[1], /while #history > 40/);
+  assert.equal(commandSeen[4], "Hello from phone");
+  assert.equal(commandSeen[5], "Good evening, Sir.");
+  assert.equal(commandSeen[6], "1234");
+  assert.equal(commandSeen[7], String(60 * 60 * 24 * 365));
+});
