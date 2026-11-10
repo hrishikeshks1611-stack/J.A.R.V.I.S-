@@ -1,6 +1,6 @@
 {
   "name": "jarvis-staging",
-  "version": "5.0.0",
+  "version": "6.0.0",
   "private": true,
   "type": "module",
   "engines": {
@@ -8,5 +8,11 @@
   },
   "scripts": {
     "start": "node server.js"
+  },
+  "dependencies": {
+    "pdfkit": "^0.17.2",
+    "docx": "^9.5.1",
+    "exceljs": "^4.4.0",
+    "pptxgenjs": "^3.12.0"
   }
 }

@@ -2,7 +2,7 @@ name: JARVIS quality checks
 
 on:
   push:
-    branches: [ main, jarvis-5.0-development ]
+    branches: [ main, jarvis-5.0-development, jarvis-6.0-development ]
   pull_request:
     branches: [ main ]
 
@@ -19,5 +19,7 @@ jobs:
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: '22'
-      - name: Test shared-memory helpers
+      - name: Install JARVIS runtime dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund
+      - name: Test shared-memory and office-file helpers
         run: node --test tests/*.test.mjs

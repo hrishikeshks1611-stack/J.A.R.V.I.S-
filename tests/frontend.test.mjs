@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import vm from "node:vm";
 import { readFile } from "node:fs/promises";
 
 test("JARVIS web app inline script parses", async () => {
@@ -8,7 +9,7 @@ test("JARVIS web app inline script parses", async () => {
   const end = html.lastIndexOf("</script>");
   const scripts = start >= 0 && end > start ? [html.slice(start + 8, end)] : [];
   assert.ok(scripts.length > 0, "expected an inline application script");
-  assert.doesNotThrow(() => new Function(scripts[0]));
+  assert.doesNotThrow(() => { try { new vm.Script(scripts[0], { filename: 'jarvis-inline.js' }); } catch (error) { throw new Error(error.stack); } });
 });
 
 test("saved-memory UI is explicit and has deletion controls", async () => {
@@ -26,7 +27,7 @@ test("saved-memory UI is explicit and has deletion controls", async () => {
 
 test("service worker cache version is bumped and script parses", async () => {
   const source = await readFile(new URL("../sw.js", import.meta.url), "utf8");
-  assert.ok(source.includes('const CACHE="jarvis-shell-v19"'));
+  assert.ok(source.includes('const CACHE="jarvis-shell-v21"'));
   assert.doesNotThrow(() => new Function(source));
 });
 
@@ -142,4 +143,21 @@ test("Mission Control exposes local diagnostics, a bounded briefing and explicit
   assert.ok(html.includes('id="saveCustomRoutine"'));
   assert.ok(html.includes("up to eight named routines"));
   assert.ok(html.includes("function applyLocalRoutine"));
+});
+
+test("office requests choose useful output formats and return a real download link", async () => {
+  const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+  const start = html.indexOf("function detectFileRequest(text)");
+  const end = html.indexOf("\nasync function createOfficeFile", start);
+  assert.ok(start >= 0 && end > start);
+  const detectFileRequest = vm.runInNewContext(html.slice(start, end) + "\ndetectFileRequest");
+  assert.equal(detectFileRequest("Create a PDF report about marketing").format, "pdf");
+  assert.equal(detectFileRequest("Prepare my business management assignment").format, "docx");
+  assert.equal(detectFileRequest("Make a monthly household budget").format, "xlsx");
+  assert.equal(detectFileRequest("Create a PowerPoint presentation").format, "pptx");
+  assert.equal(detectFileRequest("Make a weekly meal plan").format, "pdf");
+  assert.equal(detectFileRequest("What is the meaning of management?"), null);
+  assert.ok(html.includes("JARVIS_AUX_API+'/create-file'"));
+  assert.ok(html.includes("downloadFile.filename"));
+  assert.ok(html.includes("new Blob([Uint8Array.from(atob(downloadFile.data)"));
 });

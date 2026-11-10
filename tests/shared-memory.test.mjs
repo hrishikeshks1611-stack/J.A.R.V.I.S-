@@ -88,6 +88,19 @@ test("getSession validates the bearer token and refreshes session TTLs", async (
   assert.equal(calls.length, 3);
 });
 
+test("getSession can validate a session without extending live Redis TTLs", async () => {
+  const token = randomToken(32);
+  const session = { deviceId: "read-only-device", role: "owner" };
+  const calls = mockRedis(async command => {
+    assert.equal(command[0], "GET");
+    return JSON.stringify(session);
+  });
+  const result = await getSession({ headers: { authorization: "Bearer " + token } }, { touch: false });
+  assert.equal(result.deviceId, session.deviceId);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0][0], "GET");
+});
+
 test("getSession rejects missing bearer credentials without contacting Redis", async () => {
   const calls = mockRedis(async () => { throw new Error("Redis must not be called"); });
   const result = await getSession({ headers: {} });

@@ -1,0 +1,32 @@
+services:
+  - type: web
+    name: jarvis-6-0
+    runtime: node
+    region: singapore
+    plan: free
+    buildCommand: npm install --no-audit --no-fund
+    startCommand: npm start
+    healthCheckPath: /healthz
+    envVars:
+      - key: GEMINI_API_KEY
+        fromService:
+          name: jarvis-5-0-staging
+          type: web
+          envVarKey: GEMINI_API_KEY
+      - key: UPSTASH_REDIS_REST_URL
+        fromService:
+          name: jarvis-5-0-staging
+          type: web
+          envVarKey: UPSTASH_REDIS_REST_URL
+      - key: UPSTASH_REDIS_REST_TOKEN
+        fromService:
+          name: jarvis-5-0-staging
+          type: web
+          envVarKey: UPSTASH_REDIS_REST_TOKEN
+      - key: JARVIS_PREFIX
+        fromService:
+          name: jarvis-5-0-staging
+          type: web
+          envVarKey: JARVIS_PREFIX
+      - key: JARVIS_FILE_SAVE_HISTORY
+        value: "false"
