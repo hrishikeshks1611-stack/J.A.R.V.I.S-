@@ -35,6 +35,12 @@ test("native app launch results are sent to shared conversation history", async 
   assert.ok(html.includes("pairApi({action:'append-local',message,reply})"));
 });
 
+test("offline fallback replies are appended to shared conversation history", async () => {
+  const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+  assert.ok(html.includes("if(sessionToken)pairApi({action:'append-local',message,reply:fallback}).catch(()=>{})"));
+  assert.ok(html.includes("history=history.slice(-20)"));
+});
+
 test("expired pairing is handled separately from offline AI fallback", async () => {
   const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
   assert.ok(html.includes("if(err.status===401)"));
