@@ -38,7 +38,7 @@ async function staticFile(req,res,pathname) {
 }
 const server=createServer(async(req,res)=>{
   const url=new URL(req.url||"/","http://localhost");
-  if(req.method==="GET"&&url.pathname==="/healthz"){res.writeHead(200,{"Content-Type":"application/json","Cache-Control":"no-store"});res.end(JSON.stringify({ok:true,service:"jarvis-staging",version:"5.0.0"}));return;}
+  if(req.method==="GET"&&url.pathname==="/healthz"){res.writeHead(200,{"Content-Type":"application/json","Cache-Control":"no-store"});res.end(JSON.stringify({ok:true,service:"jarvis-staging",version:"6.0.0"}));return;}
   const handler=routes.get(url.pathname);
   if(handler){
     try { req.body=["POST","PUT","PATCH"].includes(req.method)?await body(req):{}; await handler(req,adapt(res)); if(!res.writableEnded)res.end(); }
