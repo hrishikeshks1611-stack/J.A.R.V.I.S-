@@ -23,6 +23,7 @@ test("conversation context keeps recent turns and retrieves relevant older excha
 test("follow-up messages retain a wider recent conversational window", () => {
   assert.equal(isFollowUpMessage("What about the second one?"), true);
   assert.equal(isFollowUpMessage("Please explain quantum computing in detail"), false);
+  assert.equal(isFollowUpMessage("What is the capital of Japan?"), false);
 });
 
 test("memory retrieval selects relevant notes rather than blindly returning newest notes", () => {
