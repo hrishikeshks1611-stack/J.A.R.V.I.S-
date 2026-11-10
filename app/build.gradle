@@ -13,7 +13,7 @@ android {
         versionCode 1
         versionName '1.0'
         buildConfigField 'boolean', 'JARVIS_TV', 'false'
-        buildConfigField 'String', 'ASSISTANT_NAME', '\\"J.A.R.V.I.S.\\"'
+        buildConfigField 'String', 'ASSISTANT_NAME', '"J.A.R.V.I.S."'
     }
     flavorDimensions += 'device'
     productFlavors {
