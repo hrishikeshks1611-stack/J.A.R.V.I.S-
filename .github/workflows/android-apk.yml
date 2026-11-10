@@ -1,4 +1,5 @@
 name: Build JARVIS Android and TV APKs
+# Rebuild both APKs after the local Algieba speech-cache update.
 on:
   workflow_dispatch:
   push:
@@ -29,7 +30,7 @@ jobs:
       - name: Install Android platform
         run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
       - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
       - name: Build phone and Android TV APKs
