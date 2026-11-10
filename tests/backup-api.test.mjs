@@ -148,6 +148,7 @@ test("backup API rejects unpaired devices and unapproved origins", async () => {
   await handler({ method: "POST", headers: {}, body: { action: "export" } }, unpaired);
   assert.equal(unpaired.statusCode, 401);
 
+  contactedRedis = false;
   const blocked = response();
   await handler({
     method: "POST",
@@ -155,5 +156,5 @@ test("backup API rejects unpaired devices and unapproved origins", async () => {
     body: { action: "export" }
   }, blocked);
   assert.equal(blocked.statusCode, 403);
-  assert.equal(contactedRedis, true);
+  assert.equal(contactedRedis, false);
 });
