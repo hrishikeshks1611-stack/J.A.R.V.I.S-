@@ -1,6 +1,6 @@
 import {
   getSession, hashToken, randomToken, redisCommand, safeEqual,
-  readHistory, saveHistory, JARVIS_PREFIX, JARVIS_SESSION_TTL
+  readHistory, saveHistory, appendConversationTurn, JARVIS_PREFIX, JARVIS_SESSION_TTL
 } from "../lib/jarvis-store.js";
 
 function cors(req, res) {
@@ -82,6 +82,13 @@ export default async function handler(req, res) {
 
     if (action === "verify") {
       return res.status(200).json({ deviceId: session.deviceId, deviceName: session.deviceName, role: session.role });
+    }
+    if (action === "append-local") {
+      const userText = String(body.message || "").trim().slice(0, 12000);
+      const replyText = String(body.reply || "").trim().slice(0, 12000);
+      if (!userText || !replyText) return res.status(400).json({ error: "A local command and its result are required." });
+      await appendConversationTurn(userText, replyText);
+      return res.status(200).json({ saved: true });
     }
     if (action === "history") {
       return res.status(200).json({ messages: await readHistory() });
