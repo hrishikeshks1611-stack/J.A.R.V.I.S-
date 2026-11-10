@@ -30,7 +30,8 @@ export default async function handler(req, res) {
 
   try {
     const body = req.body || {};
-    const message = String(body.message || "").trim().slice(0, 12000);
+    const attachment = body.attachment && typeof body.attachment === "object" ? body.attachment : null;
+    const message = String(body.message || (attachment ? "Please examine the attached file." : "")).trim().slice(0, 12000);
     const mode = String(body.mode || "witty").toLowerCase();
     if (!message) return res.status(400).json({ error: "Please enter a request." });
 
@@ -48,7 +49,7 @@ export default async function handler(req, res) {
       "Answer open-ended questions with real reasoning. Explain calculations and educational topics step by step when useful.",
       "If uncertain, say so. Never fabricate facts, actions, sources, or device access.",
       "You cannot control the user's phone, laptop, or TV unless a real tool explicitly provides that capability.",
-      "Keep answers appropriately concise, but give enough detail to be genuinely useful."
+      "When an image or document is attached, inspect its actual contents and answer the user’s question about it. Do not claim to see an attachment unless one is present. Keep answers appropriately concise, but give enough detail to be genuinely useful."
     ].join(" ");
 
     const prior = Array.isArray(body.history) ? body.history.slice(-8) : [];
