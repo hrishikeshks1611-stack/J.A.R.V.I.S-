@@ -157,7 +157,7 @@ test("office requests choose useful output formats and return a real download li
   assert.equal(detectFileRequest("Create a PowerPoint presentation").format, "pptx");
   assert.equal(detectFileRequest("Make a weekly meal plan").format, "pdf");
   assert.equal(detectFileRequest("What is the meaning of management?"), null);
-  assert.ok(html.includes("JARVIS_API+'/create-file'"));
+  assert.ok(html.includes("JARVIS_AUX_API+'/create-file'"));
   assert.ok(html.includes("downloadFile.filename"));
   assert.ok(html.includes("new Blob([Uint8Array.from(atob(downloadFile.data)"));
 });
