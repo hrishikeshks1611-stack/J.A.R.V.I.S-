@@ -108,6 +108,28 @@ test("backup restore requires explicit confirmation and uses one atomic Redis sc
   assert.ok(evalCommand[1].includes("redis.call('SET', KEYS[2]"));
 });
 
+test("only the owner device can restore a full backup", async () => {
+  setupRedis(async command => {
+    if (command[0] === "GET" && command[1].startsWith("jarvis:v1:session:")) {
+      return JSON.stringify({ deviceId: "laptop-1", deviceName: "Laptop", role: "device" });
+    }
+    if (command[0] === "EXPIRE") return 1;
+    throw new Error("A non-owner must not replace shared data.");
+  });
+  const res = response();
+  await handler({
+    method: "POST",
+    headers: { authorization: "Bearer paired-token" },
+    body: {
+      action: "restore",
+      confirm: true,
+      backup: { format: "jarvis-backup", version: 1, conversation: [], memories: [] }
+    }
+  }, res);
+  assert.equal(res.statusCode, 403);
+  assert.match(res.body.error, /owner device/i);
+});
+
 test("backup restore refuses missing confirmation and malformed documents", async () => {
   let evalCalls = 0;
   setupRedis(async command => {
