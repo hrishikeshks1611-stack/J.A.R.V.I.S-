@@ -44,6 +44,7 @@ test("memory retrieval returns no unrelated personal notes for generic greetings
 
 test("only explicit save wording creates a long-term memory request", () => {
   assert.equal(parseExplicitMemoryRequest("Remember that I prefer concise answers."), "I prefer concise answers.");
+  assert.equal(parseExplicitMemoryRequest("Remember I prefer concise answers."), "I prefer concise answers.");
   assert.equal(parseExplicitMemoryRequest("Please keep in mind that I use JARVIS on my phone."), "I use JARVIS on my phone.");
   assert.equal(parseExplicitMemoryRequest("I prefer concise answers."), null);
   assert.equal(parseExplicitMemoryRequest("Remember to remind me tomorrow at 7."), null);
