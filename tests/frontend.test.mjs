@@ -26,7 +26,7 @@ test("saved-memory UI is explicit and has deletion controls", async () => {
 
 test("service worker cache version is bumped and script parses", async () => {
   const source = await readFile(new URL("../sw.js", import.meta.url), "utf8");
-  assert.ok(source.includes('const CACHE="jarvis-shell-v18"'));
+  assert.ok(source.includes('const CACHE="jarvis-shell-v19"'));
   assert.doesNotThrow(() => new Function(source));
 });
 
@@ -133,4 +133,13 @@ test("Mission Control exposes local diagnostics, a bounded briefing and explicit
   assert.ok(html.includes("These routines change JARVIS interface and voice settings on this device only"));
   assert.ok(html.includes("function detectJarvisDevice"));
   assert.ok(html.includes("navigator.getBattery"));
+  assert.ok(html.includes('id="mcBackend"'));
+  assert.ok(html.includes('id="mcDevices"'));
+  assert.ok(html.includes("pairApi({action:'verify'})"));
+  assert.ok(html.includes("pairApi({action:'devices'})"));
+  assert.ok(html.includes("missionBackendStatus='Reachable · session verified'"));
+  assert.ok(html.includes("const CUSTOM_ROUTINE_KEY='jarvisCustomRoutinesV1'"));
+  assert.ok(html.includes('id="saveCustomRoutine"'));
+  assert.ok(html.includes("up to eight named routines"));
+  assert.ok(html.includes("function applyLocalRoutine"));
 });
