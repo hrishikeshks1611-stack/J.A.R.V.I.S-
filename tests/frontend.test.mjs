@@ -123,3 +123,14 @@ test("full backup UI exports and restores shared conversation plus memories with
   assert.ok(html.includes("await restoreSharedHistory();await renderMemories();"));
   assert.ok(html.includes("sessionRole!=='owner'"));
 });
+
+test("Mission Control exposes local diagnostics, a bounded briefing and explicit local-only routines", async () => {
+  const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+  for (const id of ["missionButton", "missionPanel", "mcTime", "mcDevice", "mcNetwork", "mcBattery", "mcPair", "mcVoice", "runBriefing", "focusRoutine", "nightRoutine", "normalRoutine"]) {
+    assert.ok(html.includes('id="' + id + '"'), "expected Mission Control control " + id);
+  }
+  assert.ok(html.includes("Calendar, weather and external schedule data are not connected"));
+  assert.ok(html.includes("These routines change JARVIS interface and voice settings on this device only"));
+  assert.ok(html.includes("function detectJarvisDevice"));
+  assert.ok(html.includes("navigator.getBattery"));
+});
