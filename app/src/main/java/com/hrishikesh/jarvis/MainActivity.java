@@ -291,9 +291,9 @@ public class MainActivity extends Activity {
             if (!ttsReady) return "Android speech engine is still starting, Sir.";
             if (textToSpeech == null) return "No Android speech engine is available, Sir.";
             if (availableBritishVoices().length() == 0) {
-                return "No English (UK) voice is installed. Install or enable a British voice in Android Text-to-speech settings, Sir.";
+                return "No explicitly identified male English (UK) voice is available. Install a male British voice in Android Text-to-speech settings, Sir.";
             }
-            if (!voiceChosen) return "Choose a British voice, test it, then select Use this voice, Sir.";
+            if (!voiceChosen) return "Choose the male British voice, test it, then select Use this voice, Sir.";
             return "Your selected British voice is ready, Sir.";
         }
 
