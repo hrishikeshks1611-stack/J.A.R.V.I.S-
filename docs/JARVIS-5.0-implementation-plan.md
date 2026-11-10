@@ -9,7 +9,7 @@ Implemented and covered by automated tests:
 - Explicit saved-memory store with add, edit, list, delete, and clear operations; bounded to 100 notes of at most 1,000 characters each.
 - Saved memories are included as bounded context (latest 15 notes, 300 characters each) and are never automatically created from conversations.
 - Saved-memory UI includes edit, delete, clear, and JSON export-to-clipboard controls, plus a warning not to store credentials or highly sensitive information.
-- Authenticated full backup export and restore for the recent shared conversation and saved memories, with format/version checks, bounded validation, explicit destructive-action confirmation, and an atomic two-key Redis restore.
+- Authenticated full backup export and owner-only restore for the recent shared conversation and saved memories, with format/version checks, bounded validation, explicit destructive-action confirmation, and an atomic two-key Redis restore.
 - Owner transfer between paired devices, allowing a new device to become owner before a future app reinstall.
 - Offline command fallback is connected to the chat failure path for local time/date, greetings, known website lookups, and location when permissioned. Native Android app launches, alarm requests, and calendar-event requests are handled locally and appended to shared conversation history; Clock/Calendar actions require user confirmation.
 - Automated tests cover shared-store bounds, atomic append invocation, memory lifecycle, owner transfer, backup export/restore validation and atomicity, API authorization/CORS, explicit clear confirmation, native bridge contracts, Android version metadata, APK release safety, and inline frontend JavaScript syntax.
