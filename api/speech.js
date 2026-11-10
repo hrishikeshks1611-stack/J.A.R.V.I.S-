@@ -29,10 +29,14 @@ export default async function handler(req, res) {
 
   try {
     const prompt = [
-      "Synthesize the spoken transcript below verbatim.",
-      "Use a mature, smooth, articulate male voice with a natural English accent from the United Kingdom.",
-      "Delivery: composed, warm, quietly confident, measured, polished and subtly dry; like a refined personal butler.",
-      "Avoid an American accent, exaggerated theatrical acting, robotic cadence, or excessive enthusiasm.",
+      "Speak the supplied transcript exactly as written. Do not paraphrase, omit, add, or announce anything.",
+      "VOICE: Keep the selected Algieba voice identity. Do not imitate a different person or change vocal identity.",
+      "ACCENT: Use clearly recognisable contemporary British English pronunciation, preferably educated Southern British / understated modern RP. This must sound British, not American.",
+      "PRONUNCIATION: Use non-rhotic British pronunciation: do not pronounce an R at the end of a word or before a consonant. Use British vowel quality and British word stress. Avoid American R-colouring, American vowel shifts, and American intonation.",
+      "DELIVERY: A polished, discreet, exceptionally articulate British personal butler: calm, measured, warm but reserved, quietly confident, precise diction, natural connected speech, controlled pacing, and understated dry wit where the words allow it.",
+      "MANNER: Sound naturally courteous and intelligent, never servile, over-formal, breathless, or theatrical. Use subtle sentence-level intonation and gentle emphasis on meaningful words. Keep pauses brief and purposeful.",
+      "AVOID: American-sounding pronunciation, exaggerated aristocratic parody, stage acting, announcer or audiobook performance, robotic rhythm, excessive cheerfulness, and dramatic emotional swings.",
+      "Do not let the style instructions alter the words being spoken.",
       "Spoken transcript:",
       spokenText
     ].join("\n");
