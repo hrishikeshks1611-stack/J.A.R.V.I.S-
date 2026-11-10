@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { selectConversationContext, selectRelevantMemories, isFollowUpMessage, parseExplicitMemoryRequest } from "../lib/jarvis-context.js";
+import chatHandler from "../api/chat.js";
 
 test("conversation context keeps recent turns and retrieves relevant older exchanges", () => {
   const history = [
@@ -49,4 +50,8 @@ test("only explicit save wording creates a long-term memory request", () => {
   assert.equal(parseExplicitMemoryRequest("Please keep in mind that I use JARVIS on my phone."), "I use JARVIS on my phone.");
   assert.equal(parseExplicitMemoryRequest("I prefer concise answers."), null);
   assert.equal(parseExplicitMemoryRequest("Remember to remind me tomorrow at 7."), null);
+});
+
+test("JARVIS chat API loads with the 6.0 context engine wired in", () => {
+  assert.equal(typeof chatHandler, "function");
 });
