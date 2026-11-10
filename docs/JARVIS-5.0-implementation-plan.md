@@ -58,7 +58,8 @@ This branch is not production. Keep it isolated until the remaining acceptance t
 ## 4.0 — device intelligence
 - Add explicit, permission-scoped actions with confirmation for consequential operations.
 - Add reminders/calendar/notification integration only through supported Android APIs and user-granted permissions.
-- Screen mirroring requires a real Android MediaProjection consent flow and a compatible receiver/protocol; opening Settings is not screen casting.
+- The Android app now attempts to open the system Cast settings panel directly, falling back to general Settings/Quick Settings when the OEM does not expose it. This is only a shortcut to OS controls, not in-app mirroring.
+- True screen mirroring still requires an Android MediaProjection consent flow and a compatible receiver/protocol.
 - Acceptance: action allow-list, confirmation tests, permission denial tests, and device-by-device validation.
 
 ## 5.0 — independence and interface
