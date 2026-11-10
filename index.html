@@ -556,5 +556,6 @@ $('runBriefing').onclick=async()=>{await refreshMission();const now=new Date();c
 $('focusRoutine').onclick=()=>{voiceOn=false;$('voiceToggle').textContent='Voice: Off';if(currentAudio){currentAudio.pause();currentAudio=null;}document.body.classList.add('jarvis-focus');document.body.classList.remove('jarvis-night');$('dailyBrief').textContent='Focus mode active on this device. Voice muted and reactor visuals softened.';refreshMission();};
 $('nightRoutine').onclick=()=>{voiceOn=false;$('voiceToggle').textContent='Voice: Off';if(currentAudio){currentAudio.pause();currentAudio=null;}document.body.classList.add('jarvis-night');document.body.classList.remove('jarvis-focus');$('dailyBrief').textContent='Good night mode active on this device. Voice muted and display dimmed.';refreshMission();};
 $('normalRoutine').onclick=()=>{voiceOn=true;$('voiceToggle').textContent='Voice: On';document.body.classList.remove('jarvis-focus','jarvis-night');$('dailyBrief').textContent='Normal mode restored on this device.';refreshMission();};
-\nif('serviceWorker'in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('./sw.js').catch(()=>{});
+
+if('serviceWorker'in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('./sw.js').catch(()=>{});
 </script></body></html>
