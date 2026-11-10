@@ -1,5 +1,6 @@
-name: Build JARVIS Android and TV APKs
-# Build fresh phone and Android TV APKs containing the shared-device pairing release.
+name: Build JARVIS Android and TV APK verification artifacts
+# Debug APKs are for CI verification only. Do not publish installable releases
+# until the original Build 39 signing key is recovered and verified.
 on:
   workflow_dispatch:
   push:
@@ -10,7 +11,7 @@ on:
       - 'settings.gradle'
       - '.github/workflows/android-apk.yml'
 permissions:
-  contents: write
+  contents: read
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -35,22 +36,17 @@ jobs:
           gradle-version: '8.9'
       - name: Build phone and Android TV APKs
         run: gradle --no-daemon assemblePhoneDebug assembleTvDebug
-      - name: Upload phone APK
+      - name: Upload phone verification artifact
         uses: actions/upload-artifact@v4
         with:
-          name: JARVIS-Android-phone
+          name: JARVIS-Android-phone-debug-verification
           path: app/build/outputs/apk/phone/debug/app-phone-debug.apk
           if-no-files-found: error
           retention-days: 30
-      - name: Upload Android TV APK
+      - name: Upload Android TV verification artifact
         uses: actions/upload-artifact@v4
         with:
-          name: JARVIS-Android-TV
+          name: JARVIS-Android-TV-debug-verification
           path: app/build/outputs/apk/tv/debug/app-tv-debug.apk
           if-no-files-found: error
           retention-days: 30
-      - name: Publish downloadable APK releases
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          gh release create "jarvis-tv-${GITHUB_RUN_NUMBER}" app/build/outputs/apk/tv/debug/app-tv-debug.apk app/build/outputs/apk/phone/debug/app-phone-debug.apk --title "JARVIS Android and TV build ${GITHUB_RUN_NUMBER}" --notes "Includes the Android phone edition and Android TV edition. Debug-signed APKs for sideload installation."

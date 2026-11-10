@@ -8,6 +8,8 @@ import android.content.ClipData;
 import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.provider.MediaStore;
+import android.provider.AlarmClock;
+import android.provider.CalendarContract;
 import android.util.Base64;
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
@@ -256,6 +258,65 @@ public class MainActivity extends Activity {
             return title(name) + " does not appear to be installed, Sir.";
         }
 
+
+        @JavascriptInterface public String openCastSettings() {
+            runOnUiThread(() -> {
+                Intent cast = new Intent(android.provider.Settings.ACTION_CAST_SETTINGS);
+                try {
+                    if (cast.resolveActivity(getPackageManager()) != null) {
+                        startActivity(cast);
+                    } else {
+                        startActivity(new Intent(android.provider.Settings.ACTION_SETTINGS));
+                        Toast.makeText(MainActivity.this,
+                                "Choose Cast, Screen Cast, Smart View, or Wireless Display if your device provides it, Sir.",
+                                Toast.LENGTH_LONG).show();
+                    }
+                } catch (ActivityNotFoundException e) {
+                    Toast.makeText(MainActivity.this,
+                            "Open Android Quick Settings and choose Cast or Screen Cast, Sir.",
+                            Toast.LENGTH_LONG).show();
+                }
+            });
+            return "Opening Android's Cast settings, Sir. Select a compatible TV or wireless display.";
+        }
+
+        @JavascriptInterface public String setAlarm(int hour, int minute, String label) {
+            if (hour < 0 || hour > 23 || minute < 0 || minute > 59) {
+                return "That alarm time is invalid, Sir.";
+            }
+            Intent intent = new Intent(AlarmClock.ACTION_SET_ALARM);
+            intent.putExtra(AlarmClock.EXTRA_HOUR, hour);
+            intent.putExtra(AlarmClock.EXTRA_MINUTES, minute);
+            intent.putExtra(AlarmClock.EXTRA_MESSAGE, label == null ? "JARVIS reminder" : label.trim());
+            intent.putExtra(AlarmClock.EXTRA_SKIP_UI, false);
+            runOnUiThread(() -> {
+                try { startActivity(intent); }
+                catch (ActivityNotFoundException e) {
+                    Toast.makeText(MainActivity.this, "No compatible Clock app is available, Sir.", Toast.LENGTH_LONG).show();
+                }
+            });
+            return "Opening Clock so you can review and confirm that alarm, Sir.";
+        }
+
+        @JavascriptInterface public String createCalendarEvent(String title, long beginMillis, long endMillis, String description) {
+            String eventTitle = title == null ? "" : title.trim();
+            if (eventTitle.isEmpty() || beginMillis <= 0 || endMillis <= beginMillis) {
+                return "That calendar event needs a title and a valid start and end time, Sir.";
+            }
+            Intent intent = new Intent(Intent.ACTION_INSERT);
+            intent.setData(CalendarContract.Events.CONTENT_URI);
+            intent.putExtra(CalendarContract.Events.TITLE, eventTitle);
+            intent.putExtra(CalendarContract.Events.DESCRIPTION, description == null ? "" : description.trim());
+            intent.putExtra(CalendarContract.EXTRA_EVENT_BEGIN_TIME, beginMillis);
+            intent.putExtra(CalendarContract.EXTRA_EVENT_END_TIME, endMillis);
+            runOnUiThread(() -> {
+                try { startActivity(intent); }
+                catch (ActivityNotFoundException e) {
+                    Toast.makeText(MainActivity.this, "No compatible Calendar app is available, Sir.", Toast.LENGTH_LONG).show();
+                }
+            });
+            return "Opening Calendar so you can review and save " + eventTitle + ", Sir.";
+        }
 
         @JavascriptInterface public void chooseFile() {
             runOnUiThread(() -> {

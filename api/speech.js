@@ -6,7 +6,7 @@ export default async function handler(req, res) {
   const origin = req.headers.origin || "";
   const allowedOrigin =
     origin === "https://hrishikeshks1611-stack.github.io" ||
-    /^https:\/\/[^/]+\.vercel\.app$/.test(origin);
+    /^https:\/\/[^/]+\.(?:vercel\.app|onrender\.com)$/.test(origin);
 
   if (origin && !allowedOrigin) {
     return res.status(403).json({ error: "This website is not authorised to use JARVIS speech." });
