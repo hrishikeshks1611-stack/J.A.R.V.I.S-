@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { hashToken, randomToken, safeEqual, saveHistory, readHistory, getSession } from "../lib/jarvis-store.js";
+import { hashToken, randomToken, safeEqual, saveHistory, readHistory, getSession, appendConversationTurn } from "../lib/jarvis-store.js";
 
 const originalFetch = globalThis.fetch;
 const originalUrl = process.env.UPSTASH_REDIS_REST_URL;
