@@ -34,3 +34,9 @@ test("native app launch results are sent to shared conversation history", async 
   const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
   assert.ok(html.includes("pairApi({action:'append-local',message,reply})"));
 });
+
+test("expired pairing is handled separately from offline AI fallback", async () => {
+  const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+  assert.ok(html.includes("if(err.status===401)"));
+  assert.ok(html.includes("localStorage.removeItem('jarvisSessionToken')"));
+});
