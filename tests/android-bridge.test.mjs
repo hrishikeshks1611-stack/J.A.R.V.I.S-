@@ -14,3 +14,9 @@ test("native bridge exposes confirmation-based Clock and Calendar actions", asyn
   assert.ok(source.includes("CalendarContract.EXTRA_EVENT_END_TIME"));
   assert.ok(manifest.includes('com.android.alarm.permission.SET_ALARM'));
 });
+
+test("Android release metadata identifies JARVIS 5.0 and advances installed version", async () => {
+  const gradle = await readFile(new URL("../app/build.gradle", import.meta.url), "utf8");
+  assert.match(gradle, /versionCode\s+500/);
+  assert.match(gradle, /versionName\s+'5\.0\.0'/);
+});
