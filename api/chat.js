@@ -159,13 +159,15 @@ export default async function handler(req, res) {
     // Try the current stable Flash model first, then two compatible fallbacks.
     // A 503 is model-capacity pressure, so move to another model rather than
     // making the user repeat the same request.
-    const models = ["gemini-3.5-flash-lite", "gemini-3.8-flash", "gemini-3.5-flash"];
+    const models = ["gemini-3.8-flash", "gemini-3.5-flash-lite", "gemini-flash-latest"];
     let response;
     let data = {};
     let lastUnavailable = "";
     let lastFailureStatus = 503;
 
-    for (const model of models) {
+    for (let modelIndex = 0; modelIndex < models.length; modelIndex++) {
+      const model = models[modelIndex];
+      if (modelIndex > 0) await new Promise(resolve => setTimeout(resolve, 700 * modelIndex));
       response = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
         {
