@@ -9,7 +9,7 @@ test("JARVIS web app inline script parses", async () => {
   const end = html.lastIndexOf("</script>");
   const scripts = start >= 0 && end > start ? [html.slice(start + 8, end)] : [];
   assert.ok(scripts.length > 0, "expected an inline application script");
-  assert.doesNotThrow(() => new vm.Script(scripts[0]));
+  assert.doesNotThrow(() => { try { new vm.Script(scripts[0], { filename: 'jarvis-inline.js' }); } catch (error) { throw new Error(error.stack); } });
 });
 
 test("saved-memory UI is explicit and has deletion controls", async () => {
