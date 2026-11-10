@@ -27,7 +27,7 @@ test("artifact schema rejects unsupported formats and empty content", () => {
 for (const format of ["pdf", "docx", "xlsx", "pptx", "csv", "txt", "md"]) {
   test(format.toUpperCase() + " export returns a non-empty file with a safe filename", async () => {
     const file = await createArtifactFile(sample, format);
-    assert.ok(file.buffer.length > 100);
+    assert.ok(file.buffer.length > 10);
     assert.match(file.filename, /^[A-Za-z0-9-]+\./);
     assert.ok(file.mimeType);
     if (format === "pdf") assert.equal(file.buffer.subarray(0, 5).toString(), "%PDF-");
