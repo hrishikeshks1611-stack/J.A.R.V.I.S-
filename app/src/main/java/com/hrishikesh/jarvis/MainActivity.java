@@ -2,6 +2,7 @@ package com.hrishikesh.jarvis;
 
 import android.app.Activity;
 import android.content.ContentValues;
+import android.content.ClipData;
 import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.provider.MediaStore;
@@ -222,6 +223,7 @@ public class MainActivity extends Activity {
                 pendingCameraUri = getContentResolver().insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values);
                 if (pendingCameraUri != null) {
                     intent.putExtra(MediaStore.EXTRA_OUTPUT, pendingCameraUri);
+                    intent.setClipData(ClipData.newUri(getContentResolver(), "JARVIS camera output", pendingCameraUri));
                     intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
                 }
                 try { startActivityForResult(intent, REQUEST_CAMERA); }
@@ -367,6 +369,7 @@ public class MainActivity extends Activity {
                 output.write(buffer, 0, count);
             }
             input.close();
+            if (output.size() == 0) throw new Exception("The selected file appears to be empty.");
             sendAttachmentPayload(name, mime, output.toByteArray());
         } catch (Exception e) {
             String message = e.getMessage() == null ? "Could not read that attachment." : e.getMessage();
