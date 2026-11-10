@@ -61,6 +61,25 @@ export default async function handler(req, res) {
       contents.push({ role: "user", parts: [{ text: message }] });
     }
 
+    // Images, PDFs and text documents are sent as Gemini inline content.
+    if (attachment) {
+      const mimeType = String(attachment.mimeType || "").toLowerCase();
+      const allowedTypes = new Set([
+        "image/jpeg", "image/png", "image/webp", "image/gif",
+        "application/pdf", "text/plain", "text/csv", "application/json", "text/markdown"
+      ]);
+      const encoded = String(attachment.data || "");
+      if (!allowedTypes.has(mimeType)) {
+        return res.status(400).json({ error: "Unsupported attachment type. Use an image, PDF, TXT, CSV, JSON or Markdown file." });
+      }
+      if (!encoded || encoded.length > 4000000 || !/^[A-Za-z0-9+/]+={0,2}$/.test(encoded)) {
+        return res.status(413).json({ error: "The attachment is empty or too large. Please keep files under 3 MB." });
+      }
+      contents[contents.length - 1].parts.push({
+        inline_data: { mime_type: mimeType, data: encoded }
+      });
+    }
+
     // Try the current stable Flash model first, then two compatible fallbacks.
     // A 503 is model-capacity pressure, so move to another model rather than
     // making the user repeat the same request.
