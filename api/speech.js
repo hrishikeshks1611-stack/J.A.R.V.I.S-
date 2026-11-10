@@ -1,5 +1,7 @@
 // J.A.R.V.I.S. low-latency streaming speech endpoint.
 // Keeps the exact Gemini 3.1 Flash TTS model, Algieba voice and en-GB locale.
+import { getSession } from "./lib/jarvis-store.js";
+
 export default async function handler(req, res) {
   const origin = req.headers.origin || "";
   const allowedOrigin =
@@ -13,12 +15,20 @@ export default async function handler(req, res) {
     res.setHeader("Access-Control-Allow-Origin", origin);
     res.setHeader("Vary", "Origin");
     res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-    res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
   }
   if (req.method === "OPTIONS") return res.status(204).end();
   if (req.method !== "POST") {
     res.setHeader("Allow", "POST, OPTIONS");
     return res.status(405).json({ error: "Use POST for speech requests." });
+  }
+
+  try {
+    const session = await getSession(req);
+    if (!session) return res.status(401).json({ error: "This device is not paired with JARVIS. Open Devices & Sync to pair it." });
+  } catch (error) {
+    console.error("JARVIS speech session check failed:", error);
+    return res.status(503).json({ error: "JARVIS shared memory is temporarily unavailable." });
   }
 
   const apiKey = process.env.JARVIS || process.env.GEMINI_API_KEY;
