@@ -100,3 +100,14 @@ test("offline fallback recognises natural-language commands", async () => {
   assert.match(reply("where am I", "professional"), /do not have your location/i);
   assert.ok(reply("search for cats", "professional").includes("https://www.google.com/search?q=cats"));
 });
+
+test("full backup UI exports and restores shared conversation plus memories with confirmation", async () => {
+  const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+  assert.ok(html.includes("id=\"exportBackup\""));
+  assert.ok(html.includes("id=\"restoreBackup\""));
+  assert.ok(html.includes("JARVIS_API+'/backup'"));
+  assert.ok(html.includes("backupApi({action:'export'})"));
+  assert.ok(html.includes("backupApi({action:'restore',backup,confirm:true})"));
+  assert.ok(html.includes("Restore this backup? It will replace the shared conversation and saved memories"));
+  assert.ok(html.includes("await restoreSharedHistory();await renderMemories();"));
+});
