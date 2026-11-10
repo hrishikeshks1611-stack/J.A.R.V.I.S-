@@ -10,7 +10,7 @@ Implemented and covered by passing GitHub Actions tests:
 - Saved memories are included as bounded context (latest 15 notes, 300 characters each) and are never automatically created from conversations.
 - Saved-memory UI includes edit, delete, clear, and JSON export-to-clipboard controls, plus a warning not to store credentials or highly sensitive information.
 - Owner transfer between paired devices, allowing a new device to become owner before a future app reinstall.
-- Offline command fallback is now connected to the chat failure path for local time/date, greetings, known website lookups, and location when permissioned.
+- Offline command fallback is now connected to the chat failure path for local time/date, greetings, known website lookups, and location when permissioned. Native Android app-launch results are also appended to the shared conversation so phone/TV/laptop history stays coherent.
 - Automated tests cover shared-store bounds, atomic append invocation, memory lifecycle, owner transfer, API authorization/CORS, explicit clear confirmation, and inline frontend JavaScript syntax.
 
 Still not complete or not physically verified:
