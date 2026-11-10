@@ -1,4 +1,4 @@
-name: Build JARVIS Android APK
+name: Build JARVIS Android and TV APKs
 on:
   workflow_dispatch:
   push:
@@ -32,17 +32,24 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
-      - name: Build debug APK
-        run: gradle --no-daemon assembleDebug
-      - name: Upload APK
+      - name: Build phone and Android TV APKs
+        run: gradle --no-daemon assemblePhoneDebug assembleTvDebug
+      - name: Upload phone APK
         uses: actions/upload-artifact@v4
         with:
-          name: JARVIS-Android-debug
-          path: app/build/outputs/apk/debug/app-debug.apk
+          name: JARVIS-Android-phone
+          path: app/build/outputs/apk/phone/debug/app-phone-debug.apk
           if-no-files-found: error
           retention-days: 30
-      - name: Publish downloadable APK release
+      - name: Upload Android TV APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: JARVIS-Android-TV
+          path: app/build/outputs/apk/tv/debug/app-tv-debug.apk
+          if-no-files-found: error
+          retention-days: 30
+      - name: Publish downloadable APK releases
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "jarvis-android-${GITHUB_RUN_NUMBER}" app/build/outputs/apk/debug/app-debug.apk --title "JARVIS Android build ${GITHUB_RUN_NUMBER}" --notes "Installable debug APK built from the JARVIS repository. This build uses Android's debug signing key."
+          gh release create "jarvis-tv-${GITHUB_RUN_NUMBER}" app/build/outputs/apk/tv/debug/app-tv-debug.apk --title "JARVIS Android TV build ${GITHUB_RUN_NUMBER}" --notes "Android TV edition. Built for Android TV 11 and remote navigation. Debug-signed APK for sideload installation."
