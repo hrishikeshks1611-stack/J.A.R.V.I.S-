@@ -75,7 +75,7 @@ footer{text-align:center;color:#577c99;font-size:10px;letter-spacing:.12em;paddi
 </section>
 <script>
 const $=id=>document.getElementById(id), core=$('core'), messages=$('messages');let history=[],voiceOn=true,pendingAttachment=null,deviceLocation=null,currentAudio=null;
-const JARVIS_API='https://jarvis-sigma-one-92.vercel.app/api';
+const JARVIS_API='/api';
 let sessionToken=localStorage.getItem('jarvisSessionToken')||'',sessionRole='',sessionDeviceId='',chatBusy=false,lastSharedHistorySignature='';
 let editingMemoryId=null;
 async function memoryApi(payload){
@@ -462,7 +462,7 @@ async function speak(text){
       startOfflineFallback(spoken,cooldownError);return;
     }
     status('Generating voice','thinking');
-    const response=await fetch('https://jarvis-sigma-one-92.vercel.app/api/speech',{
+    const response=await fetch('/api/speech',{
       method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+sessionToken},body:JSON.stringify({text:spoken})
     });
     if(!response.ok){
