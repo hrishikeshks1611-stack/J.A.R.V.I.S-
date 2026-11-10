@@ -1,6 +1,11 @@
 package com.hrishikesh.jarvis;
 
 import android.app.Activity;
+import android.content.ContentValues;
+import android.database.Cursor;
+import android.graphics.Bitmap;
+import android.provider.MediaStore;
+import android.util.Base64;
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.net.Uri;
@@ -18,6 +23,8 @@ import android.webkit.WebResourceRequest;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.Toast;
+import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Locale;
@@ -25,6 +32,9 @@ import java.util.Map;
 
 public class MainActivity extends Activity {
     private static final int REQUEST_SPEECH = 4102;
+    private static final int REQUEST_FILE = 4103;
+    private static final int REQUEST_CAMERA = 4104;
+    private Uri pendingCameraUri;
     private WebView webView;
     private TextToSpeech textToSpeech;
     private boolean ttsReady = false;
@@ -183,6 +193,45 @@ public class MainActivity extends Activity {
         }
 
 
+        @JavascriptInterface public void chooseFile() {
+            runOnUiThread(() -> {
+                Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+                intent.addCategory(Intent.CATEGORY_OPENABLE);
+                intent.setType("*/*");
+                intent.putExtra(Intent.EXTRA_MIME_TYPES, new String[]{
+                        "image/*", "application/pdf", "text/plain", "text/csv",
+                        "application/json", "text/markdown"
+                });
+                try { startActivityForResult(intent, REQUEST_FILE); }
+                catch (ActivityNotFoundException e) {
+                    Toast.makeText(MainActivity.this, "No file picker is available.", Toast.LENGTH_LONG).show();
+                }
+            });
+        }
+
+        @JavascriptInterface public void takePhoto() {
+            runOnUiThread(() -> {
+                Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+                if (intent.resolveActivity(getPackageManager()) == null) {
+                    Toast.makeText(MainActivity.this, "No camera app is available.", Toast.LENGTH_LONG).show();
+                    return;
+                }
+                ContentValues values = new ContentValues();
+                values.put(MediaStore.Images.Media.DISPLAY_NAME, "JARVIS_" + System.currentTimeMillis() + ".jpg");
+                values.put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg");
+                pendingCameraUri = getContentResolver().insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values);
+                if (pendingCameraUri != null) {
+                    intent.putExtra(MediaStore.EXTRA_OUTPUT, pendingCameraUri);
+                    intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+                }
+                try { startActivityForResult(intent, REQUEST_CAMERA); }
+                catch (ActivityNotFoundException e) {
+                    pendingCameraUri = null;
+                    Toast.makeText(MainActivity.this, "The camera could not be opened.", Toast.LENGTH_LONG).show();
+                }
+            });
+        }
+
         @JavascriptInterface public String getAvailableVoices() {
             if (!ttsReady) return "[]";
             return availableBritishVoices().toString();
@@ -258,6 +307,22 @@ public class MainActivity extends Activity {
 
     @Override protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQUEST_FILE && resultCode == RESULT_OK && data != null && data.getData() != null) {
+            sendAttachment(data.getData(), "attachment");
+            return;
+        }
+        if (requestCode == REQUEST_CAMERA) {
+            if (resultCode == RESULT_OK && pendingCameraUri != null) {
+                sendAttachment(pendingCameraUri, "JARVIS_camera.jpg");
+            } else if (resultCode == RESULT_OK && data != null && data.getExtras() != null) {
+                Object image = data.getExtras().get("data");
+                if (image instanceof Bitmap) sendBitmapAttachment((Bitmap) image);
+            } else if (pendingCameraUri != null) {
+                try { getContentResolver().delete(pendingCameraUri, null, null); } catch (Exception ignored) { }
+            }
+            pendingCameraUri = null;
+            return;
+        }
         if (requestCode == REQUEST_SPEECH && resultCode == RESULT_OK && data != null) {
             ArrayList<String> results = data.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS);
             if (results != null && !results.isEmpty()) {
@@ -265,6 +330,60 @@ public class MainActivity extends Activity {
                 webView.evaluateJavascript("window.jarvisNative && window.jarvisNative.onSpeechResult(" + spoken + ")", null);
             }
         }
+    }
+
+    private void sendBitmapAttachment(Bitmap bitmap) {
+        try {
+            ByteArrayOutputStream output = new ByteArrayOutputStream();
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 88, output);
+            sendAttachmentPayload("JARVIS_camera.jpg", "image/jpeg", output.toByteArray());
+        } catch (Exception e) {
+            Toast.makeText(this, "Could not prepare the camera image.", Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private void sendAttachment(Uri uri, String fallbackName) {
+        try {
+            String mime = getContentResolver().getType(uri);
+            if (mime == null) mime = "application/octet-stream";
+            String name = fallbackName;
+            Cursor cursor = getContentResolver().query(uri, null, null, null, null);
+            if (cursor != null) {
+                try {
+                    int column = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME);
+                    if (cursor.moveToFirst() && column >= 0) name = cursor.getString(column);
+                } finally { cursor.close(); }
+            }
+            InputStream input = getContentResolver().openInputStream(uri);
+            if (input == null) throw new Exception("Unable to open file");
+            ByteArrayOutputStream output = new ByteArrayOutputStream();
+            byte[] buffer = new byte[8192];
+            int count;
+            while ((count = input.read(buffer)) != -1) {
+                if (output.size() + count > 3 * 1024 * 1024) {
+                    input.close();
+                    throw new Exception("Please choose a file smaller than 3 MB.");
+                }
+                output.write(buffer, 0, count);
+            }
+            input.close();
+            sendAttachmentPayload(name, mime, output.toByteArray());
+        } catch (Exception e) {
+            String message = e.getMessage() == null ? "Could not read that attachment." : e.getMessage();
+            Toast.makeText(this, message, Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private void sendAttachmentPayload(String name, String mime, byte[] bytes) throws Exception {
+        JSONObject payload = new JSONObject();
+        payload.put("name", name);
+        payload.put("mimeType", mime);
+        payload.put("data", Base64.encodeToString(bytes, Base64.NO_WRAP));
+        String argument = JSONObject.quote(payload.toString());
+        runOnUiThread(() -> {
+            if (webView != null) webView.evaluateJavascript(
+                    "window.jarvisNative && window.jarvisNative.onAttachment(" + argument + ")", null);
+        });
     }
 
     @Override protected void onDestroy() {
