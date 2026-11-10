@@ -92,5 +92,5 @@ test("offline fallback recognises natural-language commands", async () => {
   assert.match(reply("what time is it", "professional"), /time on this device/i);
   assert.match(reply("what is today's date", "professional"), /Today is/);
   assert.match(reply("where am I", "professional"), /do not have your location/i);
-  assert.match(reply("search for cats", "professional"), /google\\.com\\/search\\?q=cats/);
+  assert.ok(reply("search for cats", "professional").includes("https://www.google.com/search?q=cats"));
 });
