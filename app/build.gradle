@@ -12,6 +12,18 @@ android {
         targetSdk 35
         versionCode 1
         versionName '1.0'
-        buildConfigField 'String', 'ASSISTANT_NAME', '\"J.A.R.V.I.S.\"'
+        buildConfigField 'String', 'ASSISTANT_NAME', '\\"J.A.R.V.I.S.\\"'
+    }
+    flavorDimensions += 'device'
+    productFlavors {
+        phone {
+            dimension 'device'
+        }
+        tv {
+            dimension 'device'
+            applicationIdSuffix '.tv'
+            versionNameSuffix '-tv'
+            buildConfigField 'boolean', 'JARVIS_TV', 'true'
+        }
     }
 }
