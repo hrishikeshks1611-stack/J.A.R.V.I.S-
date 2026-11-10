@@ -23,11 +23,6 @@ services:
           name: jarvis-5-0-staging
           type: web
           envVarKey: UPSTASH_REDIS_REST_TOKEN
-      - key: JARVIS_SETUP_CODE
-        fromService:
-          name: jarvis-5-0-staging
-          type: web
-          envVarKey: JARVIS_SETUP_CODE
       - key: JARVIS_PREFIX
         fromService:
           name: jarvis-5-0-staging
