@@ -4,7 +4,7 @@ import { readFile } from "node:fs/promises";
 
 test("JARVIS web app inline script parses", async () => {
   const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
-  const scripts = [...html.matchAll(/<script>([\\s\\S]*?)<\\/script>/g)];
+  const start = html.lastIndexOf("<script>");\n  const end = html.lastIndexOf("</script>");\n  const scripts = start >= 0 && end > start ? [null, html.slice(start + 8, end)] : [];
   assert.ok(scripts.length > 0, "expected an inline application script");
   assert.doesNotThrow(() => new Function(scripts[scripts.length - 1][1]));
 });
