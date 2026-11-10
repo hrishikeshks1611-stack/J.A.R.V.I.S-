@@ -10,7 +10,7 @@ const sample = {
     { heading: "Overview", paragraphs: ["This is a generated sample used to verify JARVIS file exports."], bullets: ["Clear structure", "Editable output"] }
   ],
   tables: [{ title: "Sample data", columns: ["Item", "Quantity"], rows: [["Pens", "12"], ["Books", "4"]] }],
-  sheets: [{ name: "Budget", columns: ["Category", "Amount"], rows: [["Stationery", "1200"], ["Travel", "800"]] }],
+  sheets: [{ name: "Budget", columns: ["Category", "Amount"], rows: [["Stationery", "1200"], ["Travel", "800"], ["Total", { formula: "SUM(B2:B3)" }]] }],
   slides: [{ title: "Overview", bullets: ["Purpose", "Results", "Next steps"], notes: "Presenter notes." }],
   references: []
 };
@@ -22,6 +22,7 @@ test("office file endpoint module loads", () => {
 test("artifact schema rejects unsupported formats and empty content", () => {
   assert.throws(() => validateArtifact(sample, "exe"), /Choose PDF/);
   assert.throws(() => validateArtifact({ title: "Empty" }, "pdf"), /no usable content/);
+  assert.throws(() => validateArtifact({ title: "Unsafe", sheets: [{ name: "S", columns: ["A"], rows: [[{ formula: "WEBSERVICE(A1)" }]] }] }, "xlsx"), /unsafe formula/);
 });
 
 for (const format of ["pdf", "docx", "xlsx", "pptx", "csv", "txt", "md"]) {
