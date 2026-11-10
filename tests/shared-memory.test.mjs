@@ -110,8 +110,8 @@ test("appendConversationTurn uses one atomic Redis script and returns the update
   assert.equal(commandSeen[0], "EVAL");
   assert.equal(commandSeen[2], "1");
   assert.equal(commandSeen[3], "jarvis:v1:conversation:main");
-  assert.match(commandSeen[1], /redis\\.call\\('GET'/);
-  assert.match(commandSeen[1], /redis\\.call\\('SET'/);
+  assert.ok(commandSeen[1].includes("redis.call('GET'"));
+  assert.ok(commandSeen[1].includes("redis.call('SET'"));
   assert.match(commandSeen[1], /while #history > 40/);
   assert.equal(commandSeen[4], "Hello from phone");
   assert.equal(commandSeen[5], "Good evening, Sir.");
