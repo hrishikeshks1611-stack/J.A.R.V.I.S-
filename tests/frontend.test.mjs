@@ -18,5 +18,5 @@ test("saved-memory UI is explicit and has deletion controls", async () => {
   assert.ok(html.includes("action:'delete'"));
   assert.ok(html.includes("action:'clear',confirm:true"));
   assert.ok(html.includes('id="exportMemories"'));
-  assert.ok(html.includes("action:'update'"));
+  assert.ok(html.includes("editingMemoryId?'update':'add'"));
 });
