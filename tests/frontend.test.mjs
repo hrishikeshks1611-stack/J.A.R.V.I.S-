@@ -29,3 +29,8 @@ test("service worker cache version is bumped and script parses", async () => {
   assert.ok(source.includes('const CACHE="jarvis-shell-v16"'));
   assert.doesNotThrow(() => new Function(source));
 });
+
+test("native app launch results are sent to shared conversation history", async () => {
+  const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+  assert.ok(html.includes("pairApi({action:'append-local',message,reply})"));
+});
