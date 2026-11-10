@@ -177,8 +177,22 @@ async function speak(text){
     }
     await playPcmStream(response,cacheKey);
   }catch(error){
-    currentAudio=null;status('Voice service unavailable');
-    $('hint').textContent='I could not generate speech, Sir. '+error.message;
+    currentAudio=null;
+    // Keep JARVIS speaking when Gemini TTS is rate-limited or unreachable.
+    // This is an explicitly secondary, on-device UK male voice; Algieba remains primary.
+    let fallback='unavailable';
+    try{
+      if(window.AndroidJarvis&&typeof window.AndroidJarvis.speakOfflineFallback==='function'){
+        fallback=window.AndroidJarvis.speakOfflineFallback(spoken);
+      }
+    }catch(fallbackError){fallback='unavailable';}
+    if(fallback==='started'){
+      status('Offline voice active','speaking');
+      $('hint').textContent='Online Algieba is temporarily unavailable. I am using your installed offline British voice so I can continue speaking, Sir.';
+      return;
+    }
+    status('Voice service unavailable');
+    $('hint').textContent='I could not generate Algieba speech, Sir. '+error.message+' Your device has no compatible offline male British voice installed.';
   }
 }
 $('testVoice').onclick=()=>{speak('Good evening, Sir. I am JARVIS. How may I assist you today?');$('hint').textContent='Testing the British voice…';};
