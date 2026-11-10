@@ -144,3 +144,20 @@ test("Mission Control exposes local diagnostics, a bounded briefing and explicit
   assert.ok(html.includes("up to eight named routines"));
   assert.ok(html.includes("function applyLocalRoutine"));
 });
+
+test("office requests choose useful output formats and return a real download link", async () => {
+  const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+  const start = html.indexOf("function detectFileRequest(text)");
+  const end = html.indexOf("\nasync function createOfficeFile", start);
+  assert.ok(start >= 0 && end > start);
+  const detectFileRequest = vm.runInNewContext(html.slice(start, end) + "\ndetectFileRequest");
+  assert.equal(detectFileRequest("Create a PDF report about marketing").format, "pdf");
+  assert.equal(detectFileRequest("Prepare my business management assignment").format, "docx");
+  assert.equal(detectFileRequest("Make a monthly household budget").format, "xlsx");
+  assert.equal(detectFileRequest("Create a PowerPoint presentation").format, "pptx");
+  assert.equal(detectFileRequest("Make a weekly meal plan").format, "pdf");
+  assert.equal(detectFileRequest("What is the meaning of management?"), null);
+  assert.ok(html.includes("JARVIS_API+'/create-file'"));
+  assert.ok(html.includes("downloadFile.filename"));
+  assert.ok(html.includes("new Blob([Uint8Array.from(atob(downloadFile.data)"));
+});
