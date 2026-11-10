@@ -1,6 +1,8 @@
 package com.hrishikesh.jarvis;
 
 import android.app.Activity;
+import android.Manifest;
+import android.content.pm.PackageManager;
 import android.content.ContentValues;
 import android.content.ClipData;
 import android.database.Cursor;
@@ -19,6 +21,7 @@ import android.speech.tts.TextToSpeech;
 import android.speech.tts.Voice;
 import android.speech.tts.UtteranceProgressListener;
 import android.webkit.JavascriptInterface;
+import android.webkit.GeolocationPermissions;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebView;
@@ -35,6 +38,9 @@ public class MainActivity extends Activity {
     private static final int REQUEST_SPEECH = 4102;
     private static final int REQUEST_FILE = 4103;
     private static final int REQUEST_CAMERA = 4104;
+    private static final int REQUEST_LOCATION = 4105;
+    private GeolocationPermissions.Callback pendingGeoCallback;
+    private String pendingGeoOrigin;
     private Uri pendingCameraUri;
     private WebView webView;
     private TextToSpeech textToSpeech;
@@ -92,8 +98,19 @@ public class MainActivity extends Activity {
         webView.getSettings().setMediaPlaybackRequiresUserGesture(false);
         webView.getSettings().setAllowFileAccess(false);
         webView.getSettings().setAllowContentAccess(false);
+        webView.getSettings().setGeolocationEnabled(true);
         webView.addJavascriptInterface(new JarvisBridge(), "AndroidJarvis");
-        webView.setWebChromeClient(new WebChromeClient());
+        webView.setWebChromeClient(new WebChromeClient() {
+            @Override public void onGeolocationPermissionsShowPrompt(String origin, GeolocationPermissions.Callback callback) {
+                if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+                    callback.invoke(origin, true, false);
+                    return;
+                }
+                pendingGeoOrigin = origin;
+                pendingGeoCallback = callback;
+                requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION}, REQUEST_LOCATION);
+            }
+        });
         webView.setWebViewClient(new WebViewClient() {
             @Override public void onPageFinished(WebView view, String url) {
                 super.onPageFinished(view, url);
@@ -149,7 +166,7 @@ public class MainActivity extends Activity {
 
     private Voice findVoice(String name) {
         if (name == null || name.isEmpty() || textToSpeech == null || textToSpeech.getVoices() == null) return null;
-        for (Voice voice : textToSpeech.getVoices()) if (name.equals(voice.getName()) && isBritish(voice)) return voice;
+        for (Voice voice : textToSpeech.getVoices()) if (name.equals(voice.getName()) && isBritish(voice) && isExplicitlyMale(voice)) return voice;
         return null;
     }
 
@@ -157,7 +174,7 @@ public class MainActivity extends Activity {
         JSONArray result = new JSONArray();
         if (textToSpeech == null || textToSpeech.getVoices() == null) return result;
         for (Voice voice : textToSpeech.getVoices()) {
-            if (!isBritish(voice)) continue;
+            if (!isBritish(voice) || !isExplicitlyMale(voice)) continue;
             JSONObject item = new JSONObject();
             try {
                 item.put("name", voice.getName());
@@ -280,6 +297,18 @@ public class MainActivity extends Activity {
             return "Your selected British voice is ready, Sir.";
         }
 
+        @JavascriptInterface public void openLocationSettings() {
+            runOnUiThread(() -> {
+                try {
+                    Intent intent = new Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                            Uri.parse("package:" + getPackageName()));
+                    startActivity(intent);
+                } catch (Exception e) {
+                    Toast.makeText(MainActivity.this, "Open Android Settings > Apps > J.A.R.V.I.S. > Permissions > Location, Sir.", Toast.LENGTH_LONG).show();
+                }
+            });
+        }
+
         @JavascriptInterface public void openTextToSpeechSettings() {
             runOnUiThread(() -> {
                 try {
@@ -365,6 +394,23 @@ public class MainActivity extends Activity {
     private String title(String value) {
         if (value == null || value.isEmpty()) return "that app";
         return value.substring(0, 1).toUpperCase(Locale.ROOT) + value.substring(1);
+    }
+
+    @Override public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == REQUEST_LOCATION && pendingGeoCallback != null) {
+            boolean precise = checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED;
+            GeolocationPermissions.Callback callback = pendingGeoCallback;
+            String origin = pendingGeoOrigin;
+            pendingGeoCallback = null;
+            pendingGeoOrigin = null;
+            callback.invoke(origin, precise, false);
+            if (!precise) {
+                runOnUiThread(() -> Toast.makeText(this,
+                        "For precise location, choose Precise in the Android permission prompt and allow location access, Sir.",
+                        Toast.LENGTH_LONG).show());
+            }
+        }
     }
 
     @Override protected void onActivityResult(int requestCode, int resultCode, Intent data) {
