@@ -1,5 +1,5 @@
 // J.A.R.V.I.S. server-side AI endpoint. Gemini credentials and shared history stay server-side.
-import { getSession, readHistory, saveHistory } from "./lib/jarvis-store.js";
+import { getSession, readHistory, saveHistory } from "../lib/jarvis-store.js";
 
 export default async function handler(req, res) {
   const origin = req.headers.origin || "";
