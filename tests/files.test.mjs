@@ -38,3 +38,66 @@ for (const format of ["pdf", "docx", "xlsx", "pptx", "csv", "txt", "md"]) {
     if (format === "csv") assert.match(file.buffer.toString("utf8"), /Category|Item/);
   });
 }
+
+test("file creation authenticates read-only and returns a real workbook without writing shared memory", async () => {
+  const savedFetch = globalThis.fetch;
+  const keys = ["UPSTASH_REDIS_REST_URL", "UPSTASH_REDIS_REST_TOKEN", "GEMINI_API_KEY", "JARVIS_FILE_SAVE_HISTORY"];
+  const prior = Object.fromEntries(keys.map(key => [key, process.env[key]]));
+  const redisCommands = [];
+  process.env.UPSTASH_REDIS_REST_URL = "https://redis.test";
+  process.env.UPSTASH_REDIS_REST_TOKEN = "test-token";
+  process.env.GEMINI_API_KEY = "test-gemini-key";
+  process.env.JARVIS_FILE_SAVE_HISTORY = "false";
+
+  globalThis.fetch = async (url, options = {}) => {
+    if (String(url).includes("redis.test")) {
+      const command = JSON.parse(options.body)[0];
+      redisCommands.push(command);
+      if (command[0] !== "GET") throw new Error("Staging file creation must not write to Redis.");
+      return new Response(JSON.stringify([{ result: JSON.stringify({ deviceId: "test-device", role: "owner" }) }]), { status: 200 });
+    }
+    if (String(url).includes("generativelanguage.googleapis.com")) {
+      const spec = {
+        title: "Integration Test Budget",
+        sections: [],
+        tables: [],
+        sheets: [{ name: "Budget", columns: ["Category", "Amount"], rows: [["Travel", 500], ["Food", 300], ["Total", { formula: "SUM(B2:B3)" }]] }],
+        slides: [],
+        references: []
+      };
+      return new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: JSON.stringify(spec) }] } }] }), { status: 200 });
+    }
+    throw new Error("Unexpected network request: " + url);
+  };
+
+  try {
+    const headers = {};
+    let statusCode = 200;
+    let payload;
+    const res = {
+      setHeader(key, value) { headers[key] = value; return this; },
+      status(code) { statusCode = code; return this; },
+      json(value) { payload = value; return this; },
+      end() { return this; }
+    };
+    await createFileHandler({
+      method: "POST",
+      headers: { origin: "https://hrishikeshks1611-stack.github.io", authorization: "Bearer test-session-token" },
+      body: { prompt: "Create a budget workbook", format: "xlsx" }
+    }, res);
+
+    assert.equal(statusCode, 200);
+    assert.equal(payload.filename, "Integration-Test-Budget.xlsx");
+    assert.equal(Buffer.from(payload.data, "base64").subarray(0, 2).toString(), "PK");
+    assert.equal(redisCommands.length, 1);
+    assert.equal(redisCommands[0][0], "GET");
+    assert.equal(headers["Access-Control-Allow-Origin"], "https://hrishikeshks1611-stack.github.io");
+  } finally {
+    globalThis.fetch = savedFetch;
+    for (const key of keys) {
+      if (prior[key] === undefined) delete process.env[key];
+      else process.env[key] = prior[key];
+    }
+  }
+});
+
