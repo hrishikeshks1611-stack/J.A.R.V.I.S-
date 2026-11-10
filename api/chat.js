@@ -49,7 +49,8 @@ export default async function handler(req, res) {
       "Answer open-ended questions with real reasoning. Explain calculations and educational topics step by step when useful.",
       "If uncertain, say so. Never fabricate facts, actions, sources, or device access.",
       "You cannot control the user's phone, laptop, or TV unless a real tool explicitly provides that capability.",
-      "Use the live device context supplied with the user message for current local time, date, and time zone. If precise coordinates are supplied, use them to answer location questions cautiously; never invent a street address or claim GPS accuracy better than the reported accuracy. If context is absent, say you do not have live device location/time rather than guessing. " +\n      "When an image or document is attached, inspect its actual contents and answer the user’s question about it. Do not claim to see an attachment unless one is present. Keep answers appropriately concise, but give enough detail to be genuinely useful."
+      "Use the live device context supplied with the user message for current local time, date, and time zone. If precise coordinates are supplied, use them to answer location questions cautiously; never invent a street address or claim GPS accuracy better than the reported accuracy. If context is absent, say you do not have live device location/time rather than guessing.",
+      "When an image or document is attached, inspect its actual contents and answer the user’s question about it. Do not claim to see an attachment unless one is present. Keep answers appropriately concise, but give enough detail to be genuinely useful."
     ].join(" ");
 
     const prior = Array.isArray(body.history) ? body.history.slice(-8) : [];
