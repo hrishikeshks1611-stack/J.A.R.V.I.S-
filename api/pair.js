@@ -108,6 +108,58 @@ export default async function handler(req, res) {
       }
       return res.status(200).json({ devices });
     }
+    if (action === "transfer-owner") {
+      if (session.role !== "owner") return res.status(403).json({ error: "Only the current owner can transfer ownership." });
+      const target = String(body.deviceId || "");
+      if (!target || target === session.deviceId) return res.status(400).json({ error: "Choose another paired device as the new owner." });
+      const targetRaw = await redisCommand("GET", JARVIS_PREFIX + "device:" + target);
+      if (!targetRaw) return res.status(404).json({ error: "That device is not paired." });
+      const targetDevice = typeof targetRaw === "string" ? JSON.parse(targetRaw) : targetRaw;
+      if (!targetDevice.sessionHash) return res.status(409).json({ error: "That device session is not available. Pair it again before transferring ownership." });
+      const currentHash = hashToken(session.token);
+      const script = [
+        "if redis.call('GET', KEYS[1]) ~= ARGV[1] then return cjson.encode({ ok = false, reason = 'owner_changed' }) end",
+        "local currentRaw = redis.call('GET', KEYS[2])",
+        "local targetRaw = redis.call('GET', KEYS[3])",
+        "local currentSessionRaw = redis.call('GET', KEYS[4])",
+        "local targetSessionRaw = redis.call('GET', KEYS[5])",
+        "if not currentRaw or not targetRaw or not currentSessionRaw or not targetSessionRaw then return cjson.encode({ ok = false, reason = 'session_missing' }) end",
+        "local current = cjson.decode(currentRaw)",
+        "local target = cjson.decode(targetRaw)",
+        "local currentSession = cjson.decode(currentSessionRaw)",
+        "local targetSession = cjson.decode(targetSessionRaw)",
+        "if target.sessionHash ~= ARGV[2] or target.deviceId == current.deviceId then return cjson.encode({ ok = false, reason = 'target_changed' }) end",
+        "current.role = 'device'",
+        "currentSession.role = 'device'",
+        "target.role = 'owner'",
+        "targetSession.role = 'owner'",
+        "redis.call('SET', KEYS[2], cjson.encode(current), 'EX', ARGV[3])",
+        "redis.call('SET', KEYS[3], cjson.encode(target), 'EX', ARGV[3])",
+        "redis.call('SET', KEYS[4], cjson.encode(currentSession), 'EX', ARGV[3])",
+        "redis.call('SET', KEYS[5], cjson.encode(targetSession), 'EX', ARGV[3])",
+        "redis.call('SET', KEYS[1], ARGV[2], 'EX', ARGV[3])",
+        "return cjson.encode({ ok = true, ownerDeviceId = target.deviceId, previousOwnerDeviceId = current.deviceId })"
+      ].join("\n");
+      const raw = await redisCommand(
+        "EVAL", script, "5",
+        JARVIS_PREFIX + "owner:token-hash",
+        JARVIS_PREFIX + "device:" + session.deviceId,
+        JARVIS_PREFIX + "device:" + target,
+        JARVIS_PREFIX + "session:" + currentHash,
+        JARVIS_PREFIX + "session:" + targetDevice.sessionHash,
+        currentHash, targetDevice.sessionHash, String(JARVIS_SESSION_TTL)
+      );
+      const result = typeof raw === "string" ? JSON.parse(raw) : raw;
+      if (!result?.ok) {
+        const reason = result?.reason;
+        return res.status(reason === "session_missing" ? 409 : 409).json({
+          error: reason === "owner_changed"
+            ? "Ownership changed during this request. Please refresh Devices & Sync."
+            : "Ownership could not be transferred because a device session changed. Refresh the device list and try again."
+        });
+      }
+      return res.status(200).json({ transferred: true, ownerDeviceId: result.ownerDeviceId, message: "JARVIS ownership has been transferred. This device is now a regular paired device." });
+    }
     if (action === "revoke") {
       if (session.role !== "owner") return res.status(403).json({ error: "Only the owner device can revoke access." });
       const target = String(body.deviceId || "");
