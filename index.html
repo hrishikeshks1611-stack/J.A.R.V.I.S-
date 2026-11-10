@@ -113,9 +113,14 @@ async function openMemoryPanel(){
  $('memoryPanel').hidden=false;
  const paired=!!sessionToken;
  $('memoryText').disabled=!paired;$('saveMemory').disabled=!paired;$('clearMemories').disabled=!paired;
- $('backupText').disabled=!paired;$('exportBackup').disabled=!paired;$('restoreBackup').disabled=!paired;
+ $('backupText').disabled=!paired;$('exportBackup').disabled=!paired;$('restoreBackup').disabled=!paired||sessionRole!=='owner';
  if(!paired){$('memoryStatus').textContent='Pair this device with your JARVIS owner device before managing shared memory.';return;}
- try{await renderMemories();$('memoryStatus').textContent='Your saved memories are shared across all paired JARVIS devices.';}
+ try{
+  await renderMemories();
+  $('memoryStatus').textContent=sessionRole==='owner'
+   ?'Your saved memories are shared across all paired JARVIS devices.'
+   :'Your saved memories are shared across all paired JARVIS devices. Only the owner device can restore a full backup.';
+ }
  catch(e){$('memoryStatus').textContent=e.message;}
 }
 $('memoryButton').onclick=openMemoryPanel;
