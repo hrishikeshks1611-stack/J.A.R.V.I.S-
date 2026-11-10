@@ -20,3 +20,10 @@ test("Android release metadata identifies JARVIS 5.0 and advances installed vers
   assert.match(gradle, /versionCode\s+500/);
   assert.match(gradle, /versionName\s+'5\.0\.0'/);
 });
+
+test("APK workflow cannot publish debug-signed builds as downloadable releases", async () => {
+  const workflow = await readFile(new URL("../.github/workflows/android-apk.yml", import.meta.url), "utf8");
+  assert.match(workflow, /contents:\s*read/);
+  assert.doesNotMatch(workflow, /gh release create/);
+  assert.match(workflow, /debug-verification/);
+});
