@@ -80,3 +80,17 @@ test("calendar event commands validate a future ISO date and open the native eve
   assert.equal(result.args[3], "Created through J.A.R.V.I.S.");
   assert.match(parse("Create event Invalid date on 2030-02-31 at 09:30"), /invalid/i);
 });
+
+
+test("offline fallback recognises natural-language commands", async () => {
+  const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+  const start = html.indexOf("function offlineReply");
+  const end = html.indexOf("\\n", start);
+  assert.ok(start >= 0 && end > start);
+  const reply = new Function("deviceLocation", html.slice(start, end) + "; return offlineReply;")(null);
+  assert.match(reply("hello", "witty"), /Good day, Sir/);
+  assert.match(reply("what time is it", "professional"), /time on this device/i);
+  assert.match(reply("what is today's date", "professional"), /Today is/);
+  assert.match(reply("where am I", "professional"), /do not have your location/i);
+  assert.match(reply("search for cats", "professional"), /google\\.com\\/search\\?q=cats/);
+});
