@@ -14,7 +14,7 @@ Implemented and covered by passing GitHub Actions tests:
 - Automated tests cover shared-store bounds, atomic append invocation, memory lifecycle, owner transfer, API authorization/CORS, explicit clear confirmation, and inline frontend JavaScript syntax.
 
 Still not complete or not physically verified:
-- Real Upstash integration/concurrency stress test; current CI uses mocked Redis responses.
+- High-volume real Upstash concurrency stress test; CI uses mocked Redis responses, but the actual atomic append, memory add/edit/delete, and owner-transfer Lua scripts have passed isolated smoke tests on temporary keys in the connected Upstash database. All temporary QA keys were deleted afterward.
 - Full backup and restore of conversation plus memory, beyond copying saved-memory JSON.
 - Continuous wake-word listening and foreground microphone service.
 - Native MediaProjection screen mirroring.
