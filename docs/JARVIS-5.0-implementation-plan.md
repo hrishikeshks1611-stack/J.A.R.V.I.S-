@@ -1,0 +1,41 @@
+# J.A.R.V.I.S. 5.0 — unified engineering plan
+
+This document is the release acceptance checklist. A capability is not considered complete merely because its UI exists or a workflow succeeds.
+
+## Preserve throughout
+- Gemini TTS model, Algieba voice, and en-GB delivery remain the primary online voice.
+- Preserve the British butler persona, animated reactor/HUD, attachments, local clock and permissioned location, device pairing, and all three form factors.
+- Keep Gemini credentials and Upstash credentials server-side.
+- Keep the current production deployment and installed APKs usable during development.
+
+## 2.0 — durable shared memory and reliability
+- Replace the single blind read/modify/write conversation update with atomic or version-checked writes so concurrent devices cannot silently erase each other's turns.
+- Add durable user-approved memory records separately from recent chat history; include review, edit, delete, export, and retention controls.
+- Add bounded retrieval and explicit context provenance; never silently infer sensitive personal facts.
+- Add backups/restore verification and operational health checks.
+- Acceptance: concurrent-write tests, session/revocation tests, memory permission/deletion tests, and recovery test pass.
+
+## 3.0 — Alfred mode and voice
+- Preserve Algieba as primary; no voice substitution while the online service works.
+- Add an opt-in Android foreground listening service only after explaining its persistent microphone notification, battery cost, permission requirements, and platform restrictions.
+- Keep push-to-talk available and provide a clear kill switch.
+- Do not promise continuous listening on Android TV or laptop browsers.
+- Acceptance: service lifecycle, permission-denial, reboot, battery restriction, and stop/disable tests on actual supported Android hardware.
+
+## 4.0 — device intelligence
+- Add explicit, permission-scoped actions with confirmation for consequential operations.
+- Add reminders/calendar/notification integration only through supported Android APIs and user-granted permissions.
+- Screen mirroring requires a real Android MediaProjection consent flow and a compatible receiver/protocol; opening Settings is not screen casting.
+- Acceptance: action allow-list, confirmation tests, permission denial tests, and device-by-device validation.
+
+## 5.0 — independence and interface
+- Provide an offline command set that works without network; evaluate local language models only against the actual phone/TV hardware and storage limits.
+- Offline speech is a fallback and cannot be represented as identical to Gemini Algieba.
+- Keep the animated reactor and validate responsive touch, keyboard, and TV remote navigation.
+- Acceptance: airplane-mode tests, memory/storage measurements, accessibility/navigation checks, and physical-device tests.
+
+## Release engineering blockers
+- Current Android workflow creates debug APKs on ephemeral GitHub runners. A stable signing identity is required for in-place updates. Do not ask the user to uninstall existing builds or publish an APK update until signing continuity is verified.
+- The repository currently has no automated application test suite. Add quality gates before changing shared-memory or Android lifecycle code.
+- GitHub Pages and Vercel deploy separately; a release checklist must verify both before announcing a unified release.
+- Keep development isolated on a feature branch until all checks pass. Do not deploy unverified changes to production.
