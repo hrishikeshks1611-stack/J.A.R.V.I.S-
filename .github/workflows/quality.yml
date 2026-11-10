@@ -1,0 +1,23 @@
+name: JARVIS quality checks
+
+on:
+  push:
+    branches: [ main, jarvis-5.0-development ]
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  contents: read
+
+jobs:
+  shared-memory-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Test shared-memory helpers
+        run: node --test tests/*.test.mjs
