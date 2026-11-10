@@ -16,7 +16,7 @@ Implemented and covered by automated tests:
 - Android version metadata is set to versionCode 500 and versionName 5.0.0 so a correctly signed release can advance beyond the existing versionCode 1.
 
 Still not complete or not physically verified:
-- High-volume real Upstash concurrency stress test; CI uses mocked Redis responses, but the actual atomic append, memory add/edit/delete, and owner-transfer Lua scripts have passed isolated smoke tests on temporary keys in the connected Upstash database. All temporary QA keys were deleted afterward.
+- High-volume real Upstash concurrency stress test; CI uses mocked Redis responses, but the actual atomic append, memory add/edit/delete, owner-transfer, and two-key backup-restore Lua scripts have passed isolated smoke tests on temporary keys in the connected Upstash database. All temporary QA keys were deleted afterward.
 - Continuous wake-word listening and foreground microphone service.
 - Native MediaProjection screen mirroring.
 - Background notification scheduling, recurring reminders, and automatic reminder delivery. Basic alarm handoff and calendar-event creation are implemented through Android Clock/Calendar confirmation screens; the user must review and save them.
