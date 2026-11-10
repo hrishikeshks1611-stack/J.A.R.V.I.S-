@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { hashToken, randomToken, safeEqual, saveHistory, readHistory, getSession, appendConversationTurn } from "../lib/jarvis-store.js";
+import { hashToken, randomToken, safeEqual, saveHistory, readHistory, getSession, appendConversationTurn, readMemories, addMemory, deleteMemory, clearMemories } from "../lib/jarvis-store.js";
 
 const originalFetch = globalThis.fetch;
 const originalUrl = process.env.UPSTASH_REDIS_REST_URL;
@@ -117,4 +117,39 @@ test("appendConversationTurn uses one atomic Redis script and returns the update
   assert.equal(commandSeen[5], "Good evening, Sir.");
   assert.equal(commandSeen[6], "1234");
   assert.equal(commandSeen[7], String(60 * 60 * 24 * 365));
+});
+
+test("saved memories can be added, listed, deleted, and cleared", async () => {
+  let calls = [];
+  mockRedis(async command => {
+    calls.push(command);
+    if (command[0] === "GET") return JSON.stringify([{ id: "memory-1", text: "Prefers concise answers", createdAt: 1 }]);
+    if (command[0] === "EVAL" && command[1].includes("table.insert(items")) {
+      return JSON.stringify([{ id: "new-memory", text: command[5], createdAt: Number(command[6]) }]);
+    }
+    if (command[0] === "EVAL") return JSON.stringify({ deleted: true, items: [] });
+    if (command[0] === "DEL") return 1;
+    throw new Error("Unexpected Redis command: " + command[0]);
+  });
+  const listed = await readMemories();
+  assert.equal(listed.length, 1);
+  assert.equal(listed[0].text, "Prefers concise answers");
+  const added = await addMemory("Likes the Algieba voice");
+  assert.equal(added[0].text, "Likes the Algieba voice");
+  const removed = await deleteMemory("memory-1");
+  assert.equal(removed.deleted, true);
+  assert.deepEqual(removed.items, []);
+  assert.equal(await clearMemories(), true);
+  assert.deepEqual(calls.map(command => command[0]), ["GET", "EVAL", "EVAL", "DEL"]);
+});
+
+test("saved memory text is trimmed and bounded before storage", async () => {
+  let commandSeen;
+  mockRedis(async command => {
+    commandSeen = command;
+    return JSON.stringify([{ id: "memory-2", text: command[5], createdAt: 1 }]);
+  });
+  await addMemory("  " + "a".repeat(1200) + "  ");
+  assert.equal(commandSeen[5].length, 1000);
+  assert.equal(commandSeen[5][0], "a");
 });
