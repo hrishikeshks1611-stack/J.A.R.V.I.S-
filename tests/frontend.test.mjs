@@ -20,4 +20,6 @@ test("saved-memory UI is explicit and has deletion controls", async () => {
   assert.ok(html.includes("action:'clear',confirm:true"));
   assert.ok(html.includes('id="exportMemories"'));
   assert.ok(html.includes("editingMemoryId?'update':'add'"));
+  assert.ok(html.includes("offlineReply(message,$('mode').value)"));
+  assert.ok(html.includes("status('Offline mode')"));
 });
