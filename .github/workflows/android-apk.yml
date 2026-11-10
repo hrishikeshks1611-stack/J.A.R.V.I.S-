@@ -1,5 +1,5 @@
 name: Build JARVIS Android and TV APKs
-# Rebuild both APKs after the local Algieba speech-cache update.
+# Package the latest JARVIS phone and TV clients with current published Alfred speech improvements.
 on:
   workflow_dispatch:
   push:
