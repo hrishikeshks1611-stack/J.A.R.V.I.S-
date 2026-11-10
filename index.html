@@ -157,6 +157,15 @@ async function renderPairedDevices(){
   const label=document.createElement('span');label.textContent=device.deviceName+(device.role==='owner'?' · Owner':'');
   row.appendChild(label);
   if(device.role!=='owner'){
+   const transfer=document.createElement('button');transfer.type='button';transfer.textContent='Make owner';
+   transfer.onclick=async()=>{
+    if(!confirm('Transfer JARVIS ownership to '+device.deviceName+'? This device will become a regular paired device.'))return;
+    try{
+     const result=await pairApi({action:'transfer-owner',deviceId:device.deviceId});
+     sessionRole='device';$('ownerArea').hidden=true;$('syncStatus').textContent=result.message+' Use the new owner device to create pairing codes or transfer ownership again.';
+    }catch(e){$('syncStatus').textContent=e.message}
+   };
+   row.appendChild(transfer);
    const revoke=document.createElement('button');revoke.type='button';revoke.textContent='Revoke';
    revoke.onclick=async()=>{if(!confirm('Revoke access for '+device.deviceName+'?'))return;try{await pairApi({action:'revoke',deviceId:device.deviceId});await renderPairedDevices()}catch(e){$('syncStatus').textContent=e.message}};
    row.appendChild(revoke);
