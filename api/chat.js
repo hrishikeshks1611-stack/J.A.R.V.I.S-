@@ -75,9 +75,17 @@ export default async function handler(req, res) {
       if (!encoded || encoded.length > 4000000 || !/^[A-Za-z0-9+/]+={0,2}$/.test(encoded)) {
         return res.status(413).json({ error: "The attachment is empty or too large. Please keep files under 3 MB." });
       }
-      contents[contents.length - 1].parts.push({
-        inline_data: { mime_type: mimeType, data: encoded }
-      });
+      if (mimeType.startsWith("text/") || mimeType === "application/json") {
+        const decodedText = Buffer.from(encoded, "base64").toString("utf8");
+        contents[contents.length - 1].parts.push({
+          text: "Attached file: " + String(attachment.name || "document").slice(0, 180) +
+            "\n\nFile contents:\n" + decodedText.slice(0, 120000)
+        });
+      } else {
+        contents[contents.length - 1].parts.push({
+          inline_data: { mime_type: mimeType, data: encoded }
+        });
+      }
     }
 
     // Try the current stable Flash model first, then two compatible fallbacks.
