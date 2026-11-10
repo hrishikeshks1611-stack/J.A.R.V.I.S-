@@ -1,5 +1,5 @@
 import {
-  getSession, readMemories, addMemory, deleteMemory, clearMemories
+  getSession, readMemories, addMemory, updateMemory, deleteMemory, clearMemories
 } from "../lib/jarvis-store.js";
 
 function cors(req, res) {
@@ -45,6 +45,14 @@ export default async function handler(req, res) {
         const memories = await addMemory(value);
         return res.status(200).json({ memories, message: "Saved to your shared JARVIS memory." });
       }
+      case "update": {
+        const value = String(body.text || "").trim();
+        if (!value) return res.status(400).json({ error: "Enter the revised memory text." });
+        if (value.length > 1000) return res.status(413).json({ error: "A saved memory must be 1,000 characters or fewer." });
+        const result = await updateMemory(body.id, value);
+        if (!result.updated) return res.status(404).json({ error: "That saved memory no longer exists." });
+        return res.status(200).json({ memories: result.items, message: "Saved memory updated." });
+      }
       case "delete": {
         const result = await deleteMemory(body.id);
         if (!result.deleted) return res.status(404).json({ error: "That saved memory no longer exists." });
@@ -55,7 +63,7 @@ export default async function handler(req, res) {
         await clearMemories();
         return res.status(200).json({ memories: [], message: "All saved memories have been cleared." });
       default:
-        return res.status(400).json({ error: "Choose a valid memory action: list, add, delete or clear." });
+        return res.status(400).json({ error: "Choose a valid memory action: list, add, update, delete or clear." });
     }
   } catch (error) {
     console.error("JARVIS memory action failed:", error);
