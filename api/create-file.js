@@ -60,7 +60,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const session = await getSession(req);
+    const session = await getSession(req, { touch: false });
     if (!session) return res.status(401).json({ error: "This device is not paired with JARVIS. Pair it before creating files." });
 
     const body = req.body || {};
@@ -125,7 +125,7 @@ export default async function handler(req, res) {
 
     const file = await createArtifactFile(artifactSpec, format);
     const reply = "I've prepared " + file.title + " as a " + format.toUpperCase() + " attachment, Sir. Please review it before submitting or sharing.";
-    await appendConversationTurn(prompt, reply);
+    if (process.env.JARVIS_FILE_SAVE_HISTORY !== "false") await appendConversationTurn(prompt, reply);
     return res.status(200).json({
       reply,
       filename: file.filename,
