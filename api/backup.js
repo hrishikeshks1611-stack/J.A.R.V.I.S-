@@ -113,6 +113,9 @@ export default async function handler(req, res) {
       });
     }
     if (body.action === "restore") {
+      if (session.role !== "owner") {
+        return res.status(403).json({ error: "Only the JARVIS owner device can restore a full backup." });
+      }
       if (body.confirm !== true) {
         return res.status(400).json({ error: "Confirm before replacing shared conversation and saved memories." });
       }
