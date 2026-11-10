@@ -1,5 +1,6 @@
-// J.A.R.V.I.S. server-side AI endpoint for Vercel.
-// The Gemini key stays in Vercel Environment Variables; it is never sent to the browser.
+// J.A.R.V.I.S. server-side AI endpoint. Gemini credentials and shared history stay server-side.
+import { getSession, readHistory, saveHistory } from "./lib/jarvis-store.js";
+
 export default async function handler(req, res) {
   const origin = req.headers.origin || "";
   const allowedOrigin =
@@ -13,12 +14,23 @@ export default async function handler(req, res) {
     res.setHeader("Access-Control-Allow-Origin", origin);
     res.setHeader("Vary", "Origin");
     res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-    res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
   }
   if (req.method === "OPTIONS") return res.status(204).end();
   if (req.method !== "POST") {
     res.setHeader("Allow", "POST, OPTIONS");
     return res.status(405).json({ error: "Use POST for assistant requests." });
+  }
+
+  let session;
+  let sharedHistory;
+  try {
+    session = await getSession(req);
+    if (!session) return res.status(401).json({ error: "This device is not paired with JARVIS. Open Devices & Sync to pair it." });
+    sharedHistory = await readHistory();
+  } catch (error) {
+    console.error("JARVIS shared memory unavailable:", error);
+    return res.status(503).json({ error: "JARVIS shared memory is temporarily unavailable. Please try again shortly." });
   }
 
   const apiKey = process.env.JARVIS || process.env.GEMINI_API_KEY;
@@ -53,7 +65,9 @@ export default async function handler(req, res) {
       "When an image or document is attached, inspect its actual contents and answer the user’s question about it. Do not claim to see an attachment unless one is present. Keep answers appropriately concise, but give enough detail to be genuinely useful."
     ].join(" ");
 
-    const prior = Array.isArray(body.history) ? body.history.slice(-8) : [];
+    // Every paired device reads the same central conversation rather than sending
+    // a private browser-only history. Only the latest eight turns enter the prompt.
+    const prior = sharedHistory.slice(-8);
     const contents = prior
       .filter(item => item && (item.role === "user" || item.role === "model") && typeof item.text === "string")
       .map(item => ({ role: item.role, parts: [{ text: item.text.slice(0, 2500) }] }));
@@ -170,7 +184,13 @@ export default async function handler(req, res) {
       const reason = data.promptFeedback?.blockReason || data.candidates?.[0]?.finishReason || "No text was returned.";
       return res.status(502).json({ error: "Gemini returned no answer: " + reason });
     }
-    return res.status(200).json({ reply });
+    const updatedHistory = [
+      ...sharedHistory,
+      { role: "user", text: message, createdAt: Date.now() },
+      { role: "model", text: reply, createdAt: Date.now() }
+    ];
+    await saveHistory(updatedHistory);
+    return res.status(200).json({ reply, deviceId: session.deviceId });
   } catch (error) {
     console.error("JARVIS API failure:", error);
     return res.status(500).json({ error: "JARVIS server error: " + String(error?.message || error).slice(0, 300) });
