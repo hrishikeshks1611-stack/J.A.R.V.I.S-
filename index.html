@@ -447,6 +447,35 @@ $('clear').onclick=async()=>{if(!sessionToken){openSyncPanel();return;}try{await
 $('form').onsubmit=async e=>{e.preventDefault();if(!sessionToken){openSyncPanel();$('syncStatus').textContent='Pair this device before sending messages.';return;}const message=$('prompt').value.trim();if(!message&&!pendingAttachment)return;$('prompt').value='';const attachment=pendingAttachment;pendingAttachment=null;renderAttachment();add(message||'Please examine this attachment, Sir.', 'user',attachment);history.push({role:'user',text:message||'Please examine the attached file.'});
 const appCommand=message.match(/^\s*(?:jarvis[, ]+)?(?:please\s+)?(?:open|launch|start)\s+([a-z0-9 +.-]+?)(?:\s+app)?[.!?]*\s*$/i);
 const appAliases={'whatsapp':'whatsapp','you tube':'youtube','youtube':'youtube','chrome':'chrome','gmail':'gmail','google maps':'maps','maps':'maps','spotify':'spotify','instagram':'instagram','facebook':'facebook','telegram':'telegram','camera':'camera','play store':'play store','messages':'messages','message':'messages','phone':'phone','settings':'settings','phone settings':'settings','twitter':'twitter','x':'x','reddit':'reddit','photos':'photos','google photos':'photos','calendar':'calendar','google calendar':'calendar','keep':'keep','google keep':'keep','contacts':'contacts','drive':'drive','google drive':'drive','files':'files','file manager':'files','amazon':'amazon','flipkart':'flipkart','browser':'browser','calculator':'calculator','gallery':'gallery','swiggy':'swiggy','zomato':'zomato'};
+function handleCalendarOrAlarmCommand(text){
+ if(!window.AndroidJarvis)return null;
+ const reminder=text.match(/^\\s*(?:jarvis[, ]+)?(?:please\\s+)?remind me to (.+?) at (\\d{1,2})(?::(\\d{2}))?\\s*(am|pm)\\s*[.!?]*\\s*$/i);
+ const alarm=text.match(/^\\s*(?:jarvis[, ]+)?(?:please\\s+)?(?:set|create)\\s+(?:an?\\s+)?alarm\\s+(?:for|at)\\s+(\\d{1,2})(?::(\\d{2}))?\\s*(am|pm)?(?:\\s+(?:called|named|labelled)\\s+(.+?))?[.!?]*\\s*$/i);
+ const match=reminder||alarm;
+ if(match){
+  let hour=Number(reminder?match[2]:match[1]),minute=Number(reminder?match[3]||0:match[2]||0);
+  const period=reminder?match[4]?.toLowerCase():match[3]?.toLowerCase();
+  if(minute>59||hour<1||hour>12&&period)return 'That alarm time is invalid, Sir.';
+  if(period){hour=hour%12;if(period==='pm')hour+=12;}
+  else if(hour<=12)return null;
+  const label=reminder?'Reminder: '+match[1].trim():(match[4]||'JARVIS alarm').trim();
+  return window.AndroidJarvis.setAlarm(hour,minute,label);
+ }
+ const event=text.match(/^\\s*(?:jarvis[, ]+)?(?:please\\s+)?(?:create|add|schedule)\\s+(?:a\\s+)?(?:calendar\\s+)?event\\s+(.+?)\\s+(?:on|for)\\s+(\\d{4})-(\\d{2})-(\\d{2})\\s+at\\s+(\\d{1,2}):(\\d{2})\\s*$/i);
+ const datedReminder=text.match(/^\\s*(?:jarvis[, ]+)?(?:please\\s+)?remind me to (.+?) on (\\d{4})-(\\d{2})-(\\d{2}) at (\\d{1,2}):(\\d{2})\\s*$/i);
+ const scheduled=event||datedReminder;
+ if(scheduled){
+  const title=(datedReminder?'Reminder: ':'')+scheduled[1].trim();
+  const year=Number(scheduled[2]),month=Number(scheduled[3]),day=Number(scheduled[4]),hour=Number(scheduled[5]),minute=Number(scheduled[6]);
+  const start=new Date(year,month-1,day,hour,minute,0,0);
+  if(start.getFullYear()!==year||start.getMonth()!==month-1||start.getDate()!==day||hour>23||minute>59)return 'That calendar date or time is invalid, Sir.';
+  if(start.getTime()<=Date.now())return 'That date and time has already passed, Sir. Please choose a future time.';
+  return window.AndroidJarvis.createCalendarEvent(title,start.getTime(),start.getTime()+60*60*1000,'Created through J.A.R.V.I.S.');
+ }
+ return null;
+}
+const scheduledReply=handleCalendarOrAlarmCommand(message);
+if(scheduledReply){add(scheduledReply,'jarvis');history.push({role:'model',text:scheduledReply});history=history.slice(-20);pairApi({action:'append-local',message,reply:scheduledReply}).catch(()=>{});$('hint').textContent='Ready when you are.';status('System ready');speak(scheduledReply);return;}
 if(appCommand && window.AndroidJarvis){const appName=appAliases[appCommand[1].toLowerCase().trim()];if(appName){const reply=window.AndroidJarvis.openApp(appName);add(reply,'jarvis');history.push({role:'model',text:reply});history=history.slice(-20);pairApi({action:'append-local',message,reply}).catch(()=>{});$('hint').textContent='Ready when you are.';status('System ready');speak(reply);return;}}
 status('Thinking','thinking');$('hint').textContent='Processing your request…';chatBusy=true;try{const r=await fetch('https://jarvis-sigma-one-92.vercel.app/api/chat',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+sessionToken},body:JSON.stringify({message:message||'Please examine the attached file and describe its contents.',history,mode:$('mode').value,attachment,deviceContext:getDeviceContext()})});const raw=await r.text();let data={};try{data=JSON.parse(raw)}catch{}if(!r.ok){const error=new Error(data.error||('AI service returned HTTP '+r.status));error.status=r.status;throw error;}const reply=data.reply||'I have no response, Sir.';chatBusy=false;add(reply,'jarvis');history.push({role:'model',text:reply});history=history.slice(-20);$('hint').textContent='Ready when you are.';speak(reply);if(!voiceOn)status('System ready');}catch(err){
  chatBusy=false;
