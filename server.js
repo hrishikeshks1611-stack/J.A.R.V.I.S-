@@ -7,9 +7,10 @@ import pair from "./api/pair.js";
 import speech from "./api/speech.js";
 import memory from "./api/memory.js";
 import backup from "./api/backup.js";
+import createFile from "./api/create-file.js";
 
 const root = path.dirname(fileURLToPath(import.meta.url));
-const routes = new Map([["/api/chat",chat],["/api/pair",pair],["/api/speech",speech],["/api/memory",memory],["/api/backup",backup]]);
+const routes = new Map([["/api/chat",chat],["/api/pair",pair],["/api/speech",speech],["/api/memory",memory],["/api/backup",backup],["/api/create-file",createFile]]);
 const mime = new Map([[".html","text/html; charset=utf-8"],[".js","text/javascript; charset=utf-8"],[".css","text/css; charset=utf-8"],[".json","application/json; charset=utf-8"],[".webmanifest","application/manifest+json"],[".svg","image/svg+xml"],[".png","image/png"],[".jpg","image/jpeg"],[".jpeg","image/jpeg"],[".ico","image/x-icon"]]);
 
 function adapt(res) {
