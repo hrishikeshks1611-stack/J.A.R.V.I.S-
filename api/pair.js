@@ -6,7 +6,7 @@ import {
 function cors(req, res) {
   const origin = req.headers.origin || "";
   const allowed = origin === "https://hrishikeshks1611-stack.github.io" ||
-    /^https:\/\/[^/]+\.vercel\.app$/.test(origin);
+    /^https:\/\/[^/]+\.(?:vercel\.app|onrender\.com)$/.test(origin);
   if (origin && !allowed) return false;
   if (allowed) {
     res.setHeader("Access-Control-Allow-Origin", origin);
