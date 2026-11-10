@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { hashToken, randomToken, safeEqual, saveHistory, readHistory, getSession, appendConversationTurn, readMemories, addMemory, updateMemory, deleteMemory, clearMemories } from "../lib/jarvis-store.js";
+import { hashToken, randomToken, safeEqual, saveHistory, readHistory, getSession, appendConversationTurn, readMemories, addMemory, updateMemory, deleteMemory, clearMemories, replaceBackup } from "../lib/jarvis-store.js";
 
 const originalFetch = globalThis.fetch;
 const originalUrl = process.env.UPSTASH_REDIS_REST_URL;
@@ -168,4 +168,25 @@ test("saved memories can be edited without changing their identity", async () =>
   assert.equal(commandSeen[4], "memory-7");
   assert.equal(commandSeen[5], "Updated preference");
   assert.ok(commandSeen[1].includes("item.text = ARGV[2]"));
+});
+
+test("full backup restore replaces conversation and memories atomically", async () => {
+  let commandSeen;
+  mockRedis(async command => {
+    commandSeen = command;
+    return 1;
+  });
+  const conversation = [{ role: "user", text: "Restored question", createdAt: 123 }];
+  const memories = [{ id: "memory_1", text: "Restored note", createdAt: 456 }];
+  const result = await replaceBackup(conversation, memories);
+  assert.deepEqual(result, { conversation: 1, memories: 1 });
+  assert.equal(commandSeen[0], "EVAL");
+  assert.equal(commandSeen[2], "2");
+  assert.equal(commandSeen[3], "jarvis:v1:conversation:main");
+  assert.equal(commandSeen[4], "jarvis:v1:memory:main");
+  assert.deepEqual(JSON.parse(commandSeen[5]), conversation);
+  assert.deepEqual(JSON.parse(commandSeen[6]), memories);
+  assert.equal(commandSeen[7], String(60 * 60 * 24 * 365));
+  assert.ok(commandSeen[1].includes("redis.call('SET', KEYS[1]"));
+  assert.ok(commandSeen[1].includes("redis.call('SET', KEYS[2]"));
 });
