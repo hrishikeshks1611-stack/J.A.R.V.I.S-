@@ -32,10 +32,10 @@ test("owner transfer is authorised and performed by one atomic Redis script", as
       result = JSON.stringify({ deviceId: "laptop-device", deviceName: "Laptop", role: "device", sessionHash: targetHash });
     } else if (command[0] === "EVAL") {
       assert.equal(command[2], "5");
-      assert.ok(command[1].includes("owner:token-hash") === false);
+      assert.equal(command[3], "jarvis:v1:owner:token-hash");
       assert.ok(command[1].includes("target.role = 'owner'"));
       assert.ok(command[1].includes("current.role = 'device'"));
-      assert.equal(command[7], targetHash);
+      assert.equal(command[9], targetHash);
       result = JSON.stringify({ ok: true, ownerDeviceId: "laptop-device", previousOwnerDeviceId: "owner-device" });
     } else {
       throw new Error("Unexpected Redis command: " + command.join(" "));
