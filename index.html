@@ -48,20 +48,74 @@ function getDeviceContext(){const now=new Date();return {localTime:now.toLocaleS
 function requestPreciseLocation(){if(!navigator.geolocation){$('hint').textContent='Location services are not available in this browser, Sir.';return;}$('hint').textContent='Requesting precise location permission…';navigator.geolocation.getCurrentPosition(pos=>{deviceLocation={latitude:Number(pos.coords.latitude.toFixed(6)),longitude:Number(pos.coords.longitude.toFixed(6)),accuracyMeters:Math.round(pos.coords.accuracy),capturedAt:new Date().toISOString()};$('locationEnable').textContent='Location: Enabled';$('hint').textContent='Precise location received (±'+deviceLocation.accuracyMeters+' m). It will accompany your AI requests, Sir.';},err=>{$('hint').textContent=err.code===1?'Location permission was denied. Enable Precise location for J.A.R.V.I.S. in Android App permissions, Sir.':err.code===2?'The phone could not determine its location. Check that Location is switched on, Sir.':'Location request timed out. Please try again, Sir.';},{enableHighAccuracy:true,timeout:20000,maximumAge:0});}
 $('locationEnable').onclick=requestPreciseLocation;
 function offlineReply(message,mode){const q=message.toLowerCase(),p=mode==='philosophical'?'A thought, Sir: ':mode==='witty'?'Certainly, Sir. ':'';if(/\\b(where am i|my location|current location|where are we)\\b/.test(q))return deviceLocation?'Your current coordinates are latitude '+deviceLocation.latitude+', longitude '+deviceLocation.longitude+', with an estimated accuracy of '+deviceLocation.accuracyMeters+' metres, Sir.':'I do not have your location yet, Sir. Tap Enable precise location and grant permission.';if(/\\b(hello|hi|hey|good morning|good afternoon|good evening|good night)\\b/.test(q))return 'Good day, Sir. All systems are standing by. What can I do for you?';if(/\\b(time|what time)\\b/.test(q))return 'The time on this device is '+new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})+', Sir.';if(/\\b(date|today'?s date|what day)\\b/.test(q))return 'Today is '+new Date().toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long',year:'numeric'})+', Sir.';if(/\\b(who are you|your name|introduce yourself)\\b/.test(q))return 'I am J.A.R.V.I.S., your personal assistant interface, Sir.';if(/\\b(search|google|look up)\\b/.test(q)){const t=message.replace(/^(please\s+)?(search( for)?|google|look up)\s*/i,'').trim();return t?'Here is your search: https://www.google.com/search?q='+encodeURIComponent(t):'What shall I search for, Sir?'}if(/\\b(open|visit|go to)\\b/.test(q)){const sites=[['youtube','https://youtube.com'],['google','https://google.com'],['gmail','https://mail.google.com'],['wikipedia','https://wikipedia.org'],['github','https://github.com']];const h=sites.find(([n])=>q.includes(n));return h?'Opening '+h[0]+': '+h[1]:'Name a site such as Google, YouTube, Gmail, Wikipedia, or GitHub, Sir.'}if(/\\b(thanks|thank you)\\b/.test(q))return 'Always a pleasure, Sir.';return p+'the no-key mode can handle greetings, time, date, basic identity, common websites, and web searches. Open-ended questions need an AI model, Sir.'}
+// Cache generated Algieba audio on this device. Repeating the same text
+// reuses the exact same recording instead of spending another Gemini request.
+const speechMemoryCache=new Map();
+let speechDbPromise=null;
+function openSpeechCache(){
+  if(!('indexedDB' in window))return Promise.resolve(null);
+  if(speechDbPromise)return speechDbPromise;
+  speechDbPromise=new Promise(resolve=>{
+    const request=indexedDB.open('jarvis-speech-cache-v1',1);
+    request.onupgradeneeded=()=>{const db=request.result;if(!db.objectStoreNames.contains('audio'))db.createObjectStore('audio',{keyPath:'key'});};
+    request.onsuccess=()=>resolve(request.result);
+    request.onerror=()=>resolve(null);
+    request.onblocked=()=>resolve(null);
+  });
+  return speechDbPromise;
+}
+function speechCacheKey(text){return 'gemini-3.1-flash-tts-preview|Algieba|en-GB|'+text;}
+async function getCachedSpeech(key){
+  if(speechMemoryCache.has(key))return speechMemoryCache.get(key);
+  const db=await openSpeechCache();if(!db)return null;
+  return new Promise(resolve=>{
+    const tx=db.transaction('audio','readonly'),request=tx.objectStore('audio').get(key);
+    request.onsuccess=()=>{const blob=request.result?.blob||null;if(blob)speechMemoryCache.set(key,blob);resolve(blob);};
+    request.onerror=()=>resolve(null);
+  });
+}
+async function saveCachedSpeech(key,blob){
+  speechMemoryCache.set(key,blob);
+  const db=await openSpeechCache();if(!db)return;
+  await new Promise(resolve=>{
+    const tx=db.transaction('audio','readwrite');
+    tx.objectStore('audio').put({key,blob,savedAt:Date.now()});
+    tx.oncomplete=resolve;tx.onerror=resolve;tx.onabort=resolve;
+  });
+  // Keep the local cache bounded: retain the 40 most recently saved clips.
+  await new Promise(resolve=>{
+    const tx=db.transaction('audio','readwrite'),store=tx.objectStore('audio'),items=[];
+    const cursor=store.openCursor();
+    cursor.onsuccess=()=>{const c=cursor.result;if(c){items.push({key:c.key,savedAt:c.value.savedAt||0});c.continue();}else{
+      items.sort((a,b)=>b.savedAt-a.savedAt);
+      items.slice(40).forEach(item=>store.delete(item.key));resolve();
+    }};
+    cursor.onerror=resolve;
+  });
+}
 async function speak(text){
   if(!voiceOn)return;
   if(currentAudio){currentAudio.pause();currentAudio=null;}
-  status('Generating voice','thinking');
+  const spoken=String(text).trim().slice(0,4000);
+  if(!spoken)return;
+  const cacheKey=speechCacheKey(spoken);
+  status('Preparing voice','thinking');
   try{
-    const response=await fetch('https://jarvis-sigma-one-92.vercel.app/api/speech',{
-      method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({text:String(text).slice(0,4000)})
-    });
-    if(!response.ok){
-      const raw=await response.text();let data={};try{data=JSON.parse(raw)}catch{}
-      throw new Error(data.error||('Speech service returned HTTP '+response.status));
+    let blob=await getCachedSpeech(cacheKey);
+    if(blob){$('hint').textContent='Using the saved Alfred voice recording, Sir.';}
+    else{
+      status('Generating voice','thinking');
+      const response=await fetch('https://jarvis-sigma-one-92.vercel.app/api/speech',{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({text:spoken})
+      });
+      if(!response.ok){
+        const raw=await response.text();let data={};try{data=JSON.parse(raw)}catch{}
+        throw new Error(data.error||('Speech service returned HTTP '+response.status));
+      }
+      blob=new Blob([await response.arrayBuffer()],{type:'audio/wav'});
+      await saveCachedSpeech(cacheKey,blob);
     }
-    const blob=new Blob([await response.arrayBuffer()],{type:'audio/wav'});
     const audioUrl=URL.createObjectURL(blob);
     const audio=new Audio(audioUrl);currentAudio=audio;
     audio.onended=()=>{URL.revokeObjectURL(audioUrl);if(currentAudio===audio)currentAudio=null;status('System ready');};
