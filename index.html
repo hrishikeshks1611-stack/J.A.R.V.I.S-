@@ -425,23 +425,12 @@ async function playPcmStream(response,cacheKey){
 let speechQuotaCooldownUntil=0;
 let speechQuotaCooldownReason='';
 function startOfflineFallback(spoken,error){
-  let fallback='unavailable';
-  try{
-    if(window.AndroidJarvis&&typeof window.AndroidJarvis.speakOfflineFallback==='function'){
-      fallback=window.AndroidJarvis.speakOfflineFallback(spoken);
-    }
-  }catch(fallbackError){fallback='unavailable';}
-  if(fallback==='started'){
-    status('Offline voice active','speaking');
-    $('hint').textContent=error?.quota
-      ?'Google has temporarily limited new Algieba speech. I am using your installed offline British voice for now; I will retry Algieba after the cooldown, Sir.'
-      :'Online Algieba is temporarily unavailable. I am using your installed offline British voice so I can continue speaking, Sir.';
-    return true;
-  }
+  // Preserve the selected Algieba voice identity. Do not silently switch to an
+  // Android TTS voice whose gender may be misreported by the device engine.
   status('Voice service unavailable');
   $('hint').textContent=(error?.quota
     ?'Google has temporarily limited new Algieba speech. '
-    :'I could not generate Algieba speech, Sir. ')+(error?.message||'Speech generation failed.')+' Your device has no compatible offline male British voice installed.';
+    :'I could not generate Algieba speech, Sir. ')+(error?.message||'Speech generation failed.')+' I am keeping your selected voice unchanged and will retry Algieba on the next response, Sir.';
   return false;
 }
 async function speak(text){
