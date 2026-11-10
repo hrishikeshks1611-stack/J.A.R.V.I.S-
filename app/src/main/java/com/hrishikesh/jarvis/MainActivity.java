@@ -129,10 +129,17 @@ public class MainActivity extends Activity {
                 if (saved != null && !saved.isNetworkConnectionRequired()) chosen = saved;
             }
             if (chosen == null && textToSpeech.getVoices() != null) {
+                // Prefer voices explicitly marked male. Some Android engines omit gender
+                // metadata, so accept an unlabelled UK voice rather than disabling fallback.
                 for (Voice candidate : textToSpeech.getVoices()) {
-                    if (isBritish(candidate) && isExplicitlyMale(candidate)
-                            && !candidate.isNetworkConnectionRequired()) {
-                        if (chosen == null || candidate.getQuality() > chosen.getQuality()) chosen = candidate;
+                    if (!isBritish(candidate) || candidate.isNetworkConnectionRequired()) continue;
+                    if (isExplicitlyMale(candidate)) {
+                        if (chosen == null || !isExplicitlyMale(chosen)
+                                || candidate.getQuality() > chosen.getQuality()) chosen = candidate;
+                    } else if (!isExplicitlyFemale(candidate)
+                            && (chosen == null || (!isExplicitlyMale(chosen)
+                            && candidate.getQuality() > chosen.getQuality()))) {
+                        chosen = candidate;
                     }
                 }
             }
@@ -165,6 +172,17 @@ public class MainActivity extends Activity {
         if (name == null || name.isEmpty() || textToSpeech == null || textToSpeech.getVoices() == null) return null;
         for (Voice voice : textToSpeech.getVoices()) if (name.equals(voice.getName()) && isBritish(voice) && isExplicitlyMale(voice)) return voice;
         return null;
+    }
+
+    private boolean isExplicitlyFemale(Voice voice) {
+        String name = voice.getName() == null ? "" : voice.getName().toLowerCase(Locale.ROOT);
+        if (name.matches(".*(^|[-_ ])(female|feminine)([-_ ]|$).*")) return true;
+        if (voice.getFeatures() == null) return false;
+        for (String feature : voice.getFeatures()) {
+            String f = feature.toLowerCase(Locale.ROOT);
+            if (f.equals("gender=female") || f.equals("gender_female") || f.equals("female")) return true;
+        }
+        return false;
     }
 
     private JSONArray availableBritishVoices() {
