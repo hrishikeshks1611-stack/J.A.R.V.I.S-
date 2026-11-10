@@ -492,7 +492,10 @@ status('Thinking','thinking');$('hint').textContent='Processing your request…'
   $('hint').textContent='The online intelligence service is unavailable. Basic local commands remain available; open-ended reasoning requires a connection, Sir.';
   status('Offline mode');
  }
- add(fallback,'jarvis');history.push({role:'model',text:fallback});
+ add(fallback,'jarvis');history.push({role:'model',text:fallback});history=history.slice(-20);
+ // Preserve offline/basic-command exchanges in the same shared conversation so
+ // paired devices do not lose turns merely because Gemini was unavailable.
+ if(sessionToken)pairApi({action:'append-local',message,reply:fallback}).catch(()=>{});
  speak(fallback);
 }};
 window.jarvisNative={onSpeechResult:(transcript)=>{$('prompt').value=transcript;$('form').requestSubmit();},onAttachment:(raw)=>{try{const a=typeof raw==='string'?JSON.parse(raw):raw;pendingAttachment=a;renderAttachment();$('hint').textContent='Attachment ready, Sir. Add a question or send it as it is.'}catch(e){$('hint').textContent='I could not load that attachment, Sir.'}}};
