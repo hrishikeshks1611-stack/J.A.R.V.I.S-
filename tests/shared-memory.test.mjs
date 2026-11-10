@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { hashToken, randomToken, safeEqual, saveHistory, readHistory, getSession, appendConversationTurn, readMemories, addMemory, deleteMemory, clearMemories } from "../lib/jarvis-store.js";
+import { hashToken, randomToken, safeEqual, saveHistory, readHistory, getSession, appendConversationTurn, readMemories, addMemory, updateMemory, deleteMemory, clearMemories } from "../lib/jarvis-store.js";
 
 const originalFetch = globalThis.fetch;
 const originalUrl = process.env.UPSTASH_REDIS_REST_URL;
@@ -152,4 +152,20 @@ test("saved memory text is trimmed and bounded before storage", async () => {
   await addMemory("  " + "a".repeat(1200) + "  ");
   assert.equal(commandSeen[5].length, 1000);
   assert.equal(commandSeen[5][0], "a");
+});
+
+test("saved memories can be edited without changing their identity", async () => {
+  let commandSeen;
+  mockRedis(async command => {
+    commandSeen = command;
+    return JSON.stringify({ updated: true, items: [{ id: "memory-7", text: "Updated preference", createdAt: 1, updatedAt: 2 }] });
+  });
+  const result = await updateMemory("memory-7", "Updated preference");
+  assert.equal(result.updated, true);
+  assert.equal(result.items[0].id, "memory-7");
+  assert.equal(result.items[0].text, "Updated preference");
+  assert.equal(commandSeen[0], "EVAL");
+  assert.equal(commandSeen[4], "memory-7");
+  assert.equal(commandSeen[5], "Updated preference");
+  assert.ok(commandSeen[1].includes("item.text = ARGV[2]"));
 });
