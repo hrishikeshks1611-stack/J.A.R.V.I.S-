@@ -11,6 +11,7 @@ import android.os.Build;
 import android.os.IBinder;
 import android.os.Handler;
 import android.os.Looper;
+import android.util.Log;
 
 import org.json.JSONObject;
 import org.vosk.Model;
@@ -95,6 +96,7 @@ public class WakeWordService extends Service implements RecognitionListener {
             updateNotification("Microphone ON · offline wake-word detection active");
             speechService.startListening(this);
         } catch (Exception error) {
+            Log.e("WakeWordService", "Failed to prepare offline wake-word service", error);
             updateNotification("Wake-word setup failed. Open JARVIS and switch the microphone OFF.");
             getSharedPreferences("jarvis_wake_word", MODE_PRIVATE).edit().putBoolean("enabled", false).apply();
             stopSelf();
@@ -278,6 +280,7 @@ public class WakeWordService extends Service implements RecognitionListener {
     }
 
     @Override public void onError(Exception exception) {
+        Log.e("WakeWordService", "Offline speech recognition error", exception);
         updateNotification("Offline microphone error. Open JARVIS to turn it OFF.");
         getSharedPreferences("jarvis_wake_word", MODE_PRIVATE).edit().putBoolean("enabled", false).apply();
         stopSelf();
