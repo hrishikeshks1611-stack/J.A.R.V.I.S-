@@ -187,8 +187,9 @@ jobs:
             exit 1
           fi
           mark "Granting microphone permission."
-          adb_bounded 20 shell pm grant com.hrishikesh.jarvis android.permission.RECORD_AUDIO
-          adb_bounded 20 logcat -c
+          adb_bounded 60 shell pm grant com.hrishikesh.jarvis android.permission.RECORD_AUDIO
+          mark "Microphone permission granted; clearing emulator logs."
+          adb_bounded 30 logcat -c
 
           mark "Launching MainActivity (maximum 45 seconds)."
           adb_bounded 45 shell am start -W -n com.hrishikesh.jarvis/.MainActivity
