@@ -139,5 +139,7 @@ test("Mission Control exposes local diagnostics, a bounded briefing and explicit
   assert.ok(html.includes("const CUSTOM_ROUTINE_KEY='jarvisCustomRoutinesV1'"));
   assert.ok(html.includes("up to eight named routines"));
   assert.ok(html.includes("function applyLocalRoutine"));
+  assert.ok(html.includes("while(host.firstChild)host.removeChild(host.firstChild)"));
+  assert.ok(!html.includes("host.replaceChildren()"));
   assert.ok(html.includes("No background task or remote device action was started"));
 });
