@@ -178,7 +178,6 @@ export default async function handler(req, res) {
         });
       }
       await audit("success", { deviceId: session.deviceId, deviceName: session.deviceName, role: "owner", targetDeviceId: target });
-      await audit("success", { deviceId: session.deviceId, deviceName: session.deviceName, role: "owner", targetDeviceId: target });
       return res.status(200).json({ transferred: true, ownerDeviceId: result.ownerDeviceId, message: "JARVIS ownership has been transferred. This device is now a regular paired device." });
     }
     if (action === "revoke") {
