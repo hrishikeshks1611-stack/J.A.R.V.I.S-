@@ -103,6 +103,15 @@ export default async function handler(req, res) {
       await redisCommand("SET", JARVIS_PREFIX + "pair:" + hashToken(code), JSON.stringify({ createdBy: session.deviceId, createdAt: Date.now() }), "EX", "600", "NX");
       return res.status(200).json({ code, expiresIn: 600 });
     }
+    if (action === "security-audit") {
+      if (session.role !== "owner") return res.status(403).json({ error: "Only the owner device can view security events." });
+      const rows = await redisCommand("LRANGE", JARVIS_PREFIX + "security:audit", "0", "99") || [];
+      const events = rows.map(row => {
+        try { return typeof row === "string" ? JSON.parse(row) : row; }
+        catch { return null; }
+      }).filter(Boolean);
+      return res.status(200).json({ events });
+    }
     if (action === "devices") {
       if (session.role !== "owner") return res.status(403).json({ error: "Only the owner device can manage paired devices." });
       const ids = await redisCommand("SMEMBERS", JARVIS_PREFIX + "devices") || [];
