@@ -54,12 +54,15 @@ test("voice photo command opens the permission-controlled camera flow", async ()
   assert.ok(html.includes('capture="environment"'));
 });
 
-test("YouTube Music voice commands open the app or fall back to the existing WebView external-link bridge", async () => {
+test("YouTube Music play commands use the native playback request and disclose the search fallback", async () => {
   const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
   assert.ok(html.includes("const openYoutubeMusicOnly ="));
   assert.ok(html.includes("window.location.href='https://music.youtube.com/'"));
   assert.ok(html.includes("const musicCommand = message.match("));
-  assert.ok(html.includes("window.AndroidJarvis.openYoutubeMusicSearch(songQuery)"));
+  assert.ok(html.includes("window.AndroidJarvis.playYoutubeMusic(songQuery)"));
+  assert.ok(html.includes("startsWith('PLAY_REQUESTED:')"));
+  assert.ok(html.includes("Playback confirmation depends on YouTube Music."));
+  assert.ok(html.includes("Native playback control is not installed yet"));
   assert.ok(html.includes("'https://music.youtube.com/search?q='+encodeURIComponent(songQuery)"));
 });
 
@@ -184,4 +187,15 @@ test("owner-only Security Audit screen exposes activity filters", async () => {
   assert.ok(html.includes("pairApi({action:'security-audit'})"));
   assert.ok(html.includes("FIRST SEEN IN RECENT LOG"));
   assert.ok(html.includes("auditFailedOnly"));
+});
+
+
+test("Android bridge requests play-from-search from the YouTube Music package", async () => {
+  const java = await readFile(new URL("../app/src/main/java/com/hrishikesh/jarvis/MainActivity.java", import.meta.url), "utf8");
+  const manifest = await readFile(new URL("../app/src/main/AndroidManifest.xml", import.meta.url), "utf8");
+  assert.ok(java.includes("MediaStore.INTENT_ACTION_MEDIA_PLAY_FROM_SEARCH"));
+  assert.ok(java.includes("SearchManager.QUERY"));
+  assert.ok(java.includes('setPackage("com.google.android.apps.youtube.music")'));
+  assert.ok(java.includes("SEARCH_FALLBACK:"));
+  assert.ok(manifest.includes('package android:name="com.google.android.apps.youtube.music"'));
 });
