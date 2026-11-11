@@ -82,37 +82,4 @@ jobs:
           profile: pixel_2
           disable-animations: true
           script: |
-            set -euo pipefail
-            adb install app/build/outputs/apk/phone/debug/app-phone-debug.apk
-            adb shell pm grant com.hrishikesh.jarvis android.permission.RECORD_AUDIO
-            adb shell am start -n com.hrishikesh.jarvis/.MainActivity
-            sleep 5
-            # Use the debug-only launcher; the production service stays private.
-            adb shell am start -n com.hrishikesh.jarvis/.WakeWordTestActivity
-            ready=0
-            for attempt in $(seq 1 180); do
-              if adb shell dumpsys notification --noredact | grep -q "offline wake-word detection active"; then
-                ready=1
-                break
-              fi
-              if ! adb shell dumpsys activity services com.hrishikesh.jarvis | grep -q WakeWordService; then
-                echo "Wake-word service exited before the offline model became ready."
-                adb logcat -d -s AndroidRuntime:E WakeWordService:E
-                exit 1
-              fi
-              sleep 2
-            done
-            if [ "$ready" -ne 1 ]; then
-              echo "Wake-word model did not become ready within six minutes."
-              adb logcat -d -s AndroidRuntime:E WakeWordService:E
-              adb shell dumpsys notification --noredact | grep -i -A 5 -B 5 JARVIS || true
-              exit 1
-            fi
-            adb shell am start -n com.hrishikesh.jarvis/.WakeWordTestActivity -a com.hrishikesh.jarvis.TEST_STOP_WAKE
-            sleep 3
-            if adb shell dumpsys activity services com.hrishikesh.jarvis | grep -q WakeWordService; then
-              echo "Wake-word service did not stop cleanly."
-              adb logcat -d -s AndroidRuntime:E WakeWordService:E
-              exit 1
-            fi
-            echo "Android 10 foreground-service start, offline model load, and stop checks passed."
+            bash -lc 'set -euo pipefail; adb install app/build/outputs/apk/phone/debug/app-phone-debug.apk; adb shell pm grant com.hrishikesh.jarvis android.permission.RECORD_AUDIO; adb shell am start -n com.hrishikesh.jarvis/.MainActivity; sleep 5; adb shell am start -n com.hrishikesh.jarvis/.WakeWordTestActivity; ready=0; for attempt in $(seq 1 180); do if adb shell dumpsys notification --noredact | grep -q "offline wake-word detection active"; then ready=1; break; fi; if ! adb shell dumpsys activity services com.hrishikesh.jarvis | grep -q WakeWordService; then echo "Wake-word service exited before the offline model became ready."; adb logcat -d -s AndroidRuntime:E WakeWordService:E; exit 1; fi; sleep 2; done; if [ "$ready" -ne 1 ]; then echo "Wake-word model did not become ready within six minutes."; adb logcat -d -s AndroidRuntime:E WakeWordService:E; adb shell dumpsys notification --noredact | grep -i -A 5 -B 5 JARVIS || true; exit 1; fi; adb shell am start -n com.hrishikesh.jarvis/.WakeWordTestActivity -a com.hrishikesh.jarvis.TEST_STOP_WAKE; sleep 3; if adb shell dumpsys activity services com.hrishikesh.jarvis | grep -q WakeWordService; then echo "Wake-word service did not stop cleanly."; adb logcat -d -s AndroidRuntime:E WakeWordService:E; exit 1; fi; echo "Android 10 foreground-service start, offline model load, and stop checks passed."'
