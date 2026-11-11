@@ -289,18 +289,25 @@ public class MainActivity extends Activity {
 
             Intent play = new Intent(MediaStore.INTENT_ACTION_MEDIA_PLAY_FROM_SEARCH);
             play.setPackage("com.google.android.apps.youtube.music");
+            // Android's documented play-from-search contract requires BOTH the
+            // search query and a media-focus value. Without focus, some players
+            // open a results page instead of attempting playback.
+            play.putExtra(MediaStore.EXTRA_MEDIA_FOCUS, "vnd.android.cursor.item/*");
             play.putExtra(SearchManager.QUERY, query);
+            play.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
 
             if (play.resolveActivity(getPackageManager()) != null) {
-                runOnUiThread(() -> {
-                    try { startActivity(play); }
-                    catch (ActivityNotFoundException e) { openYoutubeMusicSearchFallback(query); }
-                });
-                return "PLAY_REQUESTED:YouTube Music received a play-from-search request for " + query + ".";
+                try {
+                    startActivity(play);
+                    return "PLAY_REQUESTED:Sent YouTube Music a play-from-search request for " + query + ".";
+                } catch (ActivityNotFoundException | SecurityException e) {
+                    runOnUiThread(() -> openYoutubeMusicSearchFallback(query));
+                    return "SEARCH_FALLBACK:YouTube Music rejected the play request; opened search results instead.";
+                }
             }
 
             runOnUiThread(() -> openYoutubeMusicSearchFallback(query));
-            return "SEARCH_FALLBACK:YouTube Music did not expose the play-from-search action on this device.";
+            return "SEARCH_FALLBACK:YouTube Music does not expose the play-from-search action on this device.";
         }
 
         private void openYoutubeMusicSearchFallback(String query) {
