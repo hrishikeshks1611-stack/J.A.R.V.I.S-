@@ -12,7 +12,7 @@ Implemented in the continuation line:
 - Mission Control reports local device/time/network/voice state and verifies the shared API session. Battery and paired-device count appear only where supported/authorised.
 - Local Daily Briefing and local Focus / Good Night / Normal routines. They do not read a calendar, fetch weather, schedule jobs, or control another device.
 - Owner-only security audit and privacy-protected source fingerprints.
-- Gemini TTS Algieba / en-GB remains the primary online voice. The client caches identical audio and applies cooldowns; Google quotas still apply. The Android British-English TTS fallback is a different local voice, not Algieba.
+- Gemini TTS Algieba / en-GB remains the primary online voice. The client caches identical audio and applies cooldowns; Google quotas still apply. Regression tests cover split SSE events, PCM chunk delivery, Algieba/en-GB request configuration, HTTP 429 quota handling, empty streams, and the paired-session gate. The Android British-English TTS fallback is a different local voice, not Algieba.
 
 ## 6.0 — productivity and file delivery
 
@@ -36,7 +36,7 @@ Implemented in part:
 
 - Offline fallback handles a small deterministic command set such as greetings, local date/time, permissioned location, and common web searches. There is no offline conversational language model.
 - `jarvis-intelligence-tools` / [PR #11](https://github.com/hrishikeshks1611-stack/J.A.R.V.I.S-/pull/11) contains an opt-in Vosk foreground-service prototype with a visible microphone notification and an OFF action. It is separate from the continuation release and is not merged or released.
-- PR #11's latest quality suite passed 82/82 tests and its phone/TV debug verification APKs compiled. The latest Android 10 API 29 emulator run (workflow 43028996091) successfully built the phone APK, verified its path, and installed the emulator image; the foreground-service/model-load/stop smoke step was still running at this report and has not yet passed.
+- PR #11's latest quality suite passed 82/82 tests and its phone/TV debug verification APKs compiled. The latest Android 10 API 29 emulator run (workflow 43028996091) successfully built the phone APK, verified its path, and installed the emulator image; the foreground-service/model-load/stop smoke step remains in progress and has not passed. A 25-minute job timeout and 180-second ADB wait guard were added to the workflow on the prototype branch, but the current run began before that guard was added.
 - The service uses a general US-English Vosk recogniser plus phrase matching, not a dedicated keyword-spotting model. False activations, British-accent command recognition, CPU/battery use, and recovery under real device conditions remain unverified. The archive's SHA-256 is not yet pinned to an independently verified publisher-controlled digest. Do not call this reliable or 24/7-ready.
 - Local Android TTS is a fallback and is not the Algieba voice.
 
@@ -63,8 +63,8 @@ These require durable queues/state, explicit provider scopes, per-device presenc
 ## Verification and release gates
 
 - PR #5 is merged. The continuation branch combines the latest `main` line with the follow-up 5.0 development work; review it before merging.
-- The latest continuation quality run passed **70/70 tests** on commit `ebb983413064207beb1ae0780db59279be92efa9`: syntax checks, shared-memory/agent/file/frontend regressions, and the read-only production API smoke all passed ([workflow 43030707175](https://github.com/hrishikeshks1611-stack/J.A.R.V.I.S-/actions/runs/43030707175)).
-- Android phone + TV compile checks passed on commit `2e41b6510caa80703b31091e646a007a5f333f44` ([workflow 43030454558](https://github.com/hrishikeshks1611-stack/J.A.R.V.I.S-/actions/runs/43030454558)). The later `ebb983` change only touched the web UI and frontend test; no Android source or Gradle files changed afterward. This is compile evidence, not physical-device testing.
+- The latest continuation quality run passed **74/74 tests** on commit `a3929f1aebf4863a60d13ee94a9d9c7c304d171f`: syntax checks, shared-memory/agent/file/frontend regressions, Algieba speech-stream tests, and the read-only production API smoke all passed ([workflow 43031227038](https://github.com/hrishikeshks1611-stack/J.A.R.V.I.S-/actions/runs/43031227038)).
+- Android phone + TV compile checks passed on the same commit ([workflow 43031227031](https://github.com/hrishikeshks1611-stack/J.A.R.V.I.S-/actions/runs/43031227031)). This is compile evidence, not physical-device testing.
 - The production smoke checks only prove that pairing status returns HTTP 200 and unauthenticated chat/speech/memory/backup requests return HTTP 401. They do not verify the production Gemini credential, authenticated user data, or the new continuation APIs.
 - Vercel still reports `Deployment rate limited — retry in 24 hours` for the latest continuation commit. The previously confirmed READY production deployment serves older main commit `869166cfb452fc5a822623b044e45b6ef71bcf29`; no production deployment is authorised.
 - GitHub Pages successfully deployed main commit `f1c10fdba6d2239703471deb2351cb9bc6273807`; it does not contain the continuation branch's tool-calling UI.
