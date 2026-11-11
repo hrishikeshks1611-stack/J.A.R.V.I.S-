@@ -157,6 +157,13 @@ test("full backup UI exports and restores shared conversation plus memories with
   assert.ok(html.includes("sessionRole!=='owner'"));
 });
 
+test("Cast control is honestly labelled as an Android settings shortcut, not in-app mirroring", async () => {
+  const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+  assert.ok(html.includes('id="castButton" type="button" aria-label="Open Android Cast settings"'));
+  assert.ok(html.includes("JARVIS does not mirror the screen itself"));
+  assert.ok(html.includes("JARVIS does not stream the screen itself"));
+});
+
 test("Mission Control exposes local diagnostics, a bounded briefing and explicit local-only routines", async () => {
   const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
   for (const id of ["missionButton", "missionPanel", "mcTime", "mcDevice", "mcNetwork", "mcBattery", "mcPair", "mcVoice", "runBriefing", "focusRoutine", "nightRoutine", "normalRoutine"]) {
