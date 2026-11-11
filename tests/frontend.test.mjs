@@ -39,7 +39,7 @@ test("one-time owner recovery is available on an unpaired phone", async () => {
 
 test("service worker cache version is bumped and script parses", async () => {
   const source = await readFile(new URL("../sw.js", import.meta.url), "utf8");
-  assert.ok(source.includes('const CACHE="jarvis-shell-v24"'));
+  assert.ok(source.includes('const CACHE="jarvis-shell-v25"'));
   assert.doesNotThrow(() => new Function(source));
 });
 
@@ -52,6 +52,15 @@ test("voice photo command opens the permission-controlled camera flow", async ()
   assert.ok(html.includes("Please use the camera shutter to take the photo."));
   assert.ok(html.includes('id="cameraInput"'));
   assert.ok(html.includes('capture="environment"'));
+});
+
+test("YouTube Music voice commands open the app or fall back to the existing WebView external-link bridge", async () => {
+  const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+  assert.ok(html.includes("const openYoutubeMusicOnly ="));
+  assert.ok(html.includes("window.location.href='https://music.youtube.com/'"));
+  assert.ok(html.includes("const musicCommand = message.match("));
+  assert.ok(html.includes("window.AndroidJarvis.openYoutubeMusicSearch(songQuery)"));
+  assert.ok(html.includes("'https://music.youtube.com/search?q='+encodeURIComponent(songQuery)"));
 });
 
 test("native app launch results are sent to shared conversation history", async () => {
