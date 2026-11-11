@@ -50,3 +50,62 @@ jobs:
           path: app/build/outputs/apk/tv/debug/app-tv-debug.apk
           if-no-files-found: error
           retention-days: 30
+
+  android-10-emulator-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          accept-android-sdk-licenses: true
+          packages: platform-tools
+      - name: Install Android platform
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+      - name: Build phone APK
+        run: gradle --no-daemon assemblePhoneDebug
+      - name: Smoke-test foreground microphone service on Android 10
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 29
+          arch: x86_64
+          profile: pixel_2
+          disable-animations: true
+          script: |
+            set -euo pipefail
+            adb install app/build/outputs/apk/phone/debug/app-phone-debug.apk
+            adb shell pm grant com.hrishikesh.jarvis android.permission.RECORD_AUDIO
+            adb shell am start -n com.hrishikesh.jarvis/.MainActivity
+            sleep 5
+            adb shell am start-foreground-service -n com.hrishikesh.jarvis/.WakeWordService
+            ready=0
+            for attempt in $(seq 1 90); do
+              if adb shell run-as com.hrishikesh.jarvis test -d files/vosk-model-small-en-us-0.15/am >/dev/null 2>&1; then
+                ready=1
+                break
+              fi
+              sleep 2
+            done
+            if [ "$ready" -ne 1 ]; then
+              adb logcat -d -s AndroidRuntime:E WakeWordService:E
+              echo "Vosk model did not finish downloading and loading on Android 10."
+              exit 1
+            fi
+            adb shell dumpsys activity services com.hrishikesh.jarvis | grep -q WakeWordService
+            adb shell am startservice -n com.hrishikesh.jarvis/.WakeWordService -a com.hrishikesh.jarvis.STOP_WAKE
+            sleep 3
+            if adb shell dumpsys activity services com.hrishikesh.jarvis | grep -q WakeWordService; then
+              echo "Wake-word service did not stop cleanly."
+              exit 1
+            fi
+            echo "Android 10 foreground-service start, offline model load, and stop checks passed."
