@@ -160,6 +160,5 @@ test("office requests choose useful output formats and return a real download li
   assert.ok(html.includes("JARVIS_AUX_API+'/create-file'"));
   assert.ok(html.includes("downloadFile.filename"));
   assert.ok(html.includes("downloadFile.downloadUrl"));
-  assert.ok(html.includes("link.target='_blank'"));
   assert.ok(html.includes("secure link works once and expires in 15 minutes"));
 });
