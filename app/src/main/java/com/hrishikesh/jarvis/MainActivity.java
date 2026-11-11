@@ -1,6 +1,7 @@
 package com.hrishikesh.jarvis;
 
 import android.app.Activity;
+import android.app.SearchManager;
 import android.Manifest;
 import android.content.pm.PackageManager;
 import android.content.ContentValues;
@@ -260,6 +261,39 @@ public class MainActivity extends Activity {
             return title(name) + " does not appear to be installed, Sir.";
         }
 
+
+        @JavascriptInterface public String playYoutubeMusic(String requested) {
+            final String query = requested == null ? "" : requested.trim();
+            if (query.isEmpty() || query.length() > 200) return "ERROR:Please provide a song title, Sir.";
+
+            Intent play = new Intent(MediaStore.INTENT_ACTION_MEDIA_PLAY_FROM_SEARCH);
+            play.setPackage("com.google.android.apps.youtube.music");
+            play.putExtra(SearchManager.QUERY, query);
+
+            if (play.resolveActivity(getPackageManager()) != null) {
+                runOnUiThread(() -> {
+                    try { startActivity(play); }
+                    catch (ActivityNotFoundException e) {
+                        openYoutubeMusicSearchFallback(query);
+                    }
+                });
+                return "PLAY_REQUESTED:YouTube Music received a play-from-search request for " + query + ".";
+            }
+
+            runOnUiThread(() -> openYoutubeMusicSearchFallback(query));
+            return "SEARCH_FALLBACK:YouTube Music did not expose the play-from-search action on this device.";
+        }
+
+        private void openYoutubeMusicSearchFallback(String query) {
+            Intent search = new Intent(Intent.ACTION_VIEW,
+                    Uri.parse("https://music.youtube.com/search?q=" + Uri.encode(query)));
+            try { startActivity(search); }
+            catch (ActivityNotFoundException e) {
+                Toast.makeText(MainActivity.this,
+                        "YouTube Music or a compatible browser is not available, Sir.",
+                        Toast.LENGTH_LONG).show();
+            }
+        }
 
         @JavascriptInterface public String openCastSettings() {
             runOnUiThread(() -> {
