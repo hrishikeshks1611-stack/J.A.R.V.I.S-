@@ -47,7 +47,7 @@ test("microphone listening is opt-in, visible, stoppable, and does not auto-rest
   assert.ok(service.includes('"Turn microphone OFF"'));
   assert.ok(service.includes("ACTION_STOP"));
   assert.ok(service.includes("active = false"));
-  assert.ok(service.includes("modelConnection.disconnect()"));
+  assert.ok(service.includes("connection.disconnect()"));
   assert.ok(manifest.includes("android.permission.FOREGROUND_SERVICE_MICROPHONE"));
   assert.ok(manifest.includes('android:foregroundServiceType="microphone"'));
 });
