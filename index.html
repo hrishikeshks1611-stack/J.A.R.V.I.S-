@@ -602,7 +602,7 @@ if(callCommand){
   status('System ready');speak(spoken);return;
  }
 }
-const recentCallsCommand=/^\s*(?:jarvis[, ]+)?(?:please\s+)?(?:show|open)\s+(?:my\s+)?(?:recent\s+)?(?:call\s+logs?|call\s+history|recent\s+calls)\s*[.!?]*\s*$/i.test(message);
+const recentCallsCommand=/^\s*(?:jarvis[, ]+)?(?:please\s+)?(?:show|open)\s+(?:my\s+)?(?:recent\s+)?(?:call\s+logs?|call\s+history|calls?)\s*[.!?]*\s*$/i.test(message);
 if(recentCallsCommand&&window.AndroidJarvis){
  const reply=window.AndroidJarvis.openApp('phone')+' Your Phone app has the recent-calls history; select Recents to view it, Sir.';
  add(reply,'jarvis');history.push({role:'model',text:reply});history=history.slice(-20);pairApi({action:'append-local',message,reply}).catch(()=>{});
