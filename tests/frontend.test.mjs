@@ -27,8 +27,21 @@ test("saved-memory UI is explicit and has deletion controls", async () => {
 
 test("service worker cache version is bumped and script parses", async () => {
   const source = await readFile(new URL("../sw.js", import.meta.url), "utf8");
-  assert.ok(source.includes('const CACHE="jarvis-shell-v24"'));
+  assert.ok(source.includes('const CACHE="jarvis-shell-v25"'));
   assert.doesNotThrow(() => new Function(source));
+});
+
+test("YouTube Music song commands route through the Android app search bridge", async () => {
+  const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+  const java = await readFile(new URL("../app/src/main/java/com/hrishikesh/jarvis/MainActivity.java", import.meta.url), "utf8");
+  const manifest = await readFile(new URL("../app/src/main/AndroidManifest.xml", import.meta.url), "utf8");
+  assert.ok(html.includes("const musicCommand = message.match("));
+  assert.ok(html.includes("window.AndroidJarvis.openYoutubeMusicSearch(songQuery)"));
+  assert.ok(java.includes("@JavascriptInterface public String openYoutubeMusicSearch(String songQuery)"));
+  assert.ok(java.includes("https://music.youtube.com/search"));
+  assert.ok(java.includes("com.google.android.apps.youtube.music"));
+  assert.ok(java.includes("query.length() > 200"));
+  assert.ok(manifest.includes('<package android:name="com.google.android.apps.youtube.music" />'));
 });
 
 test("native app launch results are sent to shared conversation history", async () => {

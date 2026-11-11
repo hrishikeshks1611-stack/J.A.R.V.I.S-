@@ -229,6 +229,7 @@ public class MainActivity extends Activity {
     private void registerApps() {
         appPackages.put("whatsapp", new String[]{"com.whatsapp"});
         appPackages.put("youtube", new String[]{"com.google.android.youtube"});
+        appPackages.put("youtube music", new String[]{"com.google.android.apps.youtube.music"});
         appPackages.put("chrome", new String[]{"com.android.chrome"});
         appPackages.put("gmail", new String[]{"com.google.android.gm"});
         appPackages.put("maps", new String[]{"com.google.android.apps.maps"});
@@ -278,6 +279,31 @@ public class MainActivity extends Activity {
             return title(name) + " does not appear to be installed, Sir.";
         }
 
+
+        @JavascriptInterface public String openYoutubeMusicSearch(String songQuery) {
+            String query = songQuery == null ? "" : songQuery.trim();
+            if (query.isEmpty() || query.length() > 200) {
+                return "Please tell me the song title, Sir.";
+            }
+            Uri searchUri = Uri.parse("https://music.youtube.com/search")
+                    .buildUpon().appendQueryParameter("q", query).build();
+            Intent musicSearch = new Intent(Intent.ACTION_VIEW, searchUri);
+            musicSearch.setPackage("com.google.android.apps.youtube.music");
+            musicSearch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            try {
+                startActivity(musicSearch);
+                return "Opening YouTube Music and searching for " + query + ", Sir.";
+            } catch (ActivityNotFoundException notInstalled) {
+                try {
+                    Intent browserSearch = new Intent(Intent.ACTION_VIEW, searchUri);
+                    browserSearch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    startActivity(browserSearch);
+                    return "YouTube Music app was not found. Opening its song search in your browser, Sir.";
+                } catch (ActivityNotFoundException noBrowser) {
+                    return "I could not find YouTube Music or a browser on this device, Sir.";
+                }
+            }
+        }
 
         @JavascriptInterface public String openCastSettings() {
             runOnUiThread(() -> {
