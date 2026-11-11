@@ -101,34 +101,34 @@ export default async function handler(req, res) {
       const script = [
         "if redis.call('GET', KEYS[1]) ~= '1' then return cjson.encode({ ok = false, reason = 'owner_missing' }) end",
         "if redis.call('EXISTS', KEYS[3]) == 1 then return cjson.encode({ ok = false, reason = 'already_used' }) end",
-        "local currentRaw = redis.call('GET', KEYS[4])"
-        "local currentDeviceRaw = redis.call('GET', KEYS[5])"
+        "local currentRaw = redis.call('GET', KEYS[4])",
+        "local currentDeviceRaw = redis.call('GET', KEYS[5])",
         "if not currentRaw or not currentDeviceRaw then return cjson.encode({ ok = false, reason = 'new_session_missing' }) end",
-        "local current = cjson.decode(currentRaw)"
-        "local currentDevice = cjson.decode(currentDeviceRaw)"
-        "local oldHash = redis.call('GET', KEYS[2])"
-        "if oldHash and oldHash ~= ARGV[1] then"
-        "  local oldSessionKey = ARGV[4] .. 'session:' .. oldHash"
-        "  local oldSessionRaw = redis.call('GET', oldSessionKey)"
-        "  if oldSessionRaw then"
-        "    local oldSession = cjson.decode(oldSessionRaw)"
-        "    oldSession.role = 'device'"
-        "    redis.call('SET', oldSessionKey, cjson.encode(oldSession), 'EX', ARGV[3])"
-        "    if oldSession.deviceId and oldSession.deviceId ~= ARGV[2] then"
-        "      local oldDeviceKey = ARGV[4] .. 'device:' .. oldSession.deviceId"
-        "      local oldDeviceRaw = redis.call('GET', oldDeviceKey)"
-        "      if oldDeviceRaw then local oldDevice = cjson.decode(oldDeviceRaw); oldDevice.role = 'device'; redis.call('SET', oldDeviceKey, cjson.encode(oldDevice), 'EX', ARGV[3]) end"
-        "    end"
-        "  end"
-        "end"
-        "current.role = 'owner'"
-        "currentDevice.role = 'owner'"
-        "redis.call('SET', KEYS[4], cjson.encode(current), 'EX', ARGV[3])"
-        "redis.call('SET', KEYS[5], cjson.encode(currentDevice), 'EX', ARGV[3])"
-        "redis.call('SADD', KEYS[6], ARGV[2])"
-        "redis.call('SET', KEYS[2], ARGV[1], 'EX', ARGV[3])"
-        "redis.call('SET', KEYS[3], '1')"
-        "return cjson.encode({ ok = true, deviceId = ARGV[2] })"
+        "local current = cjson.decode(currentRaw)",
+        "local currentDevice = cjson.decode(currentDeviceRaw)",
+        "local oldHash = redis.call('GET', KEYS[2])",
+        "if oldHash and oldHash ~= ARGV[1] then",
+        "  local oldSessionKey = ARGV[4] .. 'session:' .. oldHash",
+        "  local oldSessionRaw = redis.call('GET', oldSessionKey)",
+        "  if oldSessionRaw then",
+        "    local oldSession = cjson.decode(oldSessionRaw)",
+        "    oldSession.role = 'device'",
+        "    redis.call('SET', oldSessionKey, cjson.encode(oldSession), 'EX', ARGV[3])",
+        "    if oldSession.deviceId and oldSession.deviceId ~= ARGV[2] then",
+        "      local oldDeviceKey = ARGV[4] .. 'device:' .. oldSession.deviceId",
+        "      local oldDeviceRaw = redis.call('GET', oldDeviceKey)",
+        "      if oldDeviceRaw then local oldDevice = cjson.decode(oldDeviceRaw); oldDevice.role = 'device'; redis.call('SET', oldDeviceKey, cjson.encode(oldDevice), 'EX', ARGV[3]) end",
+        "    end",
+        "  end",
+        "end",
+        "current.role = 'owner'",
+        "currentDevice.role = 'owner'",
+        "redis.call('SET', KEYS[4], cjson.encode(current), 'EX', ARGV[3])",
+        "redis.call('SET', KEYS[5], cjson.encode(currentDevice), 'EX', ARGV[3])",
+        "redis.call('SADD', KEYS[6], ARGV[2])",
+        "redis.call('SET', KEYS[2], ARGV[1], 'EX', ARGV[3])",
+        "redis.call('SET', KEYS[3], '1')",
+        "return cjson.encode({ ok = true, deviceId = ARGV[2] })",
       ].join("\n");
       let raw;
       try {
