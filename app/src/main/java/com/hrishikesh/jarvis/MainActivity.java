@@ -300,7 +300,7 @@ public class MainActivity extends Activity {
             if (play.resolveActivity(getPackageManager()) != null) {
                 try {
                     startActivity(play);
-                    return "PLAY_REQUESTED:Sent YouTube Music a play-from-search request for " + query + ".";
+                    return "APP_OPENED_UNCONFIRMED:Opened YouTube Music with a play-from-search request for " + query + "; playback state is not available.";
                 } catch (ActivityNotFoundException | SecurityException e) {
                     runOnUiThread(() -> openYoutubeMusicSearchFallback(query));
                     return "SEARCH_FALLBACK:YouTube Music rejected the play request; opened search results instead.";
