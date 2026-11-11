@@ -50,6 +50,12 @@ footer{text-align:center;color:#577c99;font-size:10px;letter-spacing:.12em;paddi
    <input id="pairCode" autocomplete="off" maxlength="12" placeholder="8-character pairing code">
    <div class="sync-actions"><button class="sync-primary" id="pairDevice" type="button">Pair this device</button></div>
   </div>
+  <div id="recoveryArea" hidden>
+   <h3>Recover owner access</h3>
+   <p>This one-time recovery promotes this already-paired device to owner. It preserves shared memory and all paired-device records. Use only the recovery credential configured privately on the JARVIS server.</p>
+   <input id="ownerRecoveryCode" type="password" autocomplete="off" maxlength="128" placeholder="One-time owner recovery credential">
+   <div class="sync-actions"><button class="sync-primary" id="recoverOwner" type="button">Recover owner access</button></div>
+  </div>
   <div id="ownerArea" hidden>
    <p>This is your owner device. Generate a temporary code to connect your other devices.</p>
    <div class="sync-actions"><button class="sync-primary" id="createPairCode" type="button">Generate pairing code</button></div>
@@ -239,13 +245,13 @@ async function renderPairedDevices(){
  });
 }
 async function openSyncPanel(){
- $('syncPanel').hidden=false;$('setupArea').hidden=true;$('pairArea').hidden=true;$('ownerArea').hidden=true;
+ $('syncPanel').hidden=false;$('setupArea').hidden=true;$('pairArea').hidden=true;$('ownerArea').hidden=true;$('recoveryArea').hidden=true;
  try{
   if(sessionToken){
    const v=await pairApi({action:'verify'});sessionRole=v.role;sessionDeviceId=v.deviceId;
    $('syncStatus').textContent='Connected as '+v.deviceName+'. Shared conversation sync is active.';
    if(v.role==='owner'){$('ownerArea').hidden=false;await renderPairedDevices();}
-   else $('pairArea').hidden=true;
+   else {$('pairArea').hidden=true;$('recoveryArea').hidden=false;}
    return;
   }
   const statusData=await pairApi({action:'status'});
@@ -297,6 +303,19 @@ $('closeSync').onclick=()=>{if(sessionToken)$('syncPanel').hidden=true};
 $('claimDevice').onclick=async()=>{
  try{const data=await pairApi({action:'claim',setupCode:$('setupCode').value,deviceName:currentDeviceName()});storeSession(data);await restoreSharedHistory();$('hint').textContent=data.message+' Shared memory is ready, Sir.';}
  catch(e){$('syncStatus').textContent=e.message}
+};
+$('recoverOwner').onclick=async()=>{
+ const recoveryCode=$('ownerRecoveryCode').value;
+ if(!recoveryCode){$('syncStatus').textContent='Enter the owner recovery credential configured on the JARVIS server.';return;}
+ if(!confirm('Recover owner access on this laptop? This will transfer owner privileges from the previous owner session. Existing paired devices and shared memory will be preserved. This recovery credential can be used only once.'))return;
+ $('recoverOwner').disabled=true;
+ try{
+  const data=await pairApi({action:'recover-owner',recoveryCode});
+  $('ownerRecoveryCode').value='';
+  $('syncStatus').textContent=data.message;
+  await openSyncPanel();
+ }catch(e){$('syncStatus').textContent=e.message}
+ finally{$('recoverOwner').disabled=false}
 };
 $('pairDevice').onclick=async()=>{
  try{const data=await pairApi({action:'pair',pairingCode:$('pairCode').value,deviceName:currentDeviceName()});storeSession(data);await restoreSharedHistory();$('hint').textContent=data.message+' Shared memory is ready, Sir.';}
