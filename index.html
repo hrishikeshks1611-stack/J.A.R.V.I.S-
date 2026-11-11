@@ -503,10 +503,28 @@ const musicCommand = message.match(/^\s*(?:jarvis[, ]+)?(?:please\s+)?(?:play|op
 const explicitMusicCommand = /\byoutube\s+music\b/i.test(message) && musicCommand;
 if (musicCommand && (explicitMusicCommand || /^\s*(?:jarvis[, ]+)?(?:please\s+)?play\s+/i.test(message))) {
  const songQuery=musicCommand[1].trim().replace(/\s+(?:on|in)\s+youtube\s+music$/i,'').trim();
- if(songQuery && window.AndroidJarvis && typeof window.AndroidJarvis.openYoutubeMusicSearch==='function'){
-  const reply=window.AndroidJarvis.openYoutubeMusicSearch(songQuery);
+ if(songQuery){
+  let reply='';
+  let nativePlayback=false;
+  if(window.AndroidJarvis && typeof window.AndroidJarvis.playYoutubeMusic==='function'){
+   const nativeReply=window.AndroidJarvis.playYoutubeMusic(songQuery);
+   if(typeof nativeReply==='string'&&nativeReply.startsWith('PLAY_REQUESTED:')){
+    reply='I have sent YouTube Music a play request for '+songQuery+', Sir. Playback confirmation depends on YouTube Music.';
+    nativePlayback=true;
+   }else if(typeof nativeReply==='string'&&nativeReply.startsWith('SEARCH_FALLBACK:')){
+    reply='YouTube Music could not accept a direct play request, Sir. I have opened its search results for '+songQuery+'.';
+    nativePlayback=true;
+   }else{
+    reply=(nativeReply&&nativeReply.startsWith('ERROR:')?nativeReply.slice(6):'I could not send the playback request, Sir.');
+   }
+  }else{
+   reply='This JARVIS build can only search YouTube Music; its native playback control is not installed yet, Sir.';
+  }
   add(reply,'jarvis');history.push({role:'model',text:reply});history=history.slice(-20);pairApi({action:'append-local',message,reply}).catch(()=>{});
-  $('hint').textContent='Ready when you are.';status('System ready');speak(reply);return;
+  $('hint').textContent=nativePlayback?'Playback request sent to YouTube Music.':'Native playback control is not available in this installed app build.';
+  status('System ready');speak(reply);
+  if(!nativePlayback)window.location.href='https://music.youtube.com/search?q='+encodeURIComponent(songQuery);
+  return;
  }
 }
 const appCommand=message.match(/^\s*(?:jarvis[, ]+)?(?:please\s+)?(?:open|launch|start)\s+([a-z0-9 +.-]+?)(?:\s+app)?[.!?]*\s*$/i);
