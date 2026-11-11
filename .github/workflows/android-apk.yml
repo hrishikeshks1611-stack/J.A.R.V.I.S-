@@ -115,7 +115,13 @@ jobs:
             timeout --signal=TERM --kill-after=5s "${seconds}s" adb "$@"
           }
           mark "Creating Android 10 API 29 emulator."
-          echo "no" | timeout --signal=TERM --kill-after=5s 30s avdmanager create avd --force --name jarvis-api29 --package "system-images;android-29;google_apis;x86_64" --device pixel_2
+          export ANDROID_AVD_HOME="$RUNNER_TEMP/android-avd"
+          mkdir -p "$ANDROID_AVD_HOME"
+          echo "no" | timeout --signal=TERM --kill-after=5s 30s avdmanager create avd --force --name jarvis-api29 --package "system-images;android-29;google_apis;x86_64" --device pixel_2 -p "$ANDROID_AVD_HOME/jarvis-api29.avd"
+          mark "Verifying Android 10 AVD registration."
+          test -s "$ANDROID_AVD_HOME/jarvis-api29.ini"
+          test -d "$ANDROID_AVD_HOME/jarvis-api29.avd"
+          avdmanager list avd
           "$ANDROID_HOME/emulator/emulator" -avd jarvis-api29 -no-window -no-audio -no-boot-anim -no-snapshot -gpu swiftshader_indirect -accel off > "$RUNNER_TEMP/emulator.log" 2>&1 &
           EMULATOR_PID=$!
           cleanup() {
