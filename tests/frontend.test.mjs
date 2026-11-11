@@ -157,6 +157,15 @@ test("full backup UI exports and restores shared conversation plus memories with
   assert.ok(html.includes("sessionRole!=='owner'"));
 });
 
+test("animated 3D reactor remains the default and respects reduced-motion preferences", async () => {
+  const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+  assert.ok(html.includes("@keyframes reactorBreath"));
+  assert.ok(html.includes("@keyframes corePulse"));
+  assert.ok(html.includes(".ring{"));
+  assert.ok(html.includes("@media (prefers-reduced-motion: reduce)"));
+  assert.ok(html.includes(".reactor-core{animation:none!important}"));
+});
+
 test("Cast control is honestly labelled as an Android settings shortcut, not in-app mirroring", async () => {
   const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
   assert.ok(html.includes('id="castButton" type="button" aria-label="Open Android Cast settings"'));
