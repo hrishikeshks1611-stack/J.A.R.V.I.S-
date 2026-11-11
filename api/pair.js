@@ -88,6 +88,75 @@ export default async function handler(req, res) {
     const session = await getSession(req);
     if (!session) { await audit("denied", { reason: "missing_or_invalid_session" }); return res.status(401).json({ error: "This device is not paired with JARVIS. Open Devices & Sync to pair it." }); }
 
+    if (action === "recover-owner") {
+      const recoveryCode = String(body.recoveryCode || "");
+      const expectedRecoveryCode = process.env.JARVIS_OWNER_RECOVERY_CODE || "";
+      if (expectedRecoveryCode.length < 32) return res.status(503).json({ error: "Owner recovery is not configured on this JARVIS server yet." });
+      const attemptKey = JARVIS_PREFIX + "owner:recovery-attempts:" + hashToken(sourceMaterial);
+      const attempts = Number(await redisCommand("INCR", attemptKey));
+      if (attempts === 1) await redisCommand("EXPIRE", attemptKey, "3600");
+      if (attempts > 5) {
+        await audit("denied", { deviceId: session.deviceId, deviceName: session.deviceName, role: session.role, reason: "recovery_rate_limited" });
+        return res.status(429).json({ error: "Too many recovery attempts from this connection. Try again in one hour." });
+      }
+      if (!safeEqual(recoveryCode, expectedRecoveryCode)) {
+        await audit("denied", { deviceId: session.deviceId, deviceName: session.deviceName, role: session.role, reason: "invalid_owner_recovery_credential" });
+        return res.status(401).json({ error: "The owner recovery credential is not valid." });
+      }
+      const currentHash = hashToken(session.token);
+      const script = [
+        "if redis.call('GET', KEYS[1]) ~= '1' then return cjson.encode({ ok = false, reason = 'owner_missing' }) end",
+        "if redis.call('EXISTS', KEYS[3]) == 1 then return cjson.encode({ ok = false, reason = 'already_used' }) end",
+        "local currentRaw = redis.call('GET', KEYS[4])",
+        "local currentDeviceRaw = redis.call('GET', KEYS[5])",
+        "if not currentRaw or not currentDeviceRaw then return cjson.encode({ ok = false, reason = 'current_session_missing' }) end",
+        "local current = cjson.decode(currentRaw)",
+        "local currentDevice = cjson.decode(currentDeviceRaw)",
+        "local oldHash = redis.call('GET', KEYS[2])",
+        "if oldHash and oldHash ~= ARGV[1] then",
+        "  local oldSessionKey = ARGV[4] .. 'session:' .. oldHash",
+        "  local oldSessionRaw = redis.call('GET', oldSessionKey)",
+        "  if oldSessionRaw then",
+        "    local oldSession = cjson.decode(oldSessionRaw)",
+        "    oldSession.role = 'device'",
+        "    redis.call('SET', oldSessionKey, cjson.encode(oldSession), 'EX', ARGV[3])",
+        "    if oldSession.deviceId and oldSession.deviceId ~= ARGV[2] then",
+        "      local oldDeviceKey = ARGV[4] .. 'device:' .. oldSession.deviceId",
+        "      local oldDeviceRaw = redis.call('GET', oldDeviceKey)",
+        "      if oldDeviceRaw then local oldDevice = cjson.decode(oldDeviceRaw); oldDevice.role = 'device'; redis.call('SET', oldDeviceKey, cjson.encode(oldDevice), 'EX', ARGV[3]) end",
+        "    end",
+        "  end",
+        "end",
+        "current.role = 'owner'",
+        "currentDevice.role = 'owner'",
+        "redis.call('SET', KEYS[4], cjson.encode(current), 'EX', ARGV[3])",
+        "redis.call('SET', KEYS[5], cjson.encode(currentDevice), 'EX', ARGV[3])",
+        "redis.call('SADD', KEYS[6], ARGV[2])",
+        "redis.call('SET', KEYS[2], ARGV[1], 'EX', ARGV[3])",
+        "redis.call('SET', KEYS[3], '1')",
+        "return cjson.encode({ ok = true, deviceId = ARGV[2] })"
+      ].join("\n");
+      const raw = await redisCommand(
+        "EVAL", script, "6",
+        JARVIS_PREFIX + "owner:claimed",
+        JARVIS_PREFIX + "owner:token-hash",
+        JARVIS_PREFIX + "owner:recovery:used",
+        JARVIS_PREFIX + "session:" + currentHash,
+        JARVIS_PREFIX + "device:" + session.deviceId,
+        JARVIS_PREFIX + "devices",
+        currentHash, session.deviceId, String(JARVIS_SESSION_TTL), JARVIS_PREFIX
+      );
+      const result = typeof raw === "string" ? JSON.parse(raw) : raw;
+      if (!result?.ok) {
+        const reason = result?.reason;
+        const message = reason === "already_used" ? "The one-time owner recovery has already been used." : reason === "owner_missing" ? "No existing JARVIS owner record was found. Recovery was not performed." : "The current laptop session could not be safely promoted. No device records were removed.";
+        await audit("denied", { deviceId: session.deviceId, deviceName: session.deviceName, role: session.role, reason: reason || "recovery_failed" });
+        return res.status(409).json({ error: message });
+      }
+      await audit("success", { deviceId: session.deviceId, deviceName: session.deviceName, role: "owner", reason: "one_time_owner_recovery" });
+      return res.status(200).json({ recovered: true, deviceId: session.deviceId, deviceName: session.deviceName, role: "owner", message: "Owner access has been recovered on this device. Existing paired devices and shared memory were preserved." });
+    }
+
     if (action === "verify") {
       await audit("success", { deviceId: session.deviceId, deviceName: session.deviceName, role: session.role });
       return res.status(200).json({ deviceId: session.deviceId, deviceName: session.deviceName, role: session.role });
