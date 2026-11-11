@@ -166,6 +166,7 @@ export default async function handler(req, res) {
     const models = ["gemini-3.8-flash", "gemini-3.5-flash-lite", "gemini-flash-latest"];
     const toolContext = { deviceContext, memories: savedMemories, history: sharedHistory };
     const toolTrace = [];
+    const pendingActions = [];
     const MAX_TOOL_CALLS = 6;
     const MAX_MODEL_STEPS = 5;
     let response, data = {}, reply = "", lastUnavailable = "", lastFailureStatus = 503;
@@ -226,7 +227,8 @@ export default async function handler(req, res) {
           } else {
             try {
               result = await executeJarvisTool(call.name, call.args || {}, toolContext);
-              toolTrace.push({ tool: call.name, status: "success" });
+              if (result?.pendingAction) pendingActions.push(result.pendingAction);
+              toolTrace.push({ tool: call.name, status: result?.requiresConfirmation ? "confirmation_required" : "success" });
             } catch (error) {
               result = { ok: false, error: String(error?.message || "Tool execution failed.").slice(0, 240) };
               toolTrace.push({ tool: call.name, status: "failed" });
@@ -284,7 +286,7 @@ export default async function handler(req, res) {
     }
 
     await appendConversationTurn(message, reply);
-    return res.status(200).json({ reply, deviceId: session.deviceId, toolCalls: toolTrace });
+    return res.status(200).json({ reply, deviceId: session.deviceId, toolCalls: toolTrace, pendingActions });
   } catch (error) {
     console.error("JARVIS API failure:", error);
     return res.status(500).json({ error: "JARVIS server error: " + String(error?.message || error).slice(0, 300) });
