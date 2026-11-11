@@ -39,7 +39,7 @@ test("one-time owner recovery is available on an unpaired phone", async () => {
 
 test("service worker cache version is bumped and script parses", async () => {
   const source = await readFile(new URL("../sw.js", import.meta.url), "utf8");
-  assert.ok(source.includes('const CACHE="jarvis-shell-v25"'));
+  assert.ok(source.includes('const CACHE="jarvis-shell-v26"'));
   assert.doesNotThrow(() => new Function(source));
 });
 
@@ -184,4 +184,23 @@ test("owner-only Security Audit screen exposes activity filters", async () => {
   assert.ok(html.includes("pairApi({action:'security-audit'})"));
   assert.ok(html.includes("FIRST SEEN IN RECENT LOG"));
   assert.ok(html.includes("auditFailedOnly"));
+});
+
+
+test("contact calling requires confirmation and uses only the permissions it needs", async () => {
+  const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+  const java = await readFile(new URL("../app/src/main/java/com/hrishikesh/jarvis/MainActivity.java", import.meta.url), "utf8");
+  const manifest = await readFile(new URL("../app/src/main/AndroidManifest.xml", import.meta.url), "utf8");
+  assert.ok(html.includes("callCommand=message.match("));
+  assert.ok(html.includes("window.AndroidJarvis.callContact(contactName)"));
+  assert.ok(html.includes("Please confirm the call on your screen, Sir."));
+  assert.ok(html.includes("recentCallsCommand"));
+  assert.ok(java.includes("ContactsContract.CommonDataKinds.Phone.CONTENT_FILTER_URI"));
+  assert.ok(java.includes("Intent.ACTION_CALL"));
+  assert.ok(java.includes("Call"));
+  assert.ok(manifest.includes("android.permission.CALL_PHONE"));
+  assert.ok(java.includes("Manifest.permission.READ_CONTACTS"));
+  assert.ok(manifest.includes('android.permission.READ_CONTACTS'));
+  assert.ok(!manifest.includes('android.permission.READ_CALL_LOG'));
+  assert.ok(manifest.includes('android.permission.CALL_PHONE'));
 });

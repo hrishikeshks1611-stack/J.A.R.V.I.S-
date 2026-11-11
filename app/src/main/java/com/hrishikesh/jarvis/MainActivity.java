@@ -8,6 +8,7 @@ import android.content.ClipData;
 import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.provider.MediaStore;
+import android.provider.ContactsContract;
 import android.provider.AlarmClock;
 import android.provider.CalendarContract;
 import android.util.Base64;
@@ -43,6 +44,12 @@ public class MainActivity extends Activity {
     private static final int REQUEST_FILE = 4103;
     private static final int REQUEST_CAMERA = 4104;
     private static final int REQUEST_LOCATION = 4105;
+    private static final int REQUEST_CONTACTS = 4106;
+    private static final int REQUEST_CALL_PHONE = 4107;
+    private String pendingCallName;
+    private String pendingCallNumber;
+    private String pendingContactCall;
+    private JarvisBridge jarvisBridge;
     private GeolocationPermissions.Callback pendingGeoCallback;
     private String pendingGeoOrigin;
     private Uri pendingCameraUri;
@@ -70,7 +77,8 @@ public class MainActivity extends Activity {
         webView.getSettings().setAllowFileAccess(false);
         webView.getSettings().setAllowContentAccess(false);
         webView.getSettings().setGeolocationEnabled(true);
-        webView.addJavascriptInterface(new JarvisBridge(), "AndroidJarvis");
+        jarvisBridge = new JarvisBridge();
+        webView.addJavascriptInterface(jarvisBridge, "AndroidJarvis");
         webView.setWebChromeClient(new WebChromeClient() {
             @Override public void onGeolocationPermissionsShowPrompt(String origin, GeolocationPermissions.Callback callback) {
                 if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
@@ -260,6 +268,90 @@ public class MainActivity extends Activity {
             return title(name) + " does not appear to be installed, Sir.";
         }
 
+
+        @JavascriptInterface public String callContact(String requested) {
+            final String contactName = requested == null ? "" : requested.trim();
+            if (contactName.isEmpty() || contactName.length() > 100) return "ERROR:Please say the contact name, Sir.";
+            if (android.os.Build.VERSION.SDK_INT >= 23
+                    && checkSelfPermission(Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED) {
+                pendingContactCall = contactName;
+                runOnUiThread(() -> requestPermissions(
+                        new String[]{Manifest.permission.READ_CONTACTS}, REQUEST_CONTACTS));
+                return "PERMISSION_REQUIRED:Contacts permission is needed to find " + contactName + ".";
+            }
+            return resolveContactForCall(contactName);
+        }
+
+        private String resolveContactForCall(String requestedName) {
+            Cursor cursor = null;
+            try {
+                Uri filter = Uri.withAppendedPath(
+                        ContactsContract.CommonDataKinds.Phone.CONTENT_FILTER_URI, Uri.encode(requestedName));
+                cursor = getContentResolver().query(filter,
+                        new String[]{ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
+                                ContactsContract.CommonDataKinds.Phone.NUMBER},
+                        null, null, ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME + " ASC");
+                if (cursor == null || !cursor.moveToFirst()) return "NOT_FOUND:No saved phone contact matched " + requestedName + ".";
+                java.util.LinkedHashMap<String, String[]> matches = new java.util.LinkedHashMap<>();
+                java.util.LinkedHashMap<String, String[]> exactMatches = new java.util.LinkedHashMap<>();
+                do {
+                    String displayName = cursor.getString(0);
+                    String number = cursor.getString(1);
+                    if (number == null || number.trim().isEmpty()) continue;
+                    String key = number.replaceAll("[^0-9+]", "");
+                    if (key.isEmpty()) continue;
+                    matches.put(key, new String[]{displayName, number});
+                    if (displayName != null && displayName.equalsIgnoreCase(requestedName))
+                        exactMatches.put(key, new String[]{displayName, number});
+                } while (cursor.moveToNext());
+
+                java.util.Map<String, String[]> selected = exactMatches.isEmpty() ? matches : exactMatches;
+                if (selected.isEmpty()) return "NOT_FOUND:No phone number was saved for " + requestedName + ".";
+                if (selected.size() != 1) return "AMBIGUOUS:More than one phone number matched " + requestedName + ".";
+                String[] match = selected.values().iterator().next();
+                final String number = match[1];
+                final String name = match[0] == null ? requestedName : match[0];
+                runOnUiThread(() -> new android.app.AlertDialog.Builder(MainActivity.this)
+                        .setTitle("Call " + name + "?")
+                        .setMessage("JARVIS found this saved contact. Do you want to place the call?")
+                        .setPositiveButton("Call", (dialog, which) -> requestOrPlaceCall(name, number))
+                        .setNegativeButton("Cancel", (dialog, which) ->
+                                Toast.makeText(MainActivity.this, "Call cancelled, Sir.", Toast.LENGTH_SHORT).show())
+                        .show());
+                return "CONFIRMATION_SHOWN:Found " + name + ". Waiting for your confirmation.";
+            } catch (SecurityException error) {
+                return "ERROR:Contacts permission was not granted, Sir.";
+            } finally {
+                if (cursor != null) cursor.close();
+            }
+        }
+
+        private void requestOrPlaceCall(String name, String number) {
+            pendingCallName = name;
+            pendingCallNumber = number;
+            if (android.os.Build.VERSION.SDK_INT >= 23
+                    && checkSelfPermission(Manifest.permission.CALL_PHONE) != PackageManager.PERMISSION_GRANTED) {
+                requestPermissions(new String[]{Manifest.permission.CALL_PHONE}, REQUEST_CALL_PHONE);
+                return;
+            }
+            placePendingCall();
+        }
+
+        private void placePendingCall() {
+            final String name = pendingCallName;
+            final String number = pendingCallNumber;
+            pendingCallName = null;
+            pendingCallNumber = null;
+            if (number == null || number.trim().isEmpty()) return;
+            try {
+                Intent call = new Intent(Intent.ACTION_CALL, Uri.fromParts("tel", number, null));
+                startActivity(call);
+            } catch (SecurityException error) {
+                Toast.makeText(MainActivity.this, "Android did not grant permission to place the call, Sir.", Toast.LENGTH_LONG).show();
+            } catch (ActivityNotFoundException error) {
+                Toast.makeText(MainActivity.this, "No compatible Phone app is available, Sir.", Toast.LENGTH_LONG).show();
+            }
+        }
 
         @JavascriptInterface public String openCastSettings() {
             runOnUiThread(() -> {
@@ -545,6 +637,30 @@ public class MainActivity extends Activity {
 
     @Override public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == REQUEST_CONTACTS) {
+            String contactName = pendingContactCall;
+            pendingContactCall = null;
+            boolean granted = grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED;
+            if (granted && contactName != null) {
+                String result = jarvisBridge == null ? "ERROR:Phone controls are unavailable." : jarvisBridge.resolveContactForCall(contactName);
+                if (!result.startsWith("CONFIRMATION_SHOWN:")) {
+                    Toast.makeText(this, result.replaceFirst("^[A-Z_]+:", ""), Toast.LENGTH_LONG).show();
+                }
+            } else {
+                Toast.makeText(this, "Contacts access was not granted. No call was started, Sir.", Toast.LENGTH_LONG).show();
+            }
+            return;
+        }
+        if (requestCode == REQUEST_CALL_PHONE) {
+            boolean granted = grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED;
+            if (granted && jarvisBridge != null) jarvisBridge.placePendingCall();
+            else {
+                pendingCallName = null;
+                pendingCallNumber = null;
+                Toast.makeText(this, "Phone-call permission was denied. No call was placed, Sir.", Toast.LENGTH_LONG).show();
+            }
+            return;
+        }
         if (requestCode == REQUEST_LOCATION && pendingGeoCallback != null) {
             boolean precise = checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED;
             GeolocationPermissions.Callback callback = pendingGeoCallback;
