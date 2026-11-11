@@ -87,7 +87,7 @@ jobs:
             adb shell pm grant com.hrishikesh.jarvis android.permission.RECORD_AUDIO
             adb shell am start -n com.hrishikesh.jarvis/.MainActivity
             sleep 5
-            adb shell am start-foreground-service -n com.hrishikesh.jarvis/.WakeWordService
+            adb shell run-as com.hrishikesh.jarvis /system/bin/am start-foreground-service -n com.hrishikesh.jarvis/.WakeWordService
             ready=0
             for attempt in $(seq 1 90); do
               if adb shell run-as com.hrishikesh.jarvis test -d files/vosk-model-small-en-us-0.15/am >/dev/null 2>&1; then
@@ -102,7 +102,7 @@ jobs:
               exit 1
             fi
             adb shell dumpsys activity services com.hrishikesh.jarvis | grep -q WakeWordService
-            adb shell am startservice -n com.hrishikesh.jarvis/.WakeWordService -a com.hrishikesh.jarvis.STOP_WAKE
+            adb shell run-as com.hrishikesh.jarvis /system/bin/am startservice -n com.hrishikesh.jarvis/.WakeWordService -a com.hrishikesh.jarvis.STOP_WAKE
             sleep 3
             if adb shell dumpsys activity services com.hrishikesh.jarvis | grep -q WakeWordService; then
               echo "Wake-word service did not stop cleanly."
