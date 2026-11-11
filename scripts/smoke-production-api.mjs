@@ -1,4 +1,6 @@
-const base = (process.env.JARVIS_PRODUCTION_API || "https://jarvis-sigma-one-92.vercel.app/api").replace(/\/+$/, "");
+const rawBase = process.env.JARVIS_PRODUCTION_API || "https://jarvis-sigma-one-92.vercel.app/api";
+let base = rawBase;
+while (base.endsWith("/")) base = base.slice(0, -1);
 
 async function post(path, payload = {}) {
   const controller = new AbortController();
