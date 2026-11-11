@@ -206,19 +206,31 @@ public class WakeWordService extends Service implements RecognitionListener {
         catch (Exception ignored) { return ""; }
     }
 
-    @Override public void onResult(String hypothesis) { }
+    // Vosk emits each completed phrase through onResult when silence is detected.
+    // onFinalResult is only emitted when the audio stream ends, so handling only
+    // that callback would make a continuously-running wake word appear unresponsive.
+    @Override public void onResult(String hypothesis) {
+        handleRecognizedPhrase(hypothesis);
+    }
 
     @Override public void onPartialResult(String hypothesis) { }
 
     @Override public void onFinalResult(String hypothesis) {
-        String text = transcript(hypothesis).toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9 ]", " ").replaceAll("\\s+", " ").trim();
+        handleRecognizedPhrase(hypothesis);
+    }
+
+    private void handleRecognizedPhrase(String hypothesis) {
+        String text = transcript(hypothesis).toLowerCase(Locale.ROOT)
+                .replaceAll("[^a-z0-9 ]", " ").replaceAll("\\s+", " ").trim();
         if (text.isEmpty()) return;
+
         if (awaitingCommand) {
             awaitingCommand = false;
             broadcast(ACTION_COMMAND, text);
             updateNotification("Microphone ON · offline wake-word detection active");
             return;
         }
+
         int wake = text.lastIndexOf("jarvis");
         if (wake >= 0) {
             String command = text.substring(wake + "jarvis".length()).trim();
