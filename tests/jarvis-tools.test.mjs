@@ -57,24 +57,28 @@ test("unknown tools and malformed arguments fail closed", async () => {
 });
 
 test("alarm tool only prepares a valid action for explicit app confirmation", async () => {
-  const result = await executeJarvisTool("request_alarm", { hour: 21, minute: 5, label: "Study" });
+  const result = await executeJarvisTool("request_alarm", { hour: 21, minute: 5, label: "Study" }, { userMessage: "Set an alarm for 9:05 PM." });
   assert.equal(result.requiresConfirmation, true);
   assert.deepEqual(result.pendingAction, { type: "alarm", hour: 21, minute: 5, label: "Study" });
-  await assert.rejects(() => executeJarvisTool("request_alarm", { hour: 25, minute: 0, label: "Invalid" }));
+  await assert.rejects(() => executeJarvisTool("request_alarm", { hour: 25, minute: 0, label: "Invalid" }, { userMessage: "Set an alarm for 9:05 PM." }));
+  await assert.rejects(() => executeJarvisTool("request_alarm", { hour: 21, minute: 5, label: "Study" }, { userMessage: "How do I set an alarm?" }));
 });
 
 test("calendar tool requires future timezone-aware dates and caps event duration", async () => {
   const result = await executeJarvisTool("request_calendar_event", {
     title: "Project review", startIso: "2099-04-10T10:00:00+05:30",
     endIso: "2099-04-10T11:00:00+05:30", description: "Review milestones"
-  });
+  }, { userMessage: "Add a calendar event for the project review." });
   assert.equal(result.requiresConfirmation, true);
   assert.equal(result.pendingAction.type, "calendar");
   assert.ok(result.pendingAction.endMillis > result.pendingAction.beginMillis);
   await assert.rejects(() => executeJarvisTool("request_calendar_event", {
     title: "No offset", startIso: "2099-04-10T10:00:00", endIso: "2099-04-10T11:00:00"
-  }));
+  }, { userMessage: "Add a calendar event." }));
   await assert.rejects(() => executeJarvisTool("request_calendar_event", {
     title: "Too long", startIso: "2099-04-10T10:00:00Z", endIso: "2099-04-11T00:00:00Z"
-  }));
+  }, { userMessage: "Add a calendar event." }));
+  await assert.rejects(() => executeJarvisTool("request_calendar_event", {
+    title: "Meeting", startIso: "2099-04-10T10:00:00Z", endIso: "2099-04-10T11:00:00Z"
+  }, { userMessage: "How do I create a calendar event?" }));
 });
