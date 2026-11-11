@@ -15,6 +15,7 @@ import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Environment;
 import android.content.SharedPreferences;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -31,6 +32,7 @@ import android.webkit.WebViewClient;
 import android.widget.Toast;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Locale;
@@ -316,6 +318,57 @@ public class MainActivity extends Activity {
                 }
             });
             return "Opening Calendar so you can review and save " + eventTitle + ", Sir.";
+        }
+
+        @JavascriptInterface public String saveFile(String requestedName, String mimeType, String base64Data) {
+            String safeName = requestedName == null ? "JARVIS_file" : requestedName.replaceAll("[\\\\/:*?\\\"<>|\\\\\\\\]", "_").trim();
+            if (safeName.isEmpty() || safeName.length() > 120) safeName = "JARVIS_file";
+            Map<String, String> allowedTypes = new HashMap<>();
+            allowedTypes.put("application/pdf", ".pdf");
+            allowedTypes.put("application/vnd.openxmlformats-officedocument.wordprocessingml.document", ".docx");
+            allowedTypes.put("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", ".xlsx");
+            allowedTypes.put("application/vnd.openxmlformats-officedocument.presentationml.presentation", ".pptx");
+            String requiredExtension = allowedTypes.get(mimeType);
+            if (requiredExtension == null) return "ERROR:This file type is not supported for native download.";
+            if (!safeName.toLowerCase(Locale.ROOT).endsWith(requiredExtension)) safeName += requiredExtension;
+            if (base64Data == null || base64Data.isEmpty() || base64Data.length() > 42 * 1024 * 1024) {
+                return "ERROR:The file is empty or exceeds the 30 MB download limit.";
+            }
+            Uri savedUri = null;
+            try {
+                byte[] bytes = Base64.decode(base64Data, Base64.DEFAULT);
+                if (bytes.length == 0 || bytes.length > 30 * 1024 * 1024) {
+                    return "ERROR:The file is empty or exceeds the 30 MB download limit.";
+                }
+                if (android.os.Build.VERSION.SDK_INT < 29) {
+                    return "ERROR:Saving directly to Downloads requires Android 10 or newer on this app build.";
+                }
+                ContentValues values = new ContentValues();
+                values.put(MediaStore.Downloads.DISPLAY_NAME, safeName);
+                values.put(MediaStore.Downloads.MIME_TYPE, mimeType);
+                values.put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/JARVIS");
+                values.put(MediaStore.Downloads.IS_PENDING, 1);
+                savedUri = getContentResolver().insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values);
+                if (savedUri == null) throw new IllegalStateException("Android could not create the Downloads entry.");
+                try (OutputStream output = getContentResolver().openOutputStream(savedUri, "w")) {
+                    if (output == null) throw new IllegalStateException("Android could not open the Downloads file.");
+                    output.write(bytes);
+                    output.flush();
+                }
+                ContentValues complete = new ContentValues();
+                complete.put(MediaStore.Downloads.IS_PENDING, 0);
+                getContentResolver().update(savedUri, complete, null, null);
+                final String notice = safeName + " saved in Downloads/JARVIS.";
+                runOnUiThread(() -> Toast.makeText(MainActivity.this, notice, Toast.LENGTH_LONG).show());
+                return "SAVED:" + notice;
+            } catch (Exception error) {
+                if (savedUri != null) {
+                    try { getContentResolver().delete(savedUri, null, null); } catch (Exception ignored) { }
+                }
+                runOnUiThread(() -> Toast.makeText(MainActivity.this,
+                        "JARVIS could not save that file. Please try again, Sir.", Toast.LENGTH_LONG).show());
+                return "ERROR:Android could not save the file to Downloads.";
+            }
         }
 
         @JavascriptInterface public void chooseFile() {
