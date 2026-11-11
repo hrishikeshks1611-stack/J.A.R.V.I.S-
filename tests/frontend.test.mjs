@@ -34,7 +34,7 @@ test("one-time owner recovery is available on an unpaired phone", async () => {
   assert.ok(html.includes("fresh owner session on this phone"));
   assert.ok(html.includes("Recover JARVIS ownership on THIS PHONE"));
   assert.ok(html.includes("storeSession(data)"));
-  assert.ok(html.includes("Existing paired devices and shared memory are preserved"));
+  assert.ok(html.includes("All other paired-device records and shared memory are preserved"));
 });
 
 test("service worker cache version is bumped and script parses", async () => {
