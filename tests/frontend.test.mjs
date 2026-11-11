@@ -30,7 +30,7 @@ test("one-time owner recovery is available on an unpaired phone", async () => {
   assert.ok(html.includes('id="ownerRecoveryCode"'));
   assert.ok(html.includes("action:'recover-owner'"));
   assert.ok(html.includes("if(v.role==='owner')"));
-  assert.ok(html.includes("$ (recoveryArea)".replace("$ ", "$")));
+  assert.ok(html.includes("statusData.ownerClaimed"));
   assert.ok(html.includes("fresh owner session on this phone"));
   assert.ok(html.includes("Recover JARVIS ownership on THIS PHONE"));
   assert.ok(html.includes("storeSession(data)"));
