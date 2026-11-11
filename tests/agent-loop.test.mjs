@@ -5,11 +5,17 @@ import { hashToken } from "../lib/jarvis-store.js";
 
 const originalFetch = globalThis.fetch;
 const originalKey = process.env.JARVIS;
+const originalRedisUrl = process.env.UPSTASH_REDIS_REST_URL;
+const originalRedisToken = process.env.UPSTASH_REDIS_REST_TOKEN;
 
 test.afterEach(() => {
   globalThis.fetch = originalFetch;
   if (originalKey === undefined) delete process.env.JARVIS;
   else process.env.JARVIS = originalKey;
+  if (originalRedisUrl === undefined) delete process.env.UPSTASH_REDIS_REST_URL;
+  else process.env.UPSTASH_REDIS_REST_URL = originalRedisUrl;
+  if (originalRedisToken === undefined) delete process.env.UPSTASH_REDIS_REST_TOKEN;
+  else process.env.UPSTASH_REDIS_REST_TOKEN = originalRedisToken;
 });
 
 function response() {
@@ -24,6 +30,8 @@ function response() {
 
 test("chat agent executes an allow-listed tool and returns a confirmation-gated native action", async () => {
   process.env.JARVIS = "test-gemini-key";
+  process.env.UPSTASH_REDIS_REST_URL = "https://redis.example.test";
+  process.env.UPSTASH_REDIS_REST_TOKEN = "test-redis-token";
   const token = "paired-test-token";
   const redisCalls = [];
   const modelCalls = [];
