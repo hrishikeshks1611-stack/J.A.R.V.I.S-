@@ -505,25 +505,26 @@ if (musicCommand && (explicitMusicCommand || /^\s*(?:jarvis[, ]+)?(?:please\s+)?
  const songQuery=musicCommand[1].trim().replace(/\s+(?:on|in)\s+youtube\s+music$/i,'').trim();
  if(songQuery){
   let reply='';
-  let nativePlayback=false;
+  let playbackRequested=false;
+  let searchFallbackOpened=false;
   if(window.AndroidJarvis && typeof window.AndroidJarvis.playYoutubeMusic==='function'){
    const nativeReply=window.AndroidJarvis.playYoutubeMusic(songQuery);
    if(typeof nativeReply==='string'&&nativeReply.startsWith('PLAY_REQUESTED:')){
-    reply='I have sent YouTube Music a play request for '+songQuery+', Sir. Playback confirmation depends on YouTube Music.';
-    nativePlayback=true;
+    reply='I have sent YouTube Music a play request for '+songQuery+', Sir. The music app must confirm playback.';
+    playbackRequested=true;
    }else if(typeof nativeReply==='string'&&nativeReply.startsWith('SEARCH_FALLBACK:')){
-    reply='YouTube Music could not accept a direct play request, Sir. I have opened its search results for '+songQuery+'.';
-    nativePlayback=true;
+    reply='YouTube Music did not accept the direct play command, Sir. I could only open search results for '+songQuery+'. Please select a track to start playback.';
+    searchFallbackOpened=true;
    }else{
     reply=(nativeReply&&nativeReply.startsWith('ERROR:')?nativeReply.slice(6):'I could not send the playback request, Sir.');
    }
   }else{
-   reply='This JARVIS build can only search YouTube Music; its native playback control is not installed yet, Sir.';
+   reply='Native YouTube Music control is unavailable in this app build, Sir. I can only open search results.';
   }
   add(reply,'jarvis');history.push({role:'model',text:reply});history=history.slice(-20);pairApi({action:'append-local',message,reply}).catch(()=>{});
-  $('hint').textContent=nativePlayback?'Playback request sent to YouTube Music.':'Native playback control is not available in this installed app build.';
+  $('hint').textContent=playbackRequested?'Play request sent; waiting for YouTube Music.':(searchFallbackOpened?'Search opened; playback was not confirmed.':'YouTube Music playback request failed.');
   status('System ready');speak(reply);
-  if(!nativePlayback)window.location.href='https://music.youtube.com/search?q='+encodeURIComponent(songQuery);
+  if(!playbackRequested&&!searchFallbackOpened)window.location.href='https://music.youtube.com/search?q='+encodeURIComponent(songQuery);
   return;
  }
 }
