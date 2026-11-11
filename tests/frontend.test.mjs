@@ -212,3 +212,16 @@ test("permissioned tool calls are shown and alarm/calendar actions require a sep
   assert.ok(html.includes("data.toolCalls,data.pendingActions"));
   assert.ok(html.includes("deviceType,deviceName:deviceType,networkOnline:navigator.onLine!==false"));
 });
+
+
+test("shared conversation clearing requires explicit confirmation across paired devices", async () => {
+  const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+  assert.ok(html.includes("Clear the shared JARVIS conversation on all paired devices? This cannot be undone."));
+  assert.ok(html.includes("pairApi({action:'clear',confirm:true})"));
+});
+
+test("Office Engine describes inline file delivery without claiming an expiring secure link", async () => {
+  const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+  assert.ok(html.includes("The file is delivered directly to this device and is not retained in durable server history"));
+  assert.ok(!html.includes("The secure link works once and expires in 15 minutes"));
+});
