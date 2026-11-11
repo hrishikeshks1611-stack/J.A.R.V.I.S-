@@ -27,7 +27,7 @@ test("saved-memory UI is explicit and has deletion controls", async () => {
 
 test("service worker cache version is bumped and script parses", async () => {
   const source = await readFile(new URL("../sw.js", import.meta.url), "utf8");
-  assert.ok(source.includes('const CACHE="jarvis-shell-v27"'));
+  assert.ok(source.includes('const CACHE="jarvis-shell-v28"'));
   assert.doesNotThrow(() => new Function(source));
 });
 
@@ -38,14 +38,17 @@ test("YouTube Music song commands use native play-from-search and disclose fallb
   assert.ok(html.includes("const musicCommand = message.match("));
   assert.ok(html.includes("window.AndroidJarvis.playYoutubeMusic(songQuery)"));
   assert.ok(html.includes("startsWith('PLAY_REQUESTED:')"));
-  assert.ok(html.includes("The music app must confirm playback."));
+  assert.ok(html.includes("playback is not confirmed."));
   assert.ok(html.includes("Native YouTube Music control is unavailable in this app build"));
   assert.ok(java.includes("@JavascriptInterface public String playYoutubeMusic(String requested)"));
   assert.ok(java.includes("MediaStore.INTENT_ACTION_MEDIA_PLAY_FROM_SEARCH"));
+  assert.ok(java.includes("APP_OPENED_UNCONFIRMED:"));
   assert.ok(java.includes('"vnd.android.cursor.item/audio"'));
   assert.ok(java.includes("MediaStore.EXTRA_MEDIA_TITLE"));
   assert.ok(java.includes("SearchManager.QUERY"));
   assert.ok(html.includes("Search opened; playback was not confirmed."));
+  assert.ok(html.includes("YouTube Music opened; playback is unverified."));
+  assert.ok(html.includes("If it shows search results, please select the track."));
   assert.ok(html.includes("Please select a track to start playback."));
   assert.ok(java.includes("https://music.youtube.com/search?q="));
   assert.ok(java.includes("query.length() > 200"));
