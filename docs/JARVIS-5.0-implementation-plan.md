@@ -72,3 +72,12 @@ This branch is not production. Keep it isolated until the remaining acceptance t
 - Vercel's latest deployment attempt was rejected by its 24-hour deployment-rate limit. Do not treat the older READY preview as a build of the latest branch commit.
 - GitHub Pages and Vercel deploy separately; a release checklist must verify both before announcing a unified release.
 - Keep development isolated on a feature branch until all checks pass. Do not deploy unverified changes to production.
+
+
+## Follow-up engineering session
+
+- Mission Control now verifies the paired session against the JARVIS pairing API, reports backend reachability separately from the device network indicator, and shows the paired-device count only to the owner. Non-owner devices see an explicit owner-only status rather than a misleading count.
+- Custom routines are limited to eight named, 32-character entries and three allow-listed local modes (Focus, Good night, Normal). They are stored in this browser only and cannot invoke background jobs, remote-device actions, or arbitrary tools.
+- The quality workflow now installs the declared Office Engine runtime dependencies before running the full test suite. The previous failure at the latest branch head was specifically a missing `pdfkit` package, not a failing assertion in the shared-memory tests.
+- Android verification remains compile-only. A documentation-only file under `app/` triggers the existing phone/TV compile workflow without changing native runtime behavior or signing.
+

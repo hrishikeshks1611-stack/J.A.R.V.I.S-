@@ -26,7 +26,7 @@ test("saved-memory UI is explicit and has deletion controls", async () => {
 
 test("service worker cache version is bumped and script parses", async () => {
   const source = await readFile(new URL("../sw.js", import.meta.url), "utf8");
-  assert.ok(source.includes('const CACHE="jarvis-shell-v18"'));
+  assert.ok(source.includes('const CACHE="jarvis-shell-v19"'));
   assert.doesNotThrow(() => new Function(source));
 });
 
@@ -126,11 +126,18 @@ test("full backup UI exports and restores shared conversation plus memories with
 
 test("Mission Control exposes local diagnostics, a bounded briefing and explicit local-only routines", async () => {
   const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
-  for (const id of ["missionButton", "missionPanel", "mcTime", "mcDevice", "mcNetwork", "mcBattery", "mcPair", "mcVoice", "runBriefing", "focusRoutine", "nightRoutine", "normalRoutine"]) {
+  for (const id of ["missionButton", "missionPanel", "mcTime", "mcDevice", "mcNetwork", "mcBattery", "mcPair", "mcBackend", "mcDevices", "mcVoice", "runBriefing", "focusRoutine", "nightRoutine", "normalRoutine", "customRoutineName", "customRoutineMode", "saveCustomRoutine", "customRoutineList"]) {
     assert.ok(html.includes('id="' + id + '"'), "expected Mission Control control " + id);
   }
   assert.ok(html.includes("Calendar, weather and external schedule data are not connected"));
   assert.ok(html.includes("These routines change JARVIS interface and voice settings on this device only"));
   assert.ok(html.includes("function detectJarvisDevice"));
   assert.ok(html.includes("navigator.getBattery"));
+  assert.ok(html.includes("pairApi({action:'verify'})"));
+  assert.ok(html.includes("pairApi({action:'devices'})"));
+  assert.ok(html.includes("missionBackendStatus='Reachable · session verified'"));
+  assert.ok(html.includes("const CUSTOM_ROUTINE_KEY='jarvisCustomRoutinesV1'"));
+  assert.ok(html.includes("up to eight named routines"));
+  assert.ok(html.includes("function applyLocalRoutine"));
+  assert.ok(html.includes("No background task or remote device action was started"));
 });
