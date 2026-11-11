@@ -52,7 +52,7 @@ footer{text-align:center;color:#577c99;font-size:10px;letter-spacing:.12em;paddi
   </div>
   <div id="recoveryArea" hidden>
    <h3>Recover owner access</h3>
-   <p>This one-time recovery promotes this already-paired device to owner. It preserves shared memory and all paired-device records. Use only the recovery credential configured privately on the JARVIS server.</p>
+   <p>This one-time recovery creates a fresh owner session on this phone, even if its previous pairing expired. The previous owner remains paired as a regular device. All other paired-device records and shared memory are preserved. Use your private server recovery credential.</p>
    <input id="ownerRecoveryCode" type="password" autocomplete="off" maxlength="128" placeholder="One-time owner recovery credential">
    <div class="sync-actions"><button class="sync-primary" id="recoverOwner" type="button">Recover owner access</button></div>
   </div>
@@ -258,6 +258,7 @@ async function openSyncPanel(){
   $('syncStatus').textContent=statusData.ownerClaimed?'This JARVIS system already has an owner. Pair this device using a code from the owner device.':'This is the first device. Claim it as the owner to initialise your private JARVIS memory.';
   $('setupArea').hidden=statusData.ownerClaimed;
   $('pairArea').hidden=!statusData.ownerClaimed;
+  $('recoveryArea').hidden=!statusData.ownerClaimed;
  }catch(e){$('syncStatus').textContent=e.message}
 }
 $('syncButton').onclick=openSyncPanel;
@@ -305,10 +306,10 @@ $('claimDevice').onclick=async()=>{
 $('recoverOwner').onclick=async()=>{
  const recoveryCode=$('ownerRecoveryCode').value;
  if(!recoveryCode){$('syncStatus').textContent='Enter the owner recovery credential configured on the JARVIS server.';return;}
- if(!confirm('Recover owner access on this laptop? This will transfer owner privileges from the previous owner session. Existing paired devices and shared memory will be preserved. This recovery credential can be used only once.'))return;
+ if(!confirm('Recover JARVIS ownership on THIS PHONE? A fresh owner session will be created on this phone. The previous owner device remains paired as a regular device. All other paired devices and shared memory are preserved. This recovery credential can be used only once.'))return;
  $('recoverOwner').disabled=true;
  try{
-  const data=await pairApi({action:'recover-owner',recoveryCode});
+  const data=await pairApi({action:'recover-owner',recoveryCode,deviceName:currentDeviceName()});
   $('ownerRecoveryCode').value='';
   $('syncStatus').textContent=data.message;
   await openSyncPanel();
