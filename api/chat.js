@@ -217,15 +217,20 @@ export default async function handler(req, res) {
         // Preserve the model's function-call turn before returning tool results.
         modelContents.push(candidate.content);
         const functionResponses = [];
-        for (const part of functionCalls.slice(0, MAX_TOOL_CALLS - toolTrace.length)) {
+        for (const part of functionCalls) {
           const call = part.functionCall;
           let result;
-          try {
-            result = await executeJarvisTool(call.name, call.args || {}, toolContext);
-            toolTrace.push({ tool: call.name, status: "success" });
-          } catch (error) {
-            result = { ok: false, error: String(error?.message || "Tool execution failed.").slice(0, 240) };
-            toolTrace.push({ tool: call.name, status: "failed" });
+          if (toolTrace.length >= MAX_TOOL_CALLS) {
+            result = { ok: false, error: "The safe tool-call limit was reached; this request was not executed." };
+            toolTrace.push({ tool: call.name, status: "blocked" });
+          } else {
+            try {
+              result = await executeJarvisTool(call.name, call.args || {}, toolContext);
+              toolTrace.push({ tool: call.name, status: "success" });
+            } catch (error) {
+              result = { ok: false, error: String(error?.message || "Tool execution failed.").slice(0, 240) };
+              toolTrace.push({ tool: call.name, status: "failed" });
+            }
           }
           functionResponses.push({ functionResponse: { name: call.name, response: result } });
         }
