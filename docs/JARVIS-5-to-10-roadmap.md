@@ -19,7 +19,7 @@ Implemented in the continuation line:
 Implemented in the continuation line:
 - Office Engine creates PDF, DOCX, XLSX, PPTX, CSV, TXT, and Markdown from bounded, validated model output.
 - File responses are returned as inline base64 with a 3 MB generated-file cap and can be saved through the Android Downloads bridge when that bridge exists.
-- CSV export neutralises formula-like untrusted values before spreadsheet applications can evaluate them. Explicit XLSX formulas remain limited by a conservative allow-list.
+- CSV export neutralises formula-like untrusted values before spreadsheet applications can evaluate them. XLSX formulas are parsed against a strict grammar limited to local A1 references, arithmetic, ranges, and a small deterministic function allow-list; external workbook links, named ranges, dynamic/network functions, and arbitrary formula syntax are rejected.
 - The staging health endpoint reports that generated-file history is not durable. Conversation history may be stored separately in Upstash; the generated artifact itself is not retained as a durable file record.
 - A separate `jarvis-6.0-development` branch contains one-time download links with an in-process token store. That token store is not safe for multi-instance/restart durability and is not merged into this release line.
 

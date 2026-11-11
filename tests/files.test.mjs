@@ -25,6 +25,30 @@ test("artifact schema rejects unsupported formats and empty content", () => {
   assert.throws(() => validateArtifact({ title: "Unsafe", sheets: [{ name: "S", columns: ["A"], rows: [[{ formula: "WEBSERVICE(A1)" }]] }] }, "xlsx"), /unsafe formula/);
 });
 
+test("XLSX formulas are limited to local references, arithmetic and safe functions", () => {
+  const safe = validateArtifact({
+    title: "Safe formulas",
+    sheets: [{ name: "Budget", columns: ["Value"], rows: [
+      [{ formula: "=SUM(B2:B3)+ROUND(2.5,0)" }],
+      [{ formula: "A1*2-1" }]
+    ] }]
+  }, "xlsx");
+  assert.deepEqual(safe.sheets[0].rows[0][0], { formula: "SUM(B2:B3)+ROUND(2.5,0)" });
+  assert.deepEqual(safe.sheets[0].rows[1][0], { formula: "A1*2-1" });
+
+  for (const formula of [
+    "HYPERLINK(A1)", "IMAGE(A1)", "WEBSERVICE(A1)", "INDIRECT(A1)",
+    "SUM([Other.xlsx]Sheet1!A1:A2)", "MyNamedRange", "SUM(A1;B1)",
+    "SUM(A1)+HYPERLINK(B1)", "A1048577", "XFE1", "SUM(A1:B1048577)",
+    "1+2+3+".repeat(20)
+  ]) {
+    assert.throws(() => validateArtifact({
+      title: "Unsafe formula",
+      sheets: [{ name: "S", columns: ["Value"], rows: [[{ formula }]] }]
+    }, "xlsx"), /unsafe formula/, formula);
+  }
+});
+
 for (const format of ["pdf", "docx", "xlsx", "pptx", "csv", "txt", "md"]) {
   test(format.toUpperCase() + " export returns a non-empty file with a safe filename", async () => {
     const file = await createArtifactFile(sample, format);
