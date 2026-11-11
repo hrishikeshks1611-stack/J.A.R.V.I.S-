@@ -6,6 +6,7 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
+import android.util.Log;
 
 /**
  * Debug-only entry point used by Android emulator smoke tests.
@@ -18,12 +19,18 @@ public class WakeWordTestActivity extends Activity {
 
     @Override protected void onCreate(Bundle state) {
         super.onCreate(state);
+        boolean audioGranted = checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED;
+        Log.i("WakeWordTest", "Test launcher started; RECORD_AUDIO granted=" + audioGranted + ", action=" + getIntent().getAction());
         if (ACTION_STOP_TEST.equals(getIntent().getAction())) {
             stopService(new Intent(this, WakeWordService.class));
-        } else if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+            Log.i("WakeWordTest", "Requested wake-word service stop");
+        } else if (audioGranted) {
             Intent service = new Intent(this, WakeWordService.class);
             if (Build.VERSION.SDK_INT >= 26) startForegroundService(service);
             else startService(service);
+            Log.i("WakeWordTest", "Requested foreground wake-word service start");
+        } else {
+            Log.e("WakeWordTest", "Microphone permission was not granted; service was not started");
         }
         finish();
     }
