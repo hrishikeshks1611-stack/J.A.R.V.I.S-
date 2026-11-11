@@ -39,12 +39,14 @@ test("one-time owner recovery is available on an unpaired phone", async () => {
 
 test("service worker cache version is bumped and script parses", async () => {
   const source = await readFile(new URL("../sw.js", import.meta.url), "utf8");
-  assert.ok(source.includes('const CACHE="jarvis-shell-v22"'));
+  assert.ok(source.includes('const CACHE="jarvis-shell-v23"'));
   assert.doesNotThrow(() => new Function(source));
 });
 
 test("voice photo command opens the permission-controlled camera flow", async () => {
   const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+  assert.ok(html.includes("window.AndroidJarvis.saveFile(downloadFile.filename,downloadFile.mimeType||'application/octet-stream',downloadFile.data)"));
+  assert.ok(html.includes("link.textContent='Saved to Downloads'"));
   assert.ok(html.includes("const takePhotoCommand="));
   assert.ok(html.includes("$('camera').click()"));
   assert.ok(html.includes("Please use the camera shutter to take the photo."));
