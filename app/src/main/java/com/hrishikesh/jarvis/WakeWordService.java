@@ -9,6 +9,8 @@ import android.content.Intent;
 import android.content.pm.ServiceInfo;
 import android.os.Build;
 import android.os.IBinder;
+import android.os.Handler;
+import android.os.Looper;
 
 import org.json.JSONObject;
 import org.vosk.Model;
@@ -37,6 +39,11 @@ public class WakeWordService extends Service implements RecognitionListener {
     private volatile boolean stopped = false;
     private volatile boolean awaitingCommand = false;
     private volatile boolean preparing = false;
+    private final Handler commandTimeoutHandler = new Handler(Looper.getMainLooper());
+    private final Runnable commandTimeout = () -> {
+        awaitingCommand = false;
+        updateNotification("Microphone ON · offline wake-word detection active");
+    };
     private volatile HttpURLConnection modelConnection;
     private static volatile boolean active = false;
     private Model model;
@@ -240,17 +247,27 @@ public class WakeWordService extends Service implements RecognitionListener {
         if (text.isEmpty()) return;
 
         if (awaitingCommand) {
+            commandTimeoutHandler.removeCallbacks(commandTimeout);
             awaitingCommand = false;
             broadcast(ACTION_COMMAND, text);
             updateNotification("Microphone ON · offline wake-word detection active");
             return;
         }
 
-        int wake = text.lastIndexOf("jarvis");
+        // Match "jarvis" as a complete spoken token, never as a substring
+        // inside another word. Vosk is general speech recognition, not a
+        // dedicated keyword model, so this reduces (but cannot eliminate)
+        // false activations.
+        java.util.regex.Matcher wakeMatcher = java.util.regex.Pattern
+                .compile("\\bjarvis\\b").matcher(text);
+        int wake = -1;
+        while (wakeMatcher.find()) wake = wakeMatcher.start();
         if (wake >= 0) {
             String command = text.substring(wake + "jarvis".length()).trim();
             if (command.isEmpty()) {
                 awaitingCommand = true;
+                commandTimeoutHandler.removeCallbacks(commandTimeout);
+                commandTimeoutHandler.postDelayed(commandTimeout, 8000);
                 broadcast(ACTION_WAKE, null);
                 updateNotification("JARVIS awake · listening for your command");
             } else {
@@ -271,6 +288,8 @@ public class WakeWordService extends Service implements RecognitionListener {
     @Override public IBinder onBind(Intent intent) { return null; }
 
     @Override public void onDestroy() {
+        commandTimeoutHandler.removeCallbacks(commandTimeout);
+        awaitingCommand = false;
         stopped = true;
         active = false;
         HttpURLConnection connection = modelConnection;
