@@ -55,7 +55,9 @@ public class WakeWordService extends Service implements RecognitionListener {
             stopped = false;
             new Thread(this::prepareAndListen, "JarvisOfflineWake").start();
         }
-        return START_STICKY;
+        // Do not silently restart microphone capture after Android kills the process.
+        // The owner must explicitly turn the microphone back ON from JARVIS.
+        return START_NOT_STICKY;
     }
 
     private void prepareAndListen() {
