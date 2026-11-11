@@ -1,6 +1,8 @@
 package com.hrishikesh.jarvis;
 
 import android.app.Activity;
+import android.content.BroadcastReceiver;
+import android.content.IntentFilter;
 import android.Manifest;
 import android.content.pm.PackageManager;
 import android.content.ContentValues;
@@ -51,6 +53,7 @@ public class MainActivity extends Activity {
     private SharedPreferences voicePrefs;
     private String pendingSpeech = null;
     private final Map<String, String[]> appPackages = new HashMap<>();
+    private BroadcastReceiver wakeWordReceiver;
 
     @Override public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -58,6 +61,23 @@ public class MainActivity extends Activity {
         getWindow().setNavigationBarColor(android.graphics.Color.rgb(5, 11, 24));
         registerApps();
         initializeOfflineSpeech();
+        wakeWordReceiver = new BroadcastReceiver() {
+            @Override public void onReceive(android.content.Context context, Intent intent) {
+                String action = intent == null ? null : intent.getAction();
+                if (WakeWordService.ACTION_WAKE.equals(action)) {
+                    if (ttsReady && textToSpeech != null) textToSpeech.speak("Yes, Sir?", TextToSpeech.QUEUE_FLUSH, null, "JARVIS_WAKE");
+                    if (webView != null) webView.evaluateJavascript("window.jarvisNative && window.jarvisNative.onWakeWordDetected && window.jarvisNative.onWakeWordDetected()", null);
+                } else if (WakeWordService.ACTION_COMMAND.equals(action)) {
+                    String command = intent.getStringExtra(WakeWordService.EXTRA_COMMAND);
+                    if (command != null && webView != null) webView.evaluateJavascript("window.jarvisNative && window.jarvisNative.onSpeechResult(" + JSONObject.quote(command) + ")", null);
+                }
+            }
+        };
+        IntentFilter wakeFilter = new IntentFilter();
+        wakeFilter.addAction(WakeWordService.ACTION_WAKE);
+        wakeFilter.addAction(WakeWordService.ACTION_COMMAND);
+        if (android.os.Build.VERSION.SDK_INT >= 33) registerReceiver(wakeWordReceiver, wakeFilter, android.content.Context.RECEIVER_NOT_EXPORTED);
+        else registerReceiver(wakeWordReceiver, wakeFilter);
         webView = new WebView(this);
         webView.setFocusable(true);
         webView.setFocusableInTouchMode(true);
@@ -471,6 +491,10 @@ public class MainActivity extends Activity {
             runOnUiThread(() -> { if (textToSpeech != null) textToSpeech.stop(); });
         }
 
+        @JavascriptInterface public void openWakeWordSettings() {
+            runOnUiThread(() -> startActivity(new Intent(MainActivity.this, WakeWordActivity.class)));
+        }
+
         @JavascriptInterface public void startVoiceRecognition() {
             runOnUiThread(() -> {
                 Intent intent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
@@ -605,6 +629,7 @@ public class MainActivity extends Activity {
     }
 
     @Override protected void onDestroy() {
+        if (wakeWordReceiver != null) { try { unregisterReceiver(wakeWordReceiver); } catch (Exception ignored) { } wakeWordReceiver = null; }
         if (textToSpeech != null) { textToSpeech.stop(); textToSpeech.shutdown(); }
         if (webView != null) webView.destroy();
         super.onDestroy();
