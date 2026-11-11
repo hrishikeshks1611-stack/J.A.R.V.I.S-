@@ -26,7 +26,7 @@ test("saved-memory UI is explicit and has deletion controls", async () => {
 
 test("service worker cache version is bumped and script parses", async () => {
   const source = await readFile(new URL("../sw.js", import.meta.url), "utf8");
-  assert.ok(source.includes('const CACHE="jarvis-shell-v19"'));
+  assert.ok(source.includes('const CACHE="jarvis-shell-v20"'));
   assert.doesNotThrow(() => new Function(source));
 });
 
@@ -142,4 +142,17 @@ test("Mission Control exposes local diagnostics, a bounded briefing and explicit
   assert.ok(html.includes("while(host.firstChild)host.removeChild(host.firstChild)"));
   assert.ok(!html.includes("host.replaceChildren()"));
   assert.ok(html.includes("No background task or remote device action was started"));
+});
+
+
+test("AI tool reports and native confirmation actions are rendered safely", async () => {
+  const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+  assert.ok(html.includes("function add(text,who,attachment,toolCalls,pendingActions)"));
+  assert.ok(html.includes("data.toolCalls,data.pendingActions"));
+  assert.ok(html.includes("Review alarm in Clock"));
+  assert.ok(html.includes("Review calendar event"));
+  assert.ok(html.includes("Clock opened · confirm the alarm there"));
+  assert.ok(html.includes("Calendar editor opened · save there to confirm"));
+  assert.ok(html.includes("textContent=toolCalls.map"));
+  assert.ok(html.includes("networkOnline:navigator.onLine!==false"));
 });

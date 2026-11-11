@@ -31,17 +31,21 @@ Implemented in part:
 
 ## 8.0 — offline autonomy and wake-word
 
-- The offline fallback handles a small set of deterministic local commands only.
-- There is no offline conversational language model and no native continuous wake-word/background microphone service in this release line.
-- A real Android wake-word service needs a foreground-service design, persistent microphone notification, runtime permission and kill switch, battery/reboot handling, and Android 10 hardware testing. Android TV and laptop browsers have different constraints.
+- The offline fallback in the 5.0 line handles a small set of deterministic local commands only; there is no offline conversational language model.
+- A separate `jarvis-intelligence-tools` branch contains a Vosk-based Android foreground-service prototype. It processes microphone audio locally, shows an ongoing notification with an OFF action, uses `START_NOT_STICKY`, and downloads the small English model on first setup.
+- That prototype uses general speech recognition plus word matching, not a dedicated keyword model. It has not been merged into the 5.0 development line. The model archive is size/path bounded but does not yet have a pinned SHA-256 checksum; false activations, battery use, service recovery, and physical Android 10 behavior still require testing.
+- The Android 10 emulator start/model-load/stop smoke test is separate from physical-device validation. Do not call wake-word reliable or installed until the emulator run passes and the user's phone is tested.
 - Local Android TTS fallback is not the same voice as online Gemini Algieba.
 
 ## 9.0 — permissioned agent workflows
 
-Not yet shipped as a general-purpose autonomous tool-calling system:
-- Existing actions are explicit and allow-listed; they do not grant arbitrary shell, contact, message, file-system, or account access.
-- A safe future tool registry needs typed schemas, per-tool permission scopes, confirmation for consequential actions, timeouts, idempotency, audit records, cancellation, and regression tests.
-- External services require user-authorised connectors and their own API/permission constraints.
+Implemented in the 5.0 development line as a bounded first tool-calling layer:
+- Gemini function calling can select from six explicit tools: safe arithmetic, supplied device status, pending alarm request, pending calendar-event request, saved-memory search, and shared-conversation search.
+- The server enforces an allow-list, a six-call limit, a five-step model limit, bounded arguments, and model fallbacks. It never evaluates model output as JavaScript, shell, or arbitrary URLs.
+- Alarm and calendar tools only return pending actions. The UI requires a separate user click and opens the native Clock/Calendar editor; the user must confirm/save there.
+- Memory and conversation search are read-only. Device status reports only fields explicitly supplied by the paired app.
+- This is a permissioned foundation, not an unrestricted autonomous agent. External account actions, arbitrary files, messaging, and shell execution remain out of scope.
+- Regression tests cover tool validation, explicit-intent checks, confirmation-gated actions, and the chat agent loop.
 
 ## 10.0 — coordinated personal assistant
 
