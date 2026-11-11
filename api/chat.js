@@ -220,7 +220,7 @@ export default async function handler(req, res) {
         for (const part of functionCalls) {
           const call = part.functionCall;
           let result;
-          if (toolTrace.length >= MAX_TOOL_CALLS) {
+          if (toolTrace.length >= MAX_TOOL_CALLS || step === MAX_MODEL_STEPS - 1) {
             result = { ok: false, error: "The safe tool-call limit was reached; this request was not executed." };
             toolTrace.push({ tool: call.name, status: "blocked" });
           } else {
