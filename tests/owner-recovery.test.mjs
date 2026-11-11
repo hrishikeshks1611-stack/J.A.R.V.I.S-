@@ -38,7 +38,7 @@ test("owner recovery requires a valid paired session and atomically preserves de
     } else if (command[0] === "INCR") result = 1;
     else if (command[0] === "EVAL") {
       assert.equal(command[2], "6");
-      assert.ok(command[1].includes("owner:recovery:used"));
+      assert.equal(command[5], "jarvis:v1:owner:recovery:used");
       assert.ok(command[1].includes("oldSession.role = 'device'"));
       assert.ok(command[1].includes("current.role = 'owner'"));
       assert.ok(command[1].includes("currentDevice.role = 'owner'"));
