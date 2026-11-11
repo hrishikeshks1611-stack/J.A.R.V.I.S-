@@ -4,7 +4,7 @@ name: Build JARVIS Android and TV APK verification artifacts
 on:
   workflow_dispatch:
   push:
-    branches: [ main ]
+    branches: [ main, jarvis-intelligence-tools ]
     paths:
       - 'app/**'
       - '*.gradle'
