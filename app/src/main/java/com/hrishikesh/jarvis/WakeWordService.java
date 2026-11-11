@@ -36,11 +36,17 @@ public class WakeWordService extends Service implements RecognitionListener {
     private static final String MODEL_URL = "https://alphacephei.com/vosk/models/vosk-model-small-en-us-0.15.zip";
     private volatile boolean stopped = false;
     private volatile boolean awaitingCommand = false;
+    private volatile boolean preparing = false;
+    private volatile HttpURLConnection modelConnection;
+    private static volatile boolean active = false;
     private Model model;
     private SpeechService speechService;
 
+    public static boolean isActive() { return active; }
+
     @Override public void onCreate() {
         super.onCreate();
+        active = true;
         createChannel();
         startForegroundCompat("Preparing offline wake-word engine. Audio stays on this phone.");
     }
@@ -51,9 +57,12 @@ public class WakeWordService extends Service implements RecognitionListener {
             stopSelf();
             return START_NOT_STICKY;
         }
-        if (model == null && speechService == null) {
-            stopped = false;
-            new Thread(this::prepareAndListen, "JarvisOfflineWake").start();
+        synchronized (this) {
+            if (!preparing && model == null && speechService == null) {
+                preparing = true;
+                stopped = false;
+                new Thread(this::prepareAndListen, "JarvisOfflineWake").start();
+            }
         }
         // Do not silently restart microphone capture after Android kills the process.
         // The owner must explicitly turn the microphone back ON from JARVIS.
@@ -82,11 +91,14 @@ public class WakeWordService extends Service implements RecognitionListener {
             updateNotification("Wake-word setup failed. Open JARVIS and switch the microphone OFF.");
             getSharedPreferences("jarvis_wake_word", MODE_PRIVATE).edit().putBoolean("enabled", false).apply();
             stopSelf();
+        } finally {
+            preparing = false;
         }
     }
 
     private void downloadModel(File destination) throws Exception {
         HttpURLConnection connection = (HttpURLConnection) new URL(MODEL_URL).openConnection();
+        modelConnection = connection;
         connection.setConnectTimeout(20000);
         connection.setReadTimeout(60000);
         connection.setInstanceFollowRedirects(true);
@@ -111,6 +123,7 @@ public class WakeWordService extends Service implements RecognitionListener {
             }
         } finally {
             connection.disconnect();
+            modelConnection = null;
         }
     }
 
@@ -259,6 +272,9 @@ public class WakeWordService extends Service implements RecognitionListener {
 
     @Override public void onDestroy() {
         stopped = true;
+        active = false;
+        HttpURLConnection connection = modelConnection;
+        if (connection != null) connection.disconnect();
         if (speechService != null) {
             speechService.stop();
             speechService.shutdown();
