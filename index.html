@@ -55,11 +55,12 @@ footer{text-align:center;color:#577c99;font-size:10px;letter-spacing:.12em;paddi
    <div class="sync-actions"><button class="sync-primary" id="createPairCode" type="button">Generate pairing code</button></div>
    <p id="pairDisplay" class="sync-code"></p>
    <p class="sync-muted">Each code expires after 10 minutes and can be used once.</p>
-   <h3>Paired devices</h3><div id="deviceList"></div>
+   <h3>Paired devices</h3><div id="deviceList"></div><div class="sync-actions"><button id="openSecurityAudit" type="button">Security Audit</button></div>
   </div>
   <div class="sync-actions"><button id="closeSync" type="button">Close</button></div>
  </div>
 </section>
+<section class="sync-panel" id="securityPanel" hidden aria-modal="true" role="dialog" aria-labelledby="securityTitle"><div class="sync-card"><h2 id="securityTitle">J.A.R.V.I.S. · SECURITY AUDIT</h2><p id="securityStatus">Owner-only security activity. Loading…</p><div class="mission-grid"><div class="mission-tile"><strong>RECENT EVENTS</strong><span id="auditTotal">—</span></div><div class="mission-tile"><strong>FAILED ATTEMPTS</strong><span id="auditFailed">—</span></div><div class="mission-tile"><strong>NEW SOURCES</strong><span id="auditNewSources">—</span></div></div><p class="sync-muted">Source IDs are one-way fingerprints of the connecting network address and browser. They are not exact device identities or proof of an attacker. No passwords, setup codes, pairing codes or raw IP addresses are displayed.</p><div class="sync-actions"><button id="auditAll" type="button">All activity</button><button id="auditFailedOnly" type="button">Failed attempts</button><button id="auditNewOnly" type="button">New sources</button><button id="refreshAudit" type="button">Refresh</button></div><div id="auditList"></div><div class="sync-actions"><button id="closeSecurityAudit" type="button">Close</button></div></div></section>
 <section class="sync-panel" id="memoryPanel" hidden aria-modal="true" role="dialog" aria-labelledby="memoryTitle">
  <div class="sync-card">
   <h2 id="memoryTitle">J.A.R.V.I.S. · SAVED MEMORY</h2>
@@ -254,6 +255,44 @@ async function openSyncPanel(){
  }catch(e){$('syncStatus').textContent=e.message}
 }
 $('syncButton').onclick=openSyncPanel;
+let securityEvents=[],securityDevices=[],securityFilter='all';
+function renderSecurityAudit(){
+ const known=new Set(securityDevices.map(d=>d.deviceId).filter(Boolean));
+ const firstSeen=new Map();
+ [...securityEvents].slice().reverse().forEach(e=>{if(e.sourceId&&!firstSeen.has(e.sourceId))firstSeen.set(e.sourceId,e.timestamp)});
+ const newSources=new Set();securityEvents.forEach(e=>{if(e.sourceId&&firstSeen.get(e.sourceId)===e.timestamp)newSources.add(e.sourceId)});
+ $('auditTotal').textContent=String(securityEvents.length);
+ $('auditFailed').textContent=String(securityEvents.filter(e=>e.outcome==='denied'||e.outcome==='failed').length);
+ $('auditNewSources').textContent=String(newSources.size);
+ const shown=securityEvents.filter(e=>securityFilter==='failed'?(e.outcome==='denied'||e.outcome==='failed'):securityFilter==='new'?(e.sourceId&&newSources.has(e.sourceId)):true);
+ const list=$('auditList');list.innerHTML='';
+ if(!shown.length){const empty=document.createElement('p');empty.className='sync-muted';empty.textContent='No events in this view.';list.appendChild(empty);return;}
+ shown.forEach(e=>{
+  const row=document.createElement('div');row.className='memory-item';row.style.display='block';
+  const heading=document.createElement('strong');heading.textContent=(e.outcome==='denied'?'FAILED · ':e.outcome==='success'?'SUCCESS · ':'ACTIVITY · ')+String(e.action||'unknown').replace(/-/g,' ').toUpperCase();
+  const detail=document.createElement('div');detail.className='sync-muted';
+  const when=e.timestamp?new Date(e.timestamp).toLocaleString():'Time unavailable';
+  const device=e.deviceName||e.deviceId||'Device not identified';
+  const source=e.sourceId?(newSources.has(e.sourceId)?'NEW SOURCE · ':'SOURCE · ')+e.sourceId:'Source fingerprint unavailable';
+  const knownDevice=e.deviceId?(known.has(e.deviceId)?'Currently paired':'Not currently paired'):'No device ID recorded';
+  detail.textContent=[when,device,knownDevice,source,e.reason||''].filter(Boolean).join(' · ');
+  row.append(heading,detail);list.appendChild(row);
+ });
+}
+async function loadSecurityAudit(){
+ $('securityStatus').textContent='Checking owner access and loading recent events…';
+ try{
+  const [audit,devices]=await Promise.all([pairApi({action:'security-audit'}),pairApi({action:'devices'})]);
+  securityEvents=Array.isArray(audit.events)?audit.events:[];securityDevices=Array.isArray(devices.devices)?devices.devices:[];
+  $('securityStatus').textContent='Showing up to 100 recent events. Audit history is retained for up to 90 days.';renderSecurityAudit();
+ }catch(e){$('securityStatus').textContent=e.message;$('auditList').innerHTML='';}
+}
+$('openSecurityAudit').onclick=async()=>{$('securityPanel').hidden=false;securityFilter='all';await loadSecurityAudit()};
+$('closeSecurityAudit').onclick=()=>$('securityPanel').hidden=true;
+$('refreshAudit').onclick=loadSecurityAudit;
+$('auditAll').onclick=()=>{securityFilter='all';renderSecurityAudit()};
+$('auditFailedOnly').onclick=()=>{securityFilter='failed';renderSecurityAudit()};
+$('auditNewOnly').onclick=()=>{securityFilter='new';renderSecurityAudit()};
 $('closeSync').onclick=()=>{if(sessionToken)$('syncPanel').hidden=true};
 $('claimDevice').onclick=async()=>{
  try{const data=await pairApi({action:'claim',setupCode:$('setupCode').value,deviceName:currentDeviceName()});storeSession(data);await restoreSharedHistory();$('hint').textContent=data.message+' Shared memory is ready, Sir.';}
