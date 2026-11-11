@@ -56,9 +56,10 @@ public class WakeWordActivity extends Activity {
         setContentView(root);
 
         updating = true;
-        boolean enabled = prefs.getBoolean("enabled", false);
+        boolean enabled = prefs.getBoolean("enabled", false) && WakeWordService.isActive();
+        prefs.edit().putBoolean("enabled", enabled).apply();
         microphoneSwitch.setChecked(enabled);
-        status.setText(enabled ? "Wake-word service requested. Use the notification to stop it." : "Microphone is OFF.");
+        status.setText(enabled ? "Wake-word service is running or preparing. Use the notification or this switch to stop it." : "Microphone is OFF.");
         updating = false;
 
         microphoneSwitch.setOnCheckedChangeListener((button, checked) -> {
