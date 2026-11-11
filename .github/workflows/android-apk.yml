@@ -82,60 +82,93 @@ jobs:
           echo "Checking APK: $APK_FILE_PATH"
           test -s "$APK_FILE_PATH"
           ls -lh "$APK_FILE_PATH"
+      - name: Install Android 10 emulator image (retry transient SDK download failures)
+        shell: bash
+        run: |
+          set -euo pipefail
+          PACKAGE="system-images;android-29;google_apis;x86_64"
+          for attempt in 1 2 3; do
+            echo "Installing emulator and Android 10 image (attempt $attempt/3)"
+            if yes | sdkmanager --install "emulator" "$PACKAGE"; then
+              break
+            fi
+            if [ "$attempt" -eq 3 ]; then
+              echo "Android emulator SDK installation failed after three attempts."
+              exit 1
+            fi
+            rm -rf "$ANDROID_HOME/.temp" "$ANDROID_HOME/temp"
+            sleep 10
+          done
+          test -x "$ANDROID_HOME/emulator/emulator"
+          test -d "$ANDROID_HOME/system-images/android-29/google_apis/x86_64"
       - name: Smoke-test foreground microphone service on Android 10
-        uses: reactivecircus/android-emulator-runner@v2
-        with:
-          api-level: 29
-          arch: x86_64
-          profile: pixel_2
-          disable-animations: true
-          script: |
-            set -euo pipefail
-            APK_FILE_PATH="$GITHUB_WORKSPACE/app/build/outputs/apk/phone/debug/app-phone-debug.apk"
-            echo "Installing APK from: $APK_FILE_PATH"
-            if [ ! -s "$APK_FILE_PATH" ]; then
-              echo "APK missing or empty in emulator job workspace."
-              find "$GITHUB_WORKSPACE/app/build/outputs/apk" -maxdepth 5 -type f -name '*.apk' -print 2>/dev/null || true
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK_FILE_PATH="$GITHUB_WORKSPACE/app/build/outputs/apk/phone/debug/app-phone-debug.apk"
+          test -s "$APK_FILE_PATH"
+          echo "Creating Android 10 API 29 emulator."
+          echo "no" | avdmanager create avd --force --name jarvis-api29 --package "system-images;android-29;google_apis;x86_64" --device pixel_2
+          "$ANDROID_HOME/emulator/emulator" -avd jarvis-api29 -no-window -no-audio -no-boot-anim -no-snapshot -gpu swiftshader_indirect -accel off > "$RUNNER_TEMP/emulator.log" 2>&1 &
+          EMULATOR_PID=$!
+          cleanup() {
+            adb emu kill >/dev/null 2>&1 || true
+            kill "$EMULATOR_PID" >/dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
+          adb wait-for-device
+          booted=0
+          for attempt in $(seq 1 180); do
+            if [ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = "1" ]; then
+              booted=1
+              break
+            fi
+            if ! kill -0 "$EMULATOR_PID" 2>/dev/null; then
+              echo "Emulator process exited during boot."
+              cat "$RUNNER_TEMP/emulator.log"
               exit 1
             fi
-            adb wait-for-device
-            adb install "$APK_FILE_PATH"
-            adb shell pm grant com.hrishikesh.jarvis android.permission.RECORD_AUDIO
-            adb logcat -c
-            adb shell am start -W -n com.hrishikesh.jarvis/.MainActivity
-            sleep 3
-            adb shell am start -W -n com.hrishikesh.jarvis/.WakeWordTestActivity
-            ready=0
-            for attempt in $(seq 1 180); do
-              if adb logcat -d -s WakeWordService:I | grep -q "offline wake-word service ready"; then
-                ready=1
-                break
-              fi
-              if adb logcat -d -s WakeWordService:E | grep -q "Failed to prepare offline wake-word service"; then
-                break
-              fi
-              sleep 2
-            done
-            if [ "$ready" -ne 1 ]; then
-              echo "Wake-word service did not report READY within six minutes. Capturing diagnostics:"
-              echo "----- Wake-word and Android runtime logs -----"
-              adb logcat -d -v threadtime | grep -E "WakeWordTest|WakeWordService|AndroidRuntime|ActivityManager|ForegroundService|Permission" || true
-              echo "----- Activity services -----"
-              adb shell dumpsys activity services com.hrishikesh.jarvis || true
-              echo "----- Process state -----"
-              adb shell pidof com.hrishikesh.jarvis || true
-              echo "----- Microphone permission -----"
-              adb shell dumpsys package com.hrishikesh.jarvis | grep -A 10 RECORD_AUDIO || true
-              echo "----- JARVIS notifications -----"
-              adb shell dumpsys notification --noredact | grep -i -A 8 -B 5 JARVIS || true
-              exit 1
+            sleep 2
+          done
+          if [ "$booted" -ne 1 ]; then
+            echo "Android 10 emulator did not finish booting."
+            cat "$RUNNER_TEMP/emulator.log"
+            exit 1
+          fi
+          adb shell settings put global window_animation_scale 0
+          adb shell settings put global transition_animation_scale 0
+          adb shell settings put global animator_duration_scale 0
+          adb install "$APK_FILE_PATH"
+          adb shell pm grant com.hrishikesh.jarvis android.permission.RECORD_AUDIO
+          adb logcat -c
+          adb shell am start -W -n com.hrishikesh.jarvis/.MainActivity
+          sleep 3
+          adb shell am start -W -n com.hrishikesh.jarvis/.WakeWordTestActivity
+          ready=0
+          for attempt in $(seq 1 180); do
+            if adb logcat -d -s WakeWordService:I | grep -q "offline wake-word service ready"; then
+              ready=1
+              break
             fi
-            echo "Wake-word service reached READY on Android 10."
-            adb shell am start -W -n com.hrishikesh.jarvis/.WakeWordTestActivity -a com.hrishikesh.jarvis.TEST_STOP_WAKE
-            sleep 3
-            if adb shell dumpsys activity services com.hrishikesh.jarvis | grep -q WakeWordService; then
-              echo "Wake-word service did not stop cleanly."
-              adb logcat -d -v threadtime | grep -E "WakeWordTest|WakeWordService|AndroidRuntime|ActivityManager" || true
-              exit 1
+            if adb logcat -d -s WakeWordService:E | grep -q "Failed to prepare offline wake-word service"; then
+              break
             fi
-            echo "Android 10 foreground-service start, offline model load, and stop checks passed."
+            sleep 2
+          done
+          if [ "$ready" -ne 1 ]; then
+            echo "Wake-word service did not report READY within six minutes. Diagnostics:"
+            adb logcat -d -v threadtime | grep -E "WakeWordTest|WakeWordService|AndroidRuntime|ActivityManager|ForegroundService|Permission" || true
+            adb shell dumpsys activity services com.hrishikesh.jarvis || true
+            adb shell pidof com.hrishikesh.jarvis || true
+            adb shell dumpsys package com.hrishikesh.jarvis | grep -A 10 RECORD_AUDIO || true
+            exit 1
+          fi
+          echo "Wake-word service reached READY on Android 10."
+          adb shell am start -W -n com.hrishikesh.jarvis/.WakeWordTestActivity -a com.hrishikesh.jarvis.TEST_STOP_WAKE
+          sleep 3
+          if adb shell dumpsys activity services com.hrishikesh.jarvis | grep -q WakeWordService; then
+            echo "Wake-word service did not stop cleanly."
+            adb logcat -d -v threadtime | grep -E "WakeWordTest|WakeWordService|AndroidRuntime|ActivityManager" || true
+            exit 1
+          fi
+          echo "Android 10 foreground-service start, offline model load, and stop checks passed."
