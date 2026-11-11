@@ -551,7 +551,7 @@ $('voiceToggle').onclick=()=>{voiceOn=!voiceOn;$('voiceToggle').textContent='Voi
 $('clear').onclick=async()=>{if(!sessionToken){openSyncPanel();return;}try{await pairApi({action:'clear'});history=[];messages.innerHTML='';add('Conversation cleared across all your devices, Sir. What shall we discuss?','jarvis')}catch(e){$('hint').textContent=e.message}};
 $('form').onsubmit=async e=>{e.preventDefault();if(!sessionToken){openSyncPanel();$('syncStatus').textContent='Pair this device before sending messages.';return;}const message=$('prompt').value.trim();if(!message&&!pendingAttachment)return;$('prompt').value='';const attachment=pendingAttachment;pendingAttachment=null;renderAttachment();add(message||'Please examine this attachment, Sir.', 'user',attachment);history.push({role:'user',text:message||'Please examine the attached file.'});
 const appCommand=message.match(/^\s*(?:jarvis[, ]+)?(?:please\s+)?(?:open|launch|start)\s+([a-z0-9 +.-]+?)(?:\s+app)?[.!?]*\s*$/i);
-const takePhotoCommand=/^\s*(?:(?:hey\\s+)?jarvis[, ]+)?(?:please\\s+)?(?:take|capture)(?:\\s+(?:a|some))?\\s+photos?(?:[, ]+jarvis)?[.!?]*\\s*$/i.test(message);
+const takePhotoCommand=/^\s*(?:(?:hey\s+)?jarvis[, ]+)?(?:please\s+)?(?:take|capture)(?:\s+(?:a|some))?\s+photos?(?:[, ]+jarvis)?[.!?]*\s*$/i.test(message);
 if(takePhotoCommand){
  const reply='Certainly, Sir. Opening the camera now. Please use the camera shutter to take the photo.';
  add(reply,'jarvis');history.push({role:'model',text:reply});history=history.slice(-20);
