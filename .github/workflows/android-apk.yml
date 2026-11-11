@@ -161,8 +161,31 @@ jobs:
           adb_bounded 15 shell settings put global window_animation_scale 0
           adb_bounded 15 shell settings put global transition_animation_scale 0
           adb_bounded 15 shell settings put global animator_duration_scale 0
-          mark "Installing APK."
-          adb_bounded 60 install "$APK_FILE_PATH"
+          mark "Waiting for Android package manager to become responsive (maximum 90 seconds)."
+          package_manager_ready=0
+          for attempt in $(seq 1 30); do
+            if adb_bounded 15 shell cmd package list packages >/dev/null 2>&1; then
+              package_manager_ready=1
+              break
+            fi
+            sleep 3
+          done
+          if [ "$package_manager_ready" -ne 1 ]; then
+            mark "Android package manager did not become responsive; collecting diagnostics."
+            adb devices -l || true
+            adb_bounded 20 shell getprop || true
+            cat "$RUNNER_TEMP/emulator.log"
+            exit 1
+          fi
+          mark "Installing APK (maximum 180 seconds)."
+          if ! adb_bounded 180 install "$APK_FILE_PATH"; then
+            mark "APK installation failed or timed out; collecting diagnostics."
+            adb devices -l || true
+            adb_bounded 20 shell dumpsys package || true
+            adb_bounded 20 shell df -h /data || true
+            cat "$RUNNER_TEMP/emulator.log"
+            exit 1
+          fi
           mark "Granting microphone permission."
           adb_bounded 20 shell pm grant com.hrishikesh.jarvis android.permission.RECORD_AUDIO
           adb_bounded 20 logcat -c
