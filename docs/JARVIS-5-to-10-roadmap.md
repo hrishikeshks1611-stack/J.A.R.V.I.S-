@@ -74,3 +74,30 @@ These require durable queues/state, explicit provider scopes, per-device presenc
 - Upstash was tested only with isolated temporary keys: eight concurrent atomic Lua appends preserved all eight writers, and the two-key atomic backup/restore script wrote and read both records with expiry. Both temporary keys were deleted. This is a focused Redis correctness check, not a production load or recovery drill.
 - Build 39 and later debug APKs have different signing-certificate fingerprints, and the original Build 39 private keystore is unavailable. Do not publish a replacement APK or ask the user to uninstall the current apps.
 - No physical test was performed on the user's phone, Android TV or laptop PWA. No production deployment, Pages update, APK release or live service mutation was made from this continuation branch.
+
+
+## Five-pillar upgrade — active engineering track
+
+The five pillars are a product goal, not a claim that every capability is already production-ready.
+
+1. **Intelligence:** preserve the shared Gemini brain, bounded memory context, and allow-listed tool loop. Improve grounded multi-step planning and tool-result verification; do not expose private chain-of-thought.
+2. **Personality:** use one shared, tested personality contract for Professional, Witty, and Philosophical modes. JARVIS should sound composed and recognisable without allowing humour to obscure accuracy.
+3. **Device control:** expand only through explicit Android bridge capabilities and OS-supported handoffs. Every action must report whether it was proposed, handed off, or actually confirmed.
+4. **Independence:** plan multi-step goals, sequence approved tools, respect dependencies and confirmation gates, and verify each result. No arbitrary shell, JavaScript evaluation, unrestricted URL execution, or silent consequential actions.
+5. **Presence:** retain the animated 3D ARC-reactor HUD, voice identity, voice-first interaction, and wake-word controls. The wake-word prototype remains gated on Android 10 smoke, model integrity, physical-device recognition, battery/false-trigger testing, and release-signing continuity.
+
+### Active implementation in `jarvis-five-pillars-upgrade`
+
+- Added `lib/jarvis-personality.js` as the shared system-behaviour contract.
+- Updated `api/chat.js` to use that contract, including explicit multi-step planning, truthful action-state reporting, permission boundaries, and natural spoken responses.
+- Added `tests/personality-contract.test.mjs` to protect the three personality modes and the autonomy/verification safeguards.
+- This is a development branch based on PR #12's continuation branch. It does not change `main`, GitHub Pages, Render, Vercel production, or the installed Android app.
+
+### Remaining release gates
+
+- Run the complete quality suite and Android phone/TV compile checks on this branch.
+- Resolve the Render shared-memory configuration gate before relying on the live shared brain.
+- Integrate the PR #11 wake-word work only after its Android 10 service smoke and security/reliability gates pass.
+- Verify YouTube Music playback on a real supported device; an app launch or search result is not proof of playback.
+- Perform physical Android 10 testing and preserve Build 39 signing continuity. The unavailable original signing key means no replacement APK should be offered as an in-place update.
+- Do not mark any pillar complete solely because source code compiles or a preview deploys.
