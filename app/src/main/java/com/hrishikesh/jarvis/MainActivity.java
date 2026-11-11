@@ -289,10 +289,11 @@ public class MainActivity extends Activity {
 
             Intent play = new Intent(MediaStore.INTENT_ACTION_MEDIA_PLAY_FROM_SEARCH);
             play.setPackage("com.google.android.apps.youtube.music");
-            // Android's documented play-from-search contract requires BOTH the
-            // search query and a media-focus value. Without focus, some players
-            // open a results page instead of attempting playback.
-            play.putExtra(MediaStore.EXTRA_MEDIA_FOCUS, "vnd.android.cursor.item/*");
+            // Use Android's song-specific play contract, not a generic search.
+            // The receiving music app needs both the song focus and title to
+            // attempt playback rather than merely showing an unstructured result list.
+            play.putExtra(MediaStore.EXTRA_MEDIA_FOCUS, "vnd.android.cursor.item/audio");
+            play.putExtra(MediaStore.EXTRA_MEDIA_TITLE, query);
             play.putExtra(SearchManager.QUERY, query);
             play.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
 
