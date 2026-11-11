@@ -175,3 +175,13 @@ test("office requests choose useful output formats and return a real download li
   assert.ok(html.includes("downloadFile.downloadUrl"));
   assert.ok(html.includes("secure link works once and expires in 15 minutes"));
 });
+
+
+test("YouTube Music play commands use native playback request and disclose fallback", async () => {
+  const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+  assert.ok(html.includes("window.AndroidJarvis.playYoutubeMusic(songQuery)"));
+  assert.ok(html.includes("startsWith('PLAY_REQUESTED:')"));
+  assert.ok(html.includes("Playback confirmation depends on YouTube Music."));
+  assert.ok(html.includes("Native playback control is not available in this installed app build"));
+  assert.ok(html.includes("'https://music.youtube.com/search?q='+encodeURIComponent(songQuery)"));
+});
