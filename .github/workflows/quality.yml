@@ -26,3 +26,5 @@ jobs:
           for file in server.js api/*.js lib/*.js; do node --check "$file"; done
       - name: Test shared-memory, agent, and office-file helpers
         run: node --test tests/*.test.mjs
+      - name: Read-only production API smoke
+        run: node scripts/smoke-production-api.mjs
