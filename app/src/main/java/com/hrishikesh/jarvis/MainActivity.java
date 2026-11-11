@@ -49,6 +49,7 @@ public class MainActivity extends Activity {
     private String pendingCallName;
     private String pendingCallNumber;
     private String pendingContactCall;
+    private JarvisBridge jarvisBridge;
     private GeolocationPermissions.Callback pendingGeoCallback;
     private String pendingGeoOrigin;
     private Uri pendingCameraUri;
@@ -76,7 +77,8 @@ public class MainActivity extends Activity {
         webView.getSettings().setAllowFileAccess(false);
         webView.getSettings().setAllowContentAccess(false);
         webView.getSettings().setGeolocationEnabled(true);
-        webView.addJavascriptInterface(new JarvisBridge(), "AndroidJarvis");
+        jarvisBridge = new JarvisBridge();
+        webView.addJavascriptInterface(jarvisBridge, "AndroidJarvis");
         webView.setWebChromeClient(new WebChromeClient() {
             @Override public void onGeolocationPermissionsShowPrompt(String origin, GeolocationPermissions.Callback callback) {
                 if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
@@ -345,9 +347,9 @@ public class MainActivity extends Activity {
                 Intent call = new Intent(Intent.ACTION_CALL, Uri.fromParts("tel", number, null));
                 startActivity(call);
             } catch (SecurityException error) {
-                Toast.makeText(this, "Android did not grant permission to place the call, Sir.", Toast.LENGTH_LONG).show();
+                Toast.makeText(MainActivity.this, "Android did not grant permission to place the call, Sir.", Toast.LENGTH_LONG).show();
             } catch (ActivityNotFoundException error) {
-                Toast.makeText(this, "No compatible Phone app is available, Sir.", Toast.LENGTH_LONG).show();
+                Toast.makeText(MainActivity.this, "No compatible Phone app is available, Sir.", Toast.LENGTH_LONG).show();
             }
         }
 
@@ -640,7 +642,7 @@ public class MainActivity extends Activity {
             pendingContactCall = null;
             boolean granted = grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED;
             if (granted && contactName != null) {
-                String result = resolveContactForCall(contactName);
+                String result = jarvisBridge == null ? "ERROR:Phone controls are unavailable." : jarvisBridge.resolveContactForCall(contactName);
                 if (!result.startsWith("CONFIRMATION_SHOWN:")) {
                     Toast.makeText(this, result.replaceFirst("^[A-Z_]+:", ""), Toast.LENGTH_LONG).show();
                 }
@@ -651,7 +653,7 @@ public class MainActivity extends Activity {
         }
         if (requestCode == REQUEST_CALL_PHONE) {
             boolean granted = grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED;
-            if (granted) placePendingCall();
+            if (granted && jarvisBridge != null) jarvisBridge.placePendingCall();
             else {
                 pendingCallName = null;
                 pendingCallNumber = null;
