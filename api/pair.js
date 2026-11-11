@@ -39,7 +39,7 @@ export default async function handler(req, res) {
 
   try {
     const body = req.body || {};
-    const action = String(body.action || "");
+    const action = String(body.action || "");\n    const audit = (outcome, details = {}) => recordSecurityEvent(action, outcome, details);
     if (action === "status") {
       const claimed = await redisCommand("GET", JARVIS_PREFIX + "owner:claimed");
       return res.status(200).json({ ownerClaimed: Boolean(claimed) });
@@ -48,12 +48,12 @@ export default async function handler(req, res) {
     if (action === "claim") {
       const supplied = String(body.setupCode || "");
       const expected = process.env.JARVIS_SETUP_CODE || "";
-      if (!expected || !safeEqual(supplied, expected)) return res.status(401).json({ error: "That owner setup code is not valid." });
+      if (!expected || !safeEqual(supplied, expected)) { await audit("denied", { reason: "invalid_setup_code", deviceName: deviceName(body.deviceName) }); return res.status(401).json({ error: "That owner setup code is not valid." }); }
       const lock = await redisCommand("SET", JARVIS_PREFIX + "owner:claim-lock", randomToken(12), "NX", "EX", "30");
       if (!lock) return res.status(409).json({ error: "Owner setup is already being completed. Please try again." });
       try {
         const already = await redisCommand("GET", JARVIS_PREFIX + "owner:claimed");
-        if (already) return res.status(409).json({ error: "JARVIS already has an owner device. Pair this device using a pairing code." });
+        if (already) { await audit("denied", { reason: "owner_already_exists", deviceName: deviceName(body.deviceName) }); return res.status(409).json({ error: "JARVIS already has an owner device. Pair this device using a pairing code." }); }
         const result = await createSession(deviceName(body.deviceName), "owner");
         const ownerSet = await redisCommand("SET", JARVIS_PREFIX + "owner:claimed", "1", "NX");
         if (!ownerSet) {
@@ -69,9 +69,9 @@ export default async function handler(req, res) {
 
     if (action === "pair") {
       const code = String(body.pairingCode || "").replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
-      if (!code) return res.status(400).json({ error: "Enter the pairing code shown on your owner device." });
+      if (!code) { await audit("denied", { reason: "missing_pairing_code", deviceName: deviceName(body.deviceName) }); return res.status(400).json({ error: "Enter the pairing code shown on your owner device." }); }
       const raw = await redisCommand("GETDEL", JARVIS_PREFIX + "pair:" + hashToken(code));
-      if (!raw) return res.status(401).json({ error: "That pairing code has expired or has already been used. Generate a new one on your owner device." });
+      if (!raw) { await audit("denied", { reason: "invalid_or_expired_pairing_code", deviceName: deviceName(body.deviceName) }); return res.status(401).json({ error: "That pairing code has expired or has already been used. Generate a new one on your owner device." }); }
       const pairing = typeof raw === "string" ? JSON.parse(raw) : raw;
       const result = await createSession(deviceName(body.deviceName), "device");
       return res.status(200).json({ ...result, message: "This device is now paired with JARVIS." });
@@ -103,7 +103,7 @@ export default async function handler(req, res) {
       await redisCommand("SET", JARVIS_PREFIX + "pair:" + hashToken(code), JSON.stringify({ createdBy: session.deviceId, createdAt: Date.now() }), "EX", "600", "NX");
       return res.status(200).json({ code, expiresIn: 600 });
     }
-    if (action === "devices") {
+    if (action === "security-audit") {\n      if (session.role !== "owner") return res.status(403).json({ error: "Only the owner device can view security events." });\n      const rows = await redisCommand("LRANGE", JARVIS_PREFIX + "security:audit", "0", "99") || [];\n      const events = rows.map(row => { try { return typeof row === "string" ? JSON.parse(row) : row; } catch { return null; } }).filter(Boolean);\n      return res.status(200).json({ events });\n    }\n    if (action === "devices") {
       if (session.role !== "owner") return res.status(403).json({ error: "Only the owner device can manage paired devices." });
       const ids = await redisCommand("SMEMBERS", JARVIS_PREFIX + "devices") || [];
       const devices = [];
@@ -165,7 +165,7 @@ export default async function handler(req, res) {
             : "Ownership could not be transferred because a device session changed. Refresh the device list and try again."
         });
       }
-      return res.status(200).json({ transferred: true, ownerDeviceId: result.ownerDeviceId, message: "JARVIS ownership has been transferred. This device is now a regular paired device." });
+      await audit("success", { deviceId: session.deviceId, deviceName: session.deviceName, role: "owner", targetDeviceId: target });\n      return res.status(200).json({ transferred: true, ownerDeviceId: result.ownerDeviceId, message: "JARVIS ownership has been transferred. This device is now a regular paired device." });
     }
     if (action === "revoke") {
       if (session.role !== "owner") return res.status(403).json({ error: "Only the owner device can revoke access." });
