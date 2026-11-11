@@ -196,7 +196,9 @@ test("contact calling uses READ_CONTACTS and opens the system dialer for user co
   assert.ok(html.includes("tap Call in the Phone app"));
   assert.ok(html.includes("recentCallsCommand"));
   assert.ok(java.includes("ContactsContract.CommonDataKinds.Phone.CONTENT_FILTER_URI"));
-  assert.ok(java.includes("Intent.ACTION_DIAL"));
+  assert.ok(java.includes("Intent.ACTION_CALL"));
+  assert.ok(java.includes("Call"));
+  assert.ok(manifest.includes("android.permission.CALL_PHONE"));
   assert.ok(java.includes("Manifest.permission.READ_CONTACTS"));
   assert.ok(manifest.includes('android.permission.READ_CONTACTS'));
   assert.ok(!manifest.includes('android.permission.READ_CALL_LOG'));
