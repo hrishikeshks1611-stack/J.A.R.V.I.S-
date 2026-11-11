@@ -45,6 +45,9 @@ public class MainActivity extends Activity {
     private static final int REQUEST_CAMERA = 4104;
     private static final int REQUEST_LOCATION = 4105;
     private static final int REQUEST_CONTACTS = 4106;
+    private static final int REQUEST_CALL_PHONE = 4107;
+    private String pendingCallName;
+    private String pendingCallNumber;
     private String pendingContactCall;
     private GeolocationPermissions.Callback pendingGeoCallback;
     private String pendingGeoOrigin;
@@ -274,10 +277,10 @@ public class MainActivity extends Activity {
                         new String[]{Manifest.permission.READ_CONTACTS}, REQUEST_CONTACTS));
                 return "PERMISSION_REQUIRED:Contacts permission is needed to find " + contactName + ".";
             }
-            return resolveContactForDial(contactName);
+            return resolveContactForCall(contactName);
         }
 
-        private String resolveContactForDial(String requestedName) {
+        private String resolveContactForCall(String requestedName) {
             Cursor cursor = null;
             try {
                 Uri filter = Uri.withAppendedPath(
@@ -287,53 +290,64 @@ public class MainActivity extends Activity {
                                 ContactsContract.CommonDataKinds.Phone.NUMBER},
                         null, null, ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME + " ASC");
                 if (cursor == null || !cursor.moveToFirst()) return "NOT_FOUND:No saved phone contact matched " + requestedName + ".";
-                String selectedName = null;
-                String selectedNumber = null;
                 java.util.LinkedHashMap<String, String[]> matches = new java.util.LinkedHashMap<>();
+                java.util.LinkedHashMap<String, String[]> exactMatches = new java.util.LinkedHashMap<>();
                 do {
                     String displayName = cursor.getString(0);
                     String number = cursor.getString(1);
                     if (number == null || number.trim().isEmpty()) continue;
                     String key = number.replaceAll("[^0-9+]", "");
-                    if (!key.isEmpty()) matches.put(key, new String[]{displayName, number});
-                    if (displayName != null && displayName.equalsIgnoreCase(requestedName)) {
-                        selectedName = displayName;
-                        selectedNumber = number;
-                    }
+                    if (key.isEmpty()) continue;
+                    matches.put(key, new String[]{displayName, number});
+                    if (displayName != null && displayName.equalsIgnoreCase(requestedName))
+                        exactMatches.put(key, new String[]{displayName, number});
                 } while (cursor.moveToNext());
 
-                if (selectedNumber != null) {
-                    String key = selectedNumber.replaceAll("[^0-9+]", "");
-                    String[] exact = matches.get(key);
-                    if (exact != null) {
-                        selectedName = exact[0];
-                        selectedNumber = exact[1];
-                    }
-                    matches.clear();
-                    matches.put(key, new String[]{selectedName, selectedNumber});
-                }
-                if (matches.isEmpty()) return "NOT_FOUND:No phone number was saved for " + requestedName + ".";
-                if (matches.size() != 1) return "AMBIGUOUS:More than one phone number matched " + requestedName + ".";
-                String[] match = matches.values().iterator().next();
+                java.util.Map<String, String[]> selected = exactMatches.isEmpty() ? matches : exactMatches;
+                if (selected.isEmpty()) return "NOT_FOUND:No phone number was saved for " + requestedName + ".";
+                if (selected.size() != 1) return "AMBIGUOUS:More than one phone number matched " + requestedName + ".";
+                String[] match = selected.values().iterator().next();
                 final String number = match[1];
                 final String name = match[0] == null ? requestedName : match[0];
-                Uri dialUri = Uri.fromParts("tel", number, null);
-                Intent dial = new Intent(Intent.ACTION_DIAL, dialUri);
-                runOnUiThread(() -> {
-                    try {
-                        startActivity(dial);
-                        Toast.makeText(MainActivity.this,
-                                "Ready to call " + name + ". Review the number and tap Call, Sir.",
-                                Toast.LENGTH_LONG).show();
-                    } catch (ActivityNotFoundException e) {
-                        Toast.makeText(MainActivity.this, "No compatible Phone app is available, Sir.", Toast.LENGTH_LONG).show();
-                    }
-                });
-                return "DIALER_OPENED:Prepared a call to " + name + " for your confirmation.";
+                runOnUiThread(() -> new android.app.AlertDialog.Builder(MainActivity.this)
+                        .setTitle("Call " + name + "?")
+                        .setMessage("JARVIS found this saved contact. Do you want to place the call?")
+                        .setPositiveButton("Call", (dialog, which) -> requestOrPlaceCall(name, number))
+                        .setNegativeButton("Cancel", (dialog, which) ->
+                                Toast.makeText(MainActivity.this, "Call cancelled, Sir.", Toast.LENGTH_SHORT).show())
+                        .show());
+                return "CONFIRMATION_SHOWN:Found " + name + ". Waiting for your confirmation.";
             } catch (SecurityException error) {
                 return "ERROR:Contacts permission was not granted, Sir.";
             } finally {
                 if (cursor != null) cursor.close();
+            }
+        }
+
+        private void requestOrPlaceCall(String name, String number) {
+            pendingCallName = name;
+            pendingCallNumber = number;
+            if (android.os.Build.VERSION.SDK_INT >= 23
+                    && checkSelfPermission(Manifest.permission.CALL_PHONE) != PackageManager.PERMISSION_GRANTED) {
+                requestPermissions(new String[]{Manifest.permission.CALL_PHONE}, REQUEST_CALL_PHONE);
+                return;
+            }
+            placePendingCall();
+        }
+
+        private void placePendingCall() {
+            final String name = pendingCallName;
+            final String number = pendingCallNumber;
+            pendingCallName = null;
+            pendingCallNumber = null;
+            if (number == null || number.trim().isEmpty()) return;
+            try {
+                Intent call = new Intent(Intent.ACTION_CALL, Uri.fromParts("tel", number, null));
+                startActivity(call);
+            } catch (SecurityException error) {
+                Toast.makeText(this, "Android did not grant permission to place the call, Sir.", Toast.LENGTH_LONG).show();
+            } catch (ActivityNotFoundException error) {
+                Toast.makeText(this, "No compatible Phone app is available, Sir.", Toast.LENGTH_LONG).show();
             }
         }
 
@@ -626,14 +640,22 @@ public class MainActivity extends Activity {
             pendingContactCall = null;
             boolean granted = grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED;
             if (granted && contactName != null) {
-                String result = resolveContactForDial(contactName);
-                if (result.startsWith("DIALER_OPENED:")) {
-                    Toast.makeText(this, "Contact found. Review the number and tap Call, Sir.", Toast.LENGTH_LONG).show();
-                } else {
+                String result = resolveContactForCall(contactName);
+                if (!result.startsWith("CONFIRMATION_SHOWN:")) {
                     Toast.makeText(this, result.replaceFirst("^[A-Z_]+:", ""), Toast.LENGTH_LONG).show();
                 }
             } else {
                 Toast.makeText(this, "Contacts access was not granted. No call was started, Sir.", Toast.LENGTH_LONG).show();
+            }
+            return;
+        }
+        if (requestCode == REQUEST_CALL_PHONE) {
+            boolean granted = grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED;
+            if (granted) placePendingCall();
+            else {
+                pendingCallName = null;
+                pendingCallNumber = null;
+                Toast.makeText(this, "Phone-call permission was denied. No call was placed, Sir.", Toast.LENGTH_LONG).show();
             }
             return;
         }
