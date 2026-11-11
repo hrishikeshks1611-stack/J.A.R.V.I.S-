@@ -5,6 +5,13 @@ import { readFile } from "node:fs/promises";
 test("native bridge exposes confirmation-based Clock and Calendar actions", async () => {
   const source = await readFile(new URL("../app/src/main/java/com/hrishikesh/jarvis/MainActivity.java", import.meta.url), "utf8");
   const manifest = await readFile(new URL("../app/src/main/AndroidManifest.xml", import.meta.url), "utf8");
+  assert.ok(source.includes("public String saveFile(String requestedName, String mimeType, String base64Data)"));
+  assert.ok(source.includes("MediaStore.Downloads.RELATIVE_PATH"));
+  assert.ok(source.includes("Environment.DIRECTORY_DOWNLOADS + \"/JARVIS\""));
+  assert.ok(source.includes("MediaStore.Downloads.IS_PENDING"));
+  assert.ok(source.includes("application/vnd.openxmlformats-officedocument.presentationml.presentation"));
+  assert.ok(source.includes("application/vnd.openxmlformats-officedocument.wordprocessingml.document"));
+  assert.ok(source.includes("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"));
   assert.ok(source.includes("public String openCastSettings()"));
   assert.ok(source.includes("Settings.ACTION_CAST_SETTINGS"));
   assert.ok(source.includes("public String setAlarm(int hour, int minute, String label)"));
