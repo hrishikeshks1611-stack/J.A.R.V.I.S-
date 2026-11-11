@@ -189,7 +189,7 @@ export default async function handler(req, res) {
         const functionCalls = parts.filter(part => part.functionCall?.name);
         const textParts = parts.map(part => part.text || "").filter(Boolean);
         if (!functionCalls.length) {
-          reply = textParts.join("\\n").trim();
+          reply = textParts.join("\n").trim();
           completed = Boolean(reply);
           break;
         }

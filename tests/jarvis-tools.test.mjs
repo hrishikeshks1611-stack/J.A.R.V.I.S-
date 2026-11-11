@@ -19,7 +19,7 @@ test("calculator enforces input and result bounds", () => {
   assert.throws(() => calculateExpression("9999999999999999 * 9999999999999999"));
 });
 
-test("tool registry exposes only the approved four tools", () => {
+test("tool registry exposes only the approved six tools", () => {
   const names = JARVIS_TOOL_DECLARATIONS[0].function_declarations.map(item => item.name);
   assert.deepEqual(names, ["calculate", "get_device_status", "request_alarm", "request_calendar_event", "search_saved_memories", "search_conversation"]);
 });
