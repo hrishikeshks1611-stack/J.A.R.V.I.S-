@@ -1,6 +1,7 @@
 package com.hrishikesh.jarvis;
 
 import android.app.Activity;
+import android.app.SearchManager;
 import android.content.BroadcastReceiver;
 import android.content.IntentFilter;
 import android.Manifest;
@@ -280,28 +281,36 @@ public class MainActivity extends Activity {
         }
 
 
-        @JavascriptInterface public String openYoutubeMusicSearch(String songQuery) {
-            String query = songQuery == null ? "" : songQuery.trim();
+        @JavascriptInterface public String playYoutubeMusic(String requested) {
+            final String query = requested == null ? "" : requested.trim();
             if (query.isEmpty() || query.length() > 200) {
-                return "Please tell me the song title, Sir.";
+                return "ERROR:Please provide a song title, Sir.";
             }
-            Uri searchUri = Uri.parse("https://music.youtube.com/search")
-                    .buildUpon().appendQueryParameter("q", query).build();
-            Intent musicSearch = new Intent(Intent.ACTION_VIEW, searchUri);
-            musicSearch.setPackage("com.google.android.apps.youtube.music");
-            musicSearch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            try {
-                startActivity(musicSearch);
-                return "Opening YouTube Music and searching for " + query + ", Sir.";
-            } catch (ActivityNotFoundException notInstalled) {
-                try {
-                    Intent browserSearch = new Intent(Intent.ACTION_VIEW, searchUri);
-                    browserSearch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                    startActivity(browserSearch);
-                    return "YouTube Music app was not found. Opening its song search in your browser, Sir.";
-                } catch (ActivityNotFoundException noBrowser) {
-                    return "I could not find YouTube Music or a browser on this device, Sir.";
-                }
+
+            Intent play = new Intent(MediaStore.INTENT_ACTION_MEDIA_PLAY_FROM_SEARCH);
+            play.setPackage("com.google.android.apps.youtube.music");
+            play.putExtra(SearchManager.QUERY, query);
+
+            if (play.resolveActivity(getPackageManager()) != null) {
+                runOnUiThread(() -> {
+                    try { startActivity(play); }
+                    catch (ActivityNotFoundException e) { openYoutubeMusicSearchFallback(query); }
+                });
+                return "PLAY_REQUESTED:YouTube Music received a play-from-search request for " + query + ".";
+            }
+
+            runOnUiThread(() -> openYoutubeMusicSearchFallback(query));
+            return "SEARCH_FALLBACK:YouTube Music did not expose the play-from-search action on this device.";
+        }
+
+        private void openYoutubeMusicSearchFallback(String query) {
+            Intent search = new Intent(Intent.ACTION_VIEW,
+                    Uri.parse("https://music.youtube.com/search?q=" + Uri.encode(query)));
+            try { startActivity(search); }
+            catch (ActivityNotFoundException e) {
+                runOnUiThread(() -> Toast.makeText(MainActivity.this,
+                        "YouTube Music or a compatible browser is not available, Sir.",
+                        Toast.LENGTH_LONG).show());
             }
         }
 
