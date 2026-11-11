@@ -26,7 +26,7 @@ test("saved-memory UI is explicit and has deletion controls", async () => {
 
 test("service worker cache version is bumped and script parses", async () => {
   const source = await readFile(new URL("../sw.js", import.meta.url), "utf8");
-  assert.ok(source.includes('const CACHE="jarvis-shell-v19"'));
+  assert.ok(source.includes('const CACHE="jarvis-shell-v20"'));
   assert.doesNotThrow(() => new Function(source));
 });
 
@@ -142,4 +142,13 @@ test("Mission Control exposes local diagnostics, a bounded briefing and explicit
   assert.ok(html.includes('id="saveCustomRoutine"'));
   assert.ok(html.includes("up to eight named routines"));
   assert.ok(html.includes("function applyLocalRoutine"));
+});
+
+test("owner-only Security Audit screen exposes activity filters", async () => {
+  const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+  assert.ok(html.includes('id="openSecurityAudit"'));
+  assert.ok(html.includes('id="securityPanel"'));
+  assert.ok(html.includes("pairApi({action:'security-audit'})"));
+  assert.ok(html.includes("FIRST SEEN IN RECENT LOG"));
+  assert.ok(html.includes("auditFailedOnly"));
 });
