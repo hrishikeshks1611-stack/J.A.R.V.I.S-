@@ -24,15 +24,17 @@ test("saved-memory UI is explicit and has deletion controls", async () => {
   assert.ok(html.includes("status('Offline mode')"));
 });
 
-test("one-time owner recovery is available only to an already paired device", async () => {
+test("one-time owner recovery is available on an unpaired phone", async () => {
   const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
   assert.ok(html.includes('id="recoveryArea"'));
   assert.ok(html.includes('id="ownerRecoveryCode"'));
   assert.ok(html.includes("action:'recover-owner'"));
   assert.ok(html.includes("if(v.role==='owner')"));
-  assert.ok(html.includes("$('recoveryArea').hidden=false"));
-  assert.ok(html.includes("This one-time recovery promotes this already-paired device"));
-  assert.ok(html.includes("Existing paired devices and shared memory will be preserved"));
+  assert.ok(html.includes("$ (recoveryArea)".replace("$ ", "$")));
+  assert.ok(html.includes("fresh owner session on this phone"));
+  assert.ok(html.includes("Recover JARVIS ownership on THIS PHONE"));
+  assert.ok(html.includes("storeSession(data)"));
+  assert.ok(html.includes("Existing paired devices and shared memory are preserved"));
 });
 
 test("service worker cache version is bumped and script parses", async () => {
