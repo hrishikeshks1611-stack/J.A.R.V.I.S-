@@ -18,6 +18,7 @@ Implemented in the 5.0 development line:
 
 - Office Engine generation for PDF, DOCX, XLSX, and PPTX is present in the 5.0 development line with automated helper tests.
 - A separate `jarvis-6.0-development` line contains a one-time, random-token download endpoint (15-minute expiry, 30 MB cap) and a Render staging service.
+- The existing 5.0 staging health response reports `fileCreation: true` but `fileHistoryPersistence: false`; generated-file history must not be treated as durable across restarts. The separate 6.0 staging health endpoint reports version `6.0.0`.
 - That download token store is in process memory: a restart or multiple service instances can invalidate or split outstanding links. It is staging-only until the download store is moved to a shared durable backend and expiry/restart behavior is tested.
 - The 6.0 branch is not silently merged into this 5.0 branch; it must be reviewed as a separate integration.
 
