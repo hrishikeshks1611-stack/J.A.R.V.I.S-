@@ -30,7 +30,9 @@ test("owner transfer is authorised and performed by one atomic Redis script", as
       result = 1;
     } else if (command[0] === "GET" && command[1] === "jarvis:v1:device:laptop-device") {
       result = JSON.stringify({ deviceId: "laptop-device", deviceName: "Laptop", role: "device", sessionHash: targetHash });
-    } else if (["LPUSH", "LTRIM", "EXPIRE"].includes(command[0])) {\n      result = 1;\n    } else if (command[0] === "EVAL") {
+    } else if (["LPUSH", "LTRIM", "EXPIRE"].includes(command[0])) {
+      result = 1;
+    } else if (command[0] === "EVAL") {
       assert.equal(command[2], "5");
       assert.equal(command[3], "jarvis:v1:owner:token-hash");
       assert.ok(command[1].includes("target.role = 'owner'"));
