@@ -54,12 +54,21 @@ public class WakeWordService extends Service implements RecognitionListener {
 
     @Override public void onCreate() {
         super.onCreate();
+        Log.i("WakeWordService", "onCreate: foreground microphone service process entered");
         active = true;
         createChannel();
-        startForegroundCompat("Preparing offline wake-word engine. Audio stays on this phone.");
+        try {
+            startForegroundCompat("Preparing offline wake-word engine. Audio stays on this phone.");
+            Log.i("WakeWordService", "onCreate: foreground notification established");
+        } catch (RuntimeException error) {
+            Log.e("WakeWordService", "onCreate: unable to establish foreground notification", error);
+            active = false;
+            throw error;
+        }
     }
 
     @Override public int onStartCommand(Intent intent, int flags, int startId) {
+        Log.i("WakeWordService", "onStartCommand: startId=" + startId + ", action=" + (intent == null ? "null" : intent.getAction()));
         if (intent != null && ACTION_STOP.equals(intent.getAction())) {
             getSharedPreferences("jarvis_wake_word", MODE_PRIVATE).edit().putBoolean("enabled", false).apply();
             stopSelf();
@@ -69,6 +78,7 @@ public class WakeWordService extends Service implements RecognitionListener {
             if (!preparing && model == null && speechService == null) {
                 preparing = true;
                 stopped = false;
+                Log.i("WakeWordService", "onStartCommand: launching offline model preparation thread");
                 new Thread(this::prepareAndListen, "JarvisOfflineWake").start();
             }
         }
@@ -79,23 +89,36 @@ public class WakeWordService extends Service implements RecognitionListener {
 
     private void prepareAndListen() {
         try {
+            Log.i("WakeWordService", "prepareAndListen: checking local Vosk model");
             File modelDir = new File(getFilesDir(), "vosk-model-small-en-us-0.15");
             if (!new File(modelDir, "am").isDirectory() || !new File(modelDir, "conf").isDirectory()) {
+                Log.i("WakeWordService", "prepareAndListen: local model absent; beginning one-time download");
                 updateNotification("Downloading offline speech model once. No microphone audio is uploaded.");
                 File archive = new File(getCacheDir(), "vosk-model-small-en-us-0.15.zip");
                 downloadModel(archive);
+                Log.i("WakeWordService", "prepareAndListen: model archive downloaded; extracting");
                 unpackModel(archive, modelDir);
+                Log.i("WakeWordService", "prepareAndListen: model extraction complete");
                 // Keep only the extracted model; remove the downloaded archive.
                 //noinspection ResultOfMethodCallIgnored
                 archive.delete();
             }
-            if (stopped) return;
+            if (stopped) {
+                Log.i("WakeWordService", "prepareAndListen: cancelled before model load");
+                return;
+            }
+            Log.i("WakeWordService", "prepareAndListen: loading native Vosk model");
             model = new Model(modelDir.getAbsolutePath());
+            Log.i("WakeWordService", "prepareAndListen: native Vosk model loaded");
             Recognizer recognizer = new Recognizer(model, 16000.0f);
+            Log.i("WakeWordService", "prepareAndListen: recognizer created");
             speechService = new SpeechService(recognizer, 16000.0f);
-            updateNotification("Microphone ON · offline wake-word detection active");
+            Log.i("WakeWordService", "prepareAndListen: speech service created; starting microphone recognition");
             speechService.startListening(this);
-        } catch (Exception error) {
+            Log.i("WakeWordService", "prepareAndListen: startListening returned successfully");
+            updateNotification("Microphone ON · offline wake-word detection active");
+            Log.i("WakeWordService", "prepareAndListen: offline wake-word service ready");
+        } catch (Exception | LinkageError error) {
             Log.e("WakeWordService", "Failed to prepare offline wake-word service", error);
             updateNotification("Wake-word setup failed. Open JARVIS and switch the microphone OFF.");
             getSharedPreferences("jarvis_wake_word", MODE_PRIVATE).edit().putBoolean("enabled", false).apply();
@@ -291,6 +314,7 @@ public class WakeWordService extends Service implements RecognitionListener {
     @Override public IBinder onBind(Intent intent) { return null; }
 
     @Override public void onDestroy() {
+        Log.i("WakeWordService", "onDestroy: stopping offline wake-word service");
         commandTimeoutHandler.removeCallbacks(commandTimeout);
         awaitingCommand = false;
         stopped = true;
@@ -310,5 +334,6 @@ public class WakeWordService extends Service implements RecognitionListener {
         if (Build.VERSION.SDK_INT >= 24) stopForeground(STOP_FOREGROUND_REMOVE);
         else stopForeground(true);
         super.onDestroy();
+        Log.i("WakeWordService", "onDestroy: cleanup complete");
     }
 }
