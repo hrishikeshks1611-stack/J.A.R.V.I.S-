@@ -89,7 +89,7 @@ jobs:
           PACKAGE="system-images;android-29;google_apis;x86_64"
           for attempt in 1 2 3; do
             echo "Installing emulator and Android 10 image (attempt $attempt/3)"
-            if yes | sdkmanager --install "emulator" "$PACKAGE"; then
+            if sdkmanager --install "emulator" "$PACKAGE"; then
               break
             fi
             if [ "$attempt" -eq 3 ]; then
