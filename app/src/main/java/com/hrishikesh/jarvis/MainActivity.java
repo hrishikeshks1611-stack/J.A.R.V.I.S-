@@ -321,7 +321,7 @@ public class MainActivity extends Activity {
         }
 
         @JavascriptInterface public String saveFile(String requestedName, String mimeType, String base64Data) {
-            String safeName = requestedName == null ? "JARVIS_file" : requestedName.replaceAll("[\\\\/:*?\\\"<>|\\\\\\\\]", "_").trim();
+            String safeName = requestedName == null ? "JARVIS_file" : requestedName.replaceAll("[^A-Za-z0-9._ -]", "_").trim();
             if (safeName.isEmpty() || safeName.length() > 120) safeName = "JARVIS_file";
             Map<String, String> allowedTypes = new HashMap<>();
             allowedTypes.put("application/pdf", ".pdf");
