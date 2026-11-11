@@ -311,6 +311,8 @@ $('recoverOwner').onclick=async()=>{
  try{
   const data=await pairApi({action:'recover-owner',recoveryCode,deviceName:currentDeviceName()});
   $('ownerRecoveryCode').value='';
+  storeSession(data);
+  await restoreSharedHistory();
   $('syncStatus').textContent=data.message;
   await openSyncPanel();
  }catch(e){$('syncStatus').textContent=e.message}
