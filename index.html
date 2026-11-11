@@ -182,7 +182,7 @@ async function pairApi(payload){
  if(sessionToken)headers.Authorization='Bearer '+sessionToken;
  const response=await fetch(JARVIS_API+'/pair',{method:'POST',headers,body:JSON.stringify(payload)});
  const raw=await response.text();let data={};try{data=JSON.parse(raw)}catch{}
- if(!response.ok)throw new Error(data.error||'Pairing service returned HTTP '+response.status);
+ if(!response.ok){const error=new Error(data.error||'Pairing service returned HTTP '+response.status);error.status=response.status;throw error;}
  return data;
 }
 function currentDeviceName(){
@@ -268,8 +268,17 @@ $('createPairCode').onclick=async()=>{
  catch(e){$('syncStatus').textContent=e.message}
 };
 (async()=>{
- if(sessionToken){try{const v=await pairApi({action:'verify'});sessionRole=v.role;sessionDeviceId=v.deviceId;await restoreSharedHistory();$('hint').textContent='Connected to your shared JARVIS memory, Sir.';}catch(e){sessionToken='';localStorage.removeItem('jarvisSessionToken');localStorage.removeItem('jarvisDeviceId');openSyncPanel();}}
- else openSyncPanel();
+ if(sessionToken){
+  try{const v=await pairApi({action:'verify'});sessionRole=v.role;sessionDeviceId=v.deviceId;await restoreSharedHistory();$('hint').textContent='Connected to your shared JARVIS memory, Sir.';}
+  catch(e){
+   if(e.status===401){
+    sessionToken='';localStorage.removeItem('jarvisSessionToken');localStorage.removeItem('jarvisDeviceId');openSyncPanel();
+   }else{
+    $('syncPanel').hidden=false;$('setupArea').hidden=true;$('pairArea').hidden=true;$('ownerArea').hidden=true;
+    $('syncStatus').textContent='JARVIS could not verify this device because the service is temporarily unavailable. Your saved pairing has been kept. Reopen JARVIS when the connection is restored.';
+   }
+  }
+ }else openSyncPanel();
 })();
 function status(s,cls=''){ $('status').textContent='● '+s.toUpperCase();core.className='core '+cls}
 function add(text,who,attachment){const d=document.createElement('div');d.className='msg '+who;const body=document.createElement('div');body.textContent=text;d.appendChild(body);if(attachment&&attachment.mimeType&&attachment.mimeType.startsWith('image/')){const img=document.createElement('img');img.alt=attachment.name||'Attached image';img.src='data:'+attachment.mimeType+';base64,'+attachment.data;d.appendChild(img)}if(who==='jarvis'){const copy=document.createElement('button');copy.className='copy-btn';copy.type='button';copy.textContent='▢ Copy';copy.onclick=async()=>{try{await navigator.clipboard.writeText(text)}catch(e){const t=document.createElement('textarea');t.value=text;document.body.appendChild(t);t.select();document.execCommand('copy');t.remove()}copy.textContent='✓ Copied';setTimeout(()=>copy.textContent='▢ Copy',1500)};d.appendChild(copy)}messages.appendChild(d);messages.scrollTop=messages.scrollHeight;return d}
