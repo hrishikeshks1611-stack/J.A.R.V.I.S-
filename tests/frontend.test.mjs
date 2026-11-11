@@ -39,7 +39,7 @@ test("one-time owner recovery is available on an unpaired phone", async () => {
 
 test("service worker cache version is bumped and script parses", async () => {
   const source = await readFile(new URL("../sw.js", import.meta.url), "utf8");
-  assert.ok(source.includes('const CACHE="jarvis-shell-v25"'));
+  assert.ok(source.includes('const CACHE="jarvis-shell-v26"'));
   assert.doesNotThrow(() => new Function(source));
 });
 
@@ -62,7 +62,7 @@ test("YouTube Music play commands use the native playback request and disclose t
   assert.ok(html.includes("window.AndroidJarvis.playYoutubeMusic(songQuery)"));
   assert.ok(html.includes("startsWith('PLAY_REQUESTED:')"));
   assert.ok(html.includes("Playback confirmation depends on YouTube Music."));
-  assert.ok(html.includes("Native playback control is not installed yet"));
+  assert.ok(html.includes("Native playback control is not available in this installed app build"));
   assert.ok(html.includes("'https://music.youtube.com/search?q='+encodeURIComponent(songQuery)"));
 });
 
