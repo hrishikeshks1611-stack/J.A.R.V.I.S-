@@ -407,10 +407,10 @@ async function playPcmStream(response,cacheKey){
   if(reader){
     while(true){const {value,done}=await reader.read();if(done)break;if(stopped)break;
       const chunk=value instanceof Uint8Array?value:new Uint8Array(value);
-      if(chunk.length){parts.push(chunk.slice());queuePcm(chunk);}
+      if(chunk.length){parts.push(chunk.slice());}
     }
   }else{
-    const chunk=new Uint8Array(await response.arrayBuffer());if(chunk.length){parts.push(chunk);queuePcm(chunk);}
+    const chunk=new Uint8Array(await response.arrayBuffer());if(chunk.length){parts.push(chunk);}
   }
   if(stopped)return;
   streamDone=true;
@@ -418,7 +418,9 @@ async function playPcmStream(response,cacheKey){
   const total=parts.reduce((sum,p)=>sum+p.length,0),joined=new Uint8Array(total);
   let offset=0;for(const part of parts){joined.set(part,offset);offset+=part.length;}
   if(!total)throw new Error('Gemini returned an empty speech stream.');
-  // Save in the background: never delay the first spoken syllable for cache writes.
+  // Buffer the complete PCM response before playback so network chunk timing cannot create tiny gaps or broken syllables.
+  queuePcm(joined);
+  // Save in the background: never delay playback for cache writes.
   saveCachedSpeech(cacheKey,pcmToWav(joined)).catch(()=>{});
   if(!sources.size&&currentAudio===controller){currentAudio=null;status('System ready');}
 }
