@@ -29,3 +29,14 @@ test("APK workflow cannot publish debug-signed builds as downloadable releases",
   assert.doesNotMatch(workflow, /gh release create/);
   assert.match(workflow, /debug-verification/);
 });
+
+
+test("Android bridge requests play-from-search from the YouTube Music package", async () => {
+  const source = await readFile(new URL("../app/src/main/java/com/hrishikesh/jarvis/MainActivity.java", import.meta.url), "utf8");
+  const manifest = await readFile(new URL("../app/src/main/AndroidManifest.xml", import.meta.url), "utf8");
+  assert.ok(source.includes("MediaStore.INTENT_ACTION_MEDIA_PLAY_FROM_SEARCH"));
+  assert.ok(source.includes("SearchManager.QUERY"));
+  assert.ok(source.includes('setPackage("com.google.android.apps.youtube.music")'));
+  assert.ok(source.includes("SEARCH_FALLBACK:"));
+  assert.ok(manifest.includes('package android:name="com.google.android.apps.youtube.music"'));
+});
