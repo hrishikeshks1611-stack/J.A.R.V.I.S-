@@ -29,15 +29,15 @@ Implemented in part:
 - Device-aware diagnostics and Android TV-oriented layout/remote focus styling.
 - Supported Android app launches, camera/photo selection, and explicit Clock/Calendar handoffs.
 - YouTube Music search/open commands are available through the web shell and platform URL/app handoff where the device supports it.
-- Cast opens Android's Cast settings when the OS exposes that panel, otherwise it falls back to Settings/Quick Settings. This is not in-app screen mirroring and does not guarantee compatibility with every TV.
+- The Cast control is explicitly labelled as an Android Cast-settings shortcut. It opens the OS Cast panel when available, otherwise Settings/Quick Settings, and states that JARVIS does not stream or mirror the screen itself. This does not guarantee compatibility with every TV.
 - True mirroring still requires MediaProjection consent, a compatible receiver/protocol, network handling, and physical validation. It is not implemented.
 
 ## 8.0 — offline autonomy and wake-word
 
 - Offline fallback handles a small deterministic command set such as greetings, local date/time, permissioned location, and common web searches. There is no offline conversational language model.
-- `jarvis-intelligence-tools` contains a Vosk foreground-service prototype with a visible notification and OFF action. It is not merged or released.
-- Its latest quality suite passed and phone/TV APK compilation passed, but the Android 10 emulator smoke job failed before APK installation because the test script did not preserve its APK path variable between shell commands. Model load, foreground listening, stop behaviour, false activations, battery use, and service recovery therefore remain unverified.
-- The prototype uses general speech recognition plus phrase matching, not a dedicated keyword model. The downloaded model still needs a pinned SHA-256 checksum. Do not describe wake-word as ready or reliable.
+- `jarvis-intelligence-tools` / [PR #11](https://github.com/hrishikeshks1611-stack/J.A.R.V.I.S-/pull/11) contains an opt-in Vosk foreground-service prototype with a visible microphone notification and an OFF action. It is separate from the continuation release and is not merged or released.
+- PR #11's latest quality suite passed 82/82 tests and its phone/TV debug verification APKs compiled. The latest Android 10 API 29 emulator run (workflow 43028996091) successfully built the phone APK, verified its path, and installed the emulator image; the foreground-service/model-load/stop smoke step was still running at this report and has not yet passed.
+- The service uses a general US-English Vosk recogniser plus phrase matching, not a dedicated keyword-spotting model. False activations, British-accent command recognition, CPU/battery use, and recovery under real device conditions remain unverified. The archive's SHA-256 is not yet pinned to an independently verified publisher-controlled digest. Do not call this reliable or 24/7-ready.
 - Local Android TTS is a fallback and is not the Algieba voice.
 
 ## 9.0 — permissioned agent workflows
@@ -63,11 +63,12 @@ These require durable queues/state, explicit provider scopes, per-device presenc
 ## Verification and release gates
 
 - PR #5 is merged. The continuation branch combines the latest `main` line with the follow-up 5.0 development work; review it before merging.
-- The latest pre-continuation 5.0 quality run passed 61/61 tests. The Android phone + TV compile workflow passed on the last native-source commit; this is compilation evidence, not physical-device testing.
-- The continuation adds syntax checks, regression coverage for the tool UI, and a CSV formula-injection test. Its own CI results must be checked before merge.
-- The current Vercel production deployment is READY but serves main commit `869166cfb452fc5a822623b044e45b6ef71bcf29`. Latest main commit `f1c10fdba6d2239703471deb2351cb9bc6273807` has a Vercel deployment-rate-limit failure. No production deployment is authorised.
+- The latest continuation quality run passed **70/70 tests** on commit `ebb983413064207beb1ae0780db59279be92efa9`: syntax checks, shared-memory/agent/file/frontend regressions, and the read-only production API smoke all passed ([workflow 43030707175](https://github.com/hrishikeshks1611-stack/J.A.R.V.I.S-/actions/runs/43030707175)).
+- Android phone + TV compile checks passed on commit `2e41b6510caa80703b31091e646a007a5f333f44` ([workflow 43030454558](https://github.com/hrishikeshks1611-stack/J.A.R.V.I.S-/actions/runs/43030454558)). The later `ebb983` change only touched the web UI and frontend test; no Android source or Gradle files changed afterward. This is compile evidence, not physical-device testing.
+- The production smoke checks only prove that pairing status returns HTTP 200 and unauthenticated chat/speech/memory/backup requests return HTTP 401. They do not verify the production Gemini credential, authenticated user data, or the new continuation APIs.
+- Vercel still reports `Deployment rate limited — retry in 24 hours` for the latest continuation commit. The previously confirmed READY production deployment serves older main commit `869166cfb452fc5a822623b044e45b6ef71bcf29`; no production deployment is authorised.
 - GitHub Pages successfully deployed main commit `f1c10fdba6d2239703471deb2351cb9bc6273807`; it does not contain the continuation branch's tool-calling UI.
-- The Render control-plane connector returned transport errors during this run, so the staging service and current staging deployment could not be re-verified. Previous session notes recorded read-only 200 health/pairing checks, but those do not prove the continuation is deployed.
+- The Render workspace is visible, but the service-inventory/deployment action required interactive authorisation in this non-interactive run. No Render service was created and no continuation staging deployment is verified.
 - Production Gemini and Upstash environment-variable values were not read or printed. Presence by key name is not proof that the deployed runtime can use them.
 - Build 39 and later debug APKs have different signing-certificate fingerprints. The original Build 39 private keystore is not available in the repository or CI. Do not publish a replacement APK or instruct the user to uninstall.
 - No physical test on the user's phone, Android TV, or laptop PWA was performed. No production or Pages deployment was made from this continuation branch.
