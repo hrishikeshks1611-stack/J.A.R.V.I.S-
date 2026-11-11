@@ -197,7 +197,7 @@ export default async function handler(req, res) {
 
       // Capacity pressure and per-model rate limits may not affect every
       // eligible model equally. Try the remaining configured Gemini models.
-      if (response.status === 503 || response.status === 429) continue;
+      if (response.status === 503 || response.status === 429 || response.status === 404) continue;
 
       return res.status(502).json({
         error: `Gemini rejected the request (HTTP ${response.status}): ${detail}`
