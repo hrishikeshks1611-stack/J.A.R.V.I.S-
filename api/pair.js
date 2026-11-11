@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { createHmac } from "node:crypto";
 import {
   getSession, hashToken, randomToken, redisCommand, safeEqual,
   readHistory, saveHistory, appendConversationTurn, JARVIS_PREFIX, JARVIS_SESSION_TTL
@@ -43,7 +43,8 @@ export default async function handler(req, res) {
     const body = req.body || {};
     const action = String(body.action || "");
     const sourceMaterial = String(req.headers["x-forwarded-for"] || req.socket?.remoteAddress || "unknown") + "|" + String(req.headers["user-agent"] || "");
-    const sourceId = createHash("sha256").update(sourceMaterial).digest("hex").slice(0, 12);
+    const auditKey = process.env.JARVIS_SESSION_SECRET;
+    const sourceId = auditKey ? createHmac("sha256", auditKey).update(sourceMaterial).digest("hex").slice(0, 12) : undefined;
     const audit = (outcome, details = {}) => recordSecurityEvent(action, outcome, { ...details, sourceId });
     if (action === "status") {
       const claimed = await redisCommand("GET", JARVIS_PREFIX + "owner:claimed");
