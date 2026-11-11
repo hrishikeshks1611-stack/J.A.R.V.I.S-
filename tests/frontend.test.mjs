@@ -192,7 +192,7 @@ test("YouTube Music play commands use native playback request and disclose fallb
   const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
   assert.ok(html.includes("window.AndroidJarvis.playYoutubeMusic(songQuery)"));
   assert.ok(html.includes("startsWith('PLAY_REQUESTED:')"));
-  assert.ok(html.includes("The music app must confirm playback."));
+  assert.ok(html.includes("playback is not confirmed."));
   assert.ok(html.includes("Native YouTube Music control is unavailable in this app build"));
   assert.ok(html.includes("'https://music.youtube.com/search?q='+encodeURIComponent(songQuery)"));
 });
