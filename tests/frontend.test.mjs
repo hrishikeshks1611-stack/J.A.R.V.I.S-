@@ -153,6 +153,7 @@ test("AI tool reports and native confirmation actions are rendered safely", asyn
   assert.ok(html.includes("Review calendar event"));
   assert.ok(html.includes("Clock opened · confirm the alarm there"));
   assert.ok(html.includes("Calendar editor opened · save there to confirm"));
+  assert.ok(html.includes("nothing is confirmed yet, Sir."));
   assert.ok(html.includes("textContent=toolCalls.map"));
   assert.ok(html.includes("networkOnline:navigator.onLine!==false"));
 });
