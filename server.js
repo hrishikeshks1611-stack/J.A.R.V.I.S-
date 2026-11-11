@@ -54,3 +54,5 @@ const server=createServer(async(req,res)=>{
 });
 const port=Number(process.env.PORT||3000);
 server.listen(port,"0.0.0.0",()=>console.log("JARVIS staging server listening on "+port));
+
+// Temporary file downloads are served through the protected, single-use route above.
