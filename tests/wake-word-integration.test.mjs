@@ -72,3 +72,10 @@ test("Android manifest keeps the wake-word service and settings screen private t
   assert.match(manifest, /<activity android:name="\.WakeWordActivity" android:exported="false"/);
   assert.match(manifest, /<service android:name="\.WakeWordService" android:exported="false" android:foregroundServiceType="microphone"/);
 });
+
+test("wake phrase matching uses a complete token and expires the command prompt", async () => {
+  const service = await read("../app/src/main/java/com/hrishikesh/jarvis/WakeWordService.java");
+  assert.ok(service.includes('compile("\\\\bjarvis\\\\b")'));
+  assert.ok(service.includes("commandTimeoutHandler.postDelayed(commandTimeout, 8000)"));
+  assert.ok(service.includes("commandTimeoutHandler.removeCallbacks(commandTimeout)"));
+});
