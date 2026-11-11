@@ -73,6 +73,13 @@ test("Android manifest keeps the wake-word service and settings screen private t
   assert.match(manifest, /<service android:name="\.WakeWordService" android:exported="false" android:foregroundServiceType="microphone"/);
 });
 
+test("emulator wake-word test launcher exists only in debug and is shell-restricted", async () => {
+  const debugManifest = await read("../app/src/debug/AndroidManifest.xml");
+  assert.ok(debugManifest.includes('android:name=".WakeWordTestActivity"'));
+  assert.ok(debugManifest.includes('android:exported="true"'));
+  assert.ok(debugManifest.includes('android:permission="android.permission.DUMP"'));
+});
+
 test("wake phrase matching uses a complete token and expires the command prompt", async () => {
   const service = await read("../app/src/main/java/com/hrishikesh/jarvis/WakeWordService.java");
   assert.ok(service.includes('compile("\\\\bjarvis\\\\b")'));
