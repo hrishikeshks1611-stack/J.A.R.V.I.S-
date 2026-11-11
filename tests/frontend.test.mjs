@@ -187,13 +187,13 @@ test("owner-only Security Audit screen exposes activity filters", async () => {
 });
 
 
-test("contact calling uses READ_CONTACTS and opens the system dialer for user confirmation without call-log access", async () => {
+test("contact calling requires confirmation and uses only the permissions it needs", async () => {
   const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
   const java = await readFile(new URL("../app/src/main/java/com/hrishikesh/jarvis/MainActivity.java", import.meta.url), "utf8");
   const manifest = await readFile(new URL("../app/src/main/AndroidManifest.xml", import.meta.url), "utf8");
   assert.ok(html.includes("callCommand=message.match("));
   assert.ok(html.includes("window.AndroidJarvis.callContact(contactName)"));
-  assert.ok(html.includes("tap Call in the Phone app"));
+  assert.ok(html.includes("Please confirm the call on your screen, Sir."));
   assert.ok(html.includes("recentCallsCommand"));
   assert.ok(java.includes("ContactsContract.CommonDataKinds.Phone.CONTENT_FILTER_URI"));
   assert.ok(java.includes("Intent.ACTION_CALL"));
@@ -202,5 +202,5 @@ test("contact calling uses READ_CONTACTS and opens the system dialer for user co
   assert.ok(java.includes("Manifest.permission.READ_CONTACTS"));
   assert.ok(manifest.includes('android.permission.READ_CONTACTS'));
   assert.ok(!manifest.includes('android.permission.READ_CALL_LOG'));
-  assert.ok(!manifest.includes('android.permission.CALL_PHONE'));
+  assert.ok(manifest.includes('android.permission.CALL_PHONE'));
 });
