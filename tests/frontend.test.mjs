@@ -185,3 +185,14 @@ test("owner-only Security Audit screen exposes activity filters", async () => {
   assert.ok(html.includes("FIRST SEEN IN RECENT LOG"));
   assert.ok(html.includes("auditFailedOnly"));
 });
+
+
+test("permissioned tool calls are shown and alarm/calendar actions require a separate user click", async () => {
+  const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+  assert.ok(html.includes("function add(text,who,attachment,downloadFile,toolCalls,pendingActions)"));
+  assert.ok(html.includes("TOOL REPORT"));
+  assert.ok(html.includes("Review alarm in Clock"));
+  assert.ok(html.includes("Calendar editor opened · save there to confirm"));
+  assert.ok(html.includes("data.toolCalls,data.pendingActions"));
+  assert.ok(html.includes("deviceType,deviceName:deviceType,networkOnline:navigator.onLine!==false"));
+});
