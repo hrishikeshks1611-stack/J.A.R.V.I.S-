@@ -1,5 +1,6 @@
 import { getSession, appendConversationTurn } from "../lib/jarvis-store.js";
 import { createArtifactFile } from "../lib/jarvis-files.js";
+import { createDownload } from "../lib/jarvis-downloads.js";
 
 const FORMATS = new Set(["pdf", "docx", "xlsx", "pptx", "csv", "txt", "md"]);
 const MODELS = ["gemini-3.5-flash-lite", "gemini-3.8-flash", "gemini-3.5-flash"];
@@ -124,14 +125,16 @@ export default async function handler(req, res) {
     }
 
     const file = await createArtifactFile(artifactSpec, format);
-    const reply = "I've prepared " + file.title + " as a " + format.toUpperCase() + " attachment, Sir. Please review it before submitting or sharing.";
+    const download = createDownload(file);
+    const reply = "I've prepared " + file.title + " as a " + format.toUpperCase() + " attachment, Sir. The secure download link expires in 15 minutes and works once. Please review the file before submitting or sharing.";
     if (process.env.JARVIS_FILE_SAVE_HISTORY !== "false") await appendConversationTurn(prompt, reply);
     return res.status(200).json({
       reply,
-      filename: file.filename,
-      mimeType: file.mimeType,
-      size: file.buffer.length,
-      data: file.buffer.toString("base64"),
+      filename: download.filename,
+      mimeType: download.mimeType,
+      size: download.size,
+      downloadUrl: (process.env.JARVIS_PUBLIC_URL || "https://jarvis-6-0-yys5.onrender.com").replace(/\/$/, "") + "/api/download-file/" + download.token,
+      expiresInSeconds: download.expiresInSeconds,
       format,
       deviceId: session.deviceId
     });

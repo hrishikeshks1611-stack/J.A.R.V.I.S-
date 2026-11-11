@@ -8,6 +8,7 @@ import speech from "./api/speech.js";
 import memory from "./api/memory.js";
 import backup from "./api/backup.js";
 import createFile from "./api/create-file.js";
+import downloadFile from "./api/download-file.js";
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 const routes = new Map([["/api/chat",chat],["/api/pair",pair],["/api/speech",speech],["/api/memory",memory],["/api/backup",backup],["/api/create-file",createFile]]);
@@ -40,6 +41,8 @@ async function staticFile(req,res,pathname) {
 const server=createServer(async(req,res)=>{
   const url=new URL(req.url||"/","http://localhost");
   if(req.method==="GET"&&url.pathname==="/healthz"){res.writeHead(200,{"Content-Type":"application/json","Cache-Control":"no-store"});res.end(JSON.stringify({ok:true,service:"jarvis-staging",version:"6.0.0"}));return;}
+  const downloadMatch = /^\/api\/download-file\/([a-f0-9]{64})$/.exec(url.pathname);
+  if (downloadMatch) { downloadFile(req, res, downloadMatch[1]); return; }
   const handler=routes.get(url.pathname);
   if(handler){
     try { req.body=["POST","PUT","PATCH"].includes(req.method)?await body(req):{}; await handler(req,adapt(res)); if(!res.writableEnded)res.end(); }

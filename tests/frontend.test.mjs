@@ -25,20 +25,9 @@ test("saved-memory UI is explicit and has deletion controls", async () => {
   assert.ok(html.includes("status('Offline mode')"));
 });
 
-test("one-time owner recovery is available only to an already paired device", async () => {
-  const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
-  assert.ok(html.includes('id="recoveryArea"'));
-  assert.ok(html.includes('id="ownerRecoveryCode"'));
-  assert.ok(html.includes("action:'recover-owner'"));
-  assert.ok(html.includes("if(v.role==='owner')"));
-  assert.ok(html.includes("$('recoveryArea').hidden=false"));
-  assert.ok(html.includes("This one-time recovery promotes this already-paired device"));
-  assert.ok(html.includes("Existing paired devices and shared memory will be preserved"));
-});
-
 test("service worker cache version is bumped and script parses", async () => {
   const source = await readFile(new URL("../sw.js", import.meta.url), "utf8");
-  assert.ok(source.includes('const CACHE="jarvis-shell-v21"'));
+  assert.ok(source.includes('const CACHE="jarvis-shell-v22"'));
   assert.doesNotThrow(() => new Function(source));
 });
 
@@ -170,5 +159,7 @@ test("office requests choose useful output formats and return a real download li
   assert.equal(detectFileRequest("What is the meaning of management?"), null);
   assert.ok(html.includes("JARVIS_AUX_API+'/create-file'"));
   assert.ok(html.includes("downloadFile.filename"));
-  assert.ok(html.includes("new Blob([Uint8Array.from(atob(downloadFile.data)"));
+  assert.ok(html.includes("downloadFile.downloadUrl"));
+  assert.ok(html.includes("link.target='_blank'"));
+  assert.ok(html.includes("secure link works once and expires in 15 minutes"));
 });

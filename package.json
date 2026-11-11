@@ -7,12 +7,13 @@
     "node": ">=20"
   },
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "test": "node --test tests/*.test.mjs"
   },
   "dependencies": {
-    "pdfkit": "^0.17.2",
     "docx": "^9.5.1",
     "exceljs": "^4.4.0",
+    "pdfkit": "^0.17.2",
     "pptxgenjs": "^3.12.0"
   }
 }

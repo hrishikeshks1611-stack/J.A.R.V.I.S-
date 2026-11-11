@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { createArtifactFile, validateArtifact } from "../lib/jarvis-files.js";
 import createFileHandler from "../api/create-file.js";
+import { consumeDownload } from "../lib/jarvis-downloads.js";
 
 const sample = {
   title: "Quarterly Operations Summary",
@@ -88,7 +89,13 @@ test("file creation authenticates read-only and returns a real workbook without 
 
     assert.equal(statusCode, 200);
     assert.equal(payload.filename, "Integration-Test-Budget.xlsx");
-    assert.equal(Buffer.from(payload.data, "base64").subarray(0, 2).toString(), "PK");
+    assert.match(payload.downloadUrl, /^https:\/\/jarvis-6-0-yys5\.onrender\.com\/api\/download-file\/[a-f0-9]{64}$/);
+    assert.equal(payload.expiresInSeconds, 900);
+    const token = payload.downloadUrl.split("/").pop();
+    const downloaded = consumeDownload(token);
+    assert.equal(downloaded.buffer.subarray(0, 2).toString(), "PK");
+    assert.equal(consumeDownload(token), null);
+    assert.equal(Object.hasOwn(payload, "data"), false);
     assert.equal(redisCommands.length, 1);
     assert.equal(redisCommands[0][0], "GET");
     assert.equal(headers["Access-Control-Allow-Origin"], "https://hrishikeshks1611-stack.github.io");
@@ -101,3 +108,13 @@ test("file creation authenticates read-only and returns a real workbook without 
   }
 });
 
+
+
+test("download tokens are random, single-use, and reject malformed values", async () => {
+  const { createDownload, consumeDownload } = await import("../lib/jarvis-downloads.js");
+  const file = createDownload({ filename: "safe.pdf", mimeType: "application/pdf", buffer: Buffer.from("%PDF-test") });
+  assert.match(file.token, /^[a-f0-9]{64}$/);
+  assert.equal(consumeDownload("bad-token"), null);
+  assert.equal(consumeDownload(file.token).buffer.toString(), "%PDF-test");
+  assert.equal(consumeDownload(file.token), null);
+});

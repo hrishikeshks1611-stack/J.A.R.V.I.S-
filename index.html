@@ -50,23 +50,16 @@ footer{text-align:center;color:#577c99;font-size:10px;letter-spacing:.12em;paddi
    <input id="pairCode" autocomplete="off" maxlength="12" placeholder="8-character pairing code">
    <div class="sync-actions"><button class="sync-primary" id="pairDevice" type="button">Pair this device</button></div>
   </div>
-  <div id="recoveryArea" hidden>
-   <h3>Recover owner access</h3>
-   <p>This one-time recovery promotes this already-paired device to owner. It preserves shared memory and all paired-device records. Use only the recovery credential configured privately on the JARVIS server.</p>
-   <input id="ownerRecoveryCode" type="password" autocomplete="off" maxlength="128" placeholder="One-time owner recovery credential">
-   <div class="sync-actions"><button class="sync-primary" id="recoverOwner" type="button">Recover owner access</button></div>
-  </div>
   <div id="ownerArea" hidden>
    <p>This is your owner device. Generate a temporary code to connect your other devices.</p>
    <div class="sync-actions"><button class="sync-primary" id="createPairCode" type="button">Generate pairing code</button></div>
    <p id="pairDisplay" class="sync-code"></p>
    <p class="sync-muted">Each code expires after 10 minutes and can be used once.</p>
-   <h3>Paired devices</h3><div id="deviceList"></div><div class="sync-actions"><button id="openSecurityAudit" type="button">Security Audit</button></div>
+   <h3>Paired devices</h3><div id="deviceList"></div>
   </div>
   <div class="sync-actions"><button id="closeSync" type="button">Close</button></div>
  </div>
 </section>
-<section class="sync-panel" id="securityPanel" hidden aria-modal="true" role="dialog" aria-labelledby="securityTitle"><div class="sync-card"><h2 id="securityTitle">J.A.R.V.I.S. · SECURITY AUDIT</h2><p id="securityStatus">Owner-only security activity. Loading…</p><div class="mission-grid"><div class="mission-tile"><strong>RECENT EVENTS</strong><span id="auditTotal">—</span></div><div class="mission-tile"><strong>FAILED ATTEMPTS</strong><span id="auditFailed">—</span></div><div class="mission-tile"><strong>FIRST-SEEN SOURCES</strong><span id="auditNewSources">—</span></div></div><p class="sync-muted">Source IDs are one-way fingerprints of the connecting network address and browser. They are not exact device identities or proof of an attacker. No passwords, setup codes, pairing codes or raw IP addresses are displayed.</p><div class="sync-actions"><button id="auditAll" type="button">All activity</button><button id="auditFailedOnly" type="button">Failed attempts</button><button id="auditNewOnly" type="button">New sources</button><button id="refreshAudit" type="button">Refresh</button></div><div id="auditList"></div><div class="sync-actions"><button id="closeSecurityAudit" type="button">Close</button></div></div></section>
 <section class="sync-panel" id="memoryPanel" hidden aria-modal="true" role="dialog" aria-labelledby="memoryTitle">
  <div class="sync-card">
   <h2 id="memoryTitle">J.A.R.V.I.S. · SAVED MEMORY</h2>
@@ -86,8 +79,8 @@ footer{text-align:center;color:#577c99;font-size:10px;letter-spacing:.12em;paddi
 <section class="mission-panel" id="missionPanel" hidden aria-modal="true" role="dialog" aria-labelledby="missionTitle"><div class="mission-card"><h2 id="missionTitle">J.A.R.V.I.S. · MISSION CONTROL</h2><p id="missionSummary" class="mission-note">Live device diagnostics. Values are read from this device and browser.</p><div class="mission-grid"><div class="mission-tile"><strong>LOCAL TIME</strong><span id="mcTime">—</span></div><div class="mission-tile"><strong>DEVICE</strong><span id="mcDevice">—</span></div><div class="mission-tile"><strong>NETWORK</strong><span id="mcNetwork">—</span></div><div class="mission-tile"><strong>BATTERY</strong><span id="mcBattery">Checking…</span></div><div class="mission-tile"><strong>SHARED BRAIN</strong><span id="mcPair">Checking…</span></div><div class="mission-tile"><strong>BACKEND CHECK</strong><span id="mcBackend">Checking…</span></div><div class="mission-tile"><strong>PAIRED DEVICES</strong><span id="mcDevices">Checking…</span></div><div class="mission-tile"><strong>VOICE</strong><span id="mcVoice">—</span></div></div><h3>Daily Briefing</h3><p id="dailyBrief" class="mission-note">Generate a local briefing using the device clock and available system status.</p><div class="mission-actions"><button id="runBriefing" type="button">Prepare briefing</button><button id="refreshMission" type="button">Refresh diagnostics</button></div><h3>Smart Routines · Local controls</h3><p class="mission-note">These routines change JARVIS interface and voice settings on this device only. They do not run background jobs or control other devices.</p><div class="mission-actions"><button id="focusRoutine" type="button">Focus mode</button><button id="nightRoutine" type="button">Good night</button><button id="normalRoutine" type="button">Normal mode</button></div><h3>Custom routines</h3><p class="mission-note">Create up to eight named routines using these safe, on-device modes. They are saved only in this browser and do not trigger background actions.</p><div class="mission-actions"><input id="customRoutineName" maxlength="32" placeholder="Routine name" aria-label="Routine name"><select id="customRoutineMode" aria-label="Routine mode"><option value="focus">Focus</option><option value="night">Good night</option><option value="normal">Normal</option></select><button id="saveCustomRoutine" type="button">Save routine</button></div><div id="customRoutineList" class="mission-actions" aria-live="polite"></div><div class="mission-actions"><button id="closeMission" type="button">Close</button></div></div></section>
 <script>
 const $=id=>document.getElementById(id), core=$('core'), messages=$('messages');let history=[],voiceOn=true,pendingAttachment=null,deviceLocation=null,currentAudio=null;
-const JARVIS_API='https://jarvis-6-0-yys5.onrender.com/api';
-const JARVIS_AUX_API='https://jarvis-6-0-yys5.onrender.com/api';
+const JARVIS_API='https://jarvis-sigma-one-92.vercel.app/api';
+const JARVIS_AUX_API='https://jarvis-5-0-staging.onrender.com/api';
 let sessionToken=localStorage.getItem('jarvisSessionToken')||'',sessionRole='',sessionDeviceId='',chatBusy=false,lastSharedHistorySignature='';
 let editingMemoryId=null;
 async function memoryApi(payload){
@@ -245,13 +238,13 @@ async function renderPairedDevices(){
  });
 }
 async function openSyncPanel(){
- $('syncPanel').hidden=false;$('setupArea').hidden=true;$('pairArea').hidden=true;$('ownerArea').hidden=true;$('recoveryArea').hidden=true;
+ $('syncPanel').hidden=false;$('setupArea').hidden=true;$('pairArea').hidden=true;$('ownerArea').hidden=true;
  try{
   if(sessionToken){
    const v=await pairApi({action:'verify'});sessionRole=v.role;sessionDeviceId=v.deviceId;
    $('syncStatus').textContent='Connected as '+v.deviceName+'. Shared conversation sync is active.';
    if(v.role==='owner'){$('ownerArea').hidden=false;await renderPairedDevices();}
-   else {$('pairArea').hidden=true;$('recoveryArea').hidden=false;}
+   else $('pairArea').hidden=true;
    return;
   }
   const statusData=await pairApi({action:'status'});
@@ -261,61 +254,10 @@ async function openSyncPanel(){
  }catch(e){$('syncStatus').textContent=e.message}
 }
 $('syncButton').onclick=openSyncPanel;
-let securityEvents=[],securityDevices=[],securityFilter='all';
-function renderSecurityAudit(){
- const known=new Set(securityDevices.map(d=>d.deviceId).filter(Boolean));
- const firstSeen=new Map();
- [...securityEvents].slice().reverse().forEach(e=>{if(e.sourceId&&!firstSeen.has(e.sourceId))firstSeen.set(e.sourceId,e.timestamp)});
- const newSources=new Set();securityEvents.forEach(e=>{if(e.sourceId&&firstSeen.get(e.sourceId)===e.timestamp)newSources.add(e.sourceId)});
- $('auditTotal').textContent=String(securityEvents.length);
- $('auditFailed').textContent=String(securityEvents.filter(e=>e.outcome==='denied'||e.outcome==='failed').length);
- $('auditNewSources').textContent=String(newSources.size);
- const shown=securityEvents.filter(e=>securityFilter==='failed'?(e.outcome==='denied'||e.outcome==='failed'):securityFilter==='new'?(e.sourceId&&newSources.has(e.sourceId)):true);
- const list=$('auditList');list.innerHTML='';
- if(!shown.length){const empty=document.createElement('p');empty.className='sync-muted';empty.textContent='No events in this view.';list.appendChild(empty);return;}
- shown.forEach(e=>{
-  const row=document.createElement('div');row.className='memory-item';row.style.display='block';
-  const heading=document.createElement('strong');heading.textContent=(e.outcome==='denied'?'FAILED · ':e.outcome==='success'?'SUCCESS · ':'ACTIVITY · ')+String(e.action||'unknown').replace(/-/g,' ').toUpperCase();
-  const detail=document.createElement('div');detail.className='sync-muted';
-  const when=e.timestamp?new Date(e.timestamp).toLocaleString():'Time unavailable';
-  const device=e.deviceName||e.deviceId||'Device not identified';
-  const source=e.sourceId?(newSources.has(e.sourceId)?'FIRST SEEN IN LOG · ':'SOURCE · ')+e.sourceId:'Source fingerprint unavailable';
-  const knownDevice=e.deviceId?(known.has(e.deviceId)?'Currently paired':'Not currently paired'):'No device ID recorded';
-  detail.textContent=[when,device,knownDevice,source,e.reason||''].filter(Boolean).join(' · ');
-  row.append(heading,detail);list.appendChild(row);
- });
-}
-async function loadSecurityAudit(){
- $('securityStatus').textContent='Checking owner access and loading recent events…';
- try{
-  const [audit,devices]=await Promise.all([pairApi({action:'security-audit'}),pairApi({action:'devices'})]);
-  securityEvents=Array.isArray(audit.events)?audit.events:[];securityDevices=Array.isArray(devices.devices)?devices.devices:[];
-  $('securityStatus').textContent='Showing up to 100 recent events. Audit history is retained for up to 90 days.';renderSecurityAudit();
- }catch(e){$('securityStatus').textContent=e.message;$('auditList').innerHTML='';}
-}
-$('openSecurityAudit').onclick=async()=>{$('securityPanel').hidden=false;securityFilter='all';await loadSecurityAudit()};
-$('closeSecurityAudit').onclick=()=>$('securityPanel').hidden=true;
-$('refreshAudit').onclick=loadSecurityAudit;
-$('auditAll').onclick=()=>{securityFilter='all';renderSecurityAudit()};
-$('auditFailedOnly').onclick=()=>{securityFilter='failed';renderSecurityAudit()};
-$('auditNewOnly').onclick=()=>{securityFilter='new';renderSecurityAudit()};
 $('closeSync').onclick=()=>{if(sessionToken)$('syncPanel').hidden=true};
 $('claimDevice').onclick=async()=>{
  try{const data=await pairApi({action:'claim',setupCode:$('setupCode').value,deviceName:currentDeviceName()});storeSession(data);await restoreSharedHistory();$('hint').textContent=data.message+' Shared memory is ready, Sir.';}
  catch(e){$('syncStatus').textContent=e.message}
-};
-$('recoverOwner').onclick=async()=>{
- const recoveryCode=$('ownerRecoveryCode').value;
- if(!recoveryCode){$('syncStatus').textContent='Enter the owner recovery credential configured on the JARVIS server.';return;}
- if(!confirm('Recover owner access on this laptop? This will transfer owner privileges from the previous owner session. Existing paired devices and shared memory will be preserved. This recovery credential can be used only once.'))return;
- $('recoverOwner').disabled=true;
- try{
-  const data=await pairApi({action:'recover-owner',recoveryCode});
-  $('ownerRecoveryCode').value='';
-  $('syncStatus').textContent=data.message;
-  await openSyncPanel();
- }catch(e){$('syncStatus').textContent=e.message}
- finally{$('recoverOwner').disabled=false}
 };
 $('pairDevice').onclick=async()=>{
  try{const data=await pairApi({action:'pair',pairingCode:$('pairCode').value,deviceName:currentDeviceName()});storeSession(data);await restoreSharedHistory();$('hint').textContent=data.message+' Shared memory is ready, Sir.';}
@@ -330,7 +272,7 @@ $('createPairCode').onclick=async()=>{
  else openSyncPanel();
 })();
 function status(s,cls=''){ $('status').textContent='● '+s.toUpperCase();core.className='core '+cls}
-function add(text,who,attachment,downloadFile){const d=document.createElement('div');d.className='msg '+who;const body=document.createElement('div');body.textContent=text;d.appendChild(body);if(attachment&&attachment.mimeType&&attachment.mimeType.startsWith('image/')){const img=document.createElement('img');img.alt=attachment.name||'Attached image';img.src='data:'+attachment.mimeType+';base64,'+attachment.data;d.appendChild(img)}if(downloadFile&&downloadFile.data){const row=document.createElement('div');row.className='attachment-chip';const label=document.createElement('span');label.textContent='📎 '+downloadFile.filename+' · '+Math.max(1,Math.round(downloadFile.size/1024))+' KB';row.appendChild(label);const link=document.createElement('a');link.textContent='Download';link.href=URL.createObjectURL(new Blob([Uint8Array.from(atob(downloadFile.data),c=>c.charCodeAt(0))],{type:downloadFile.mimeType||'application/octet-stream'}));link.download=downloadFile.filename;link.style.cssText='color:#8cecff;font-weight:700;text-decoration:underline;margin-left:auto';link.onclick=()=>setTimeout(()=>URL.revokeObjectURL(link.href),60000);row.appendChild(link);d.appendChild(row)}if(who==='jarvis'){const copy=document.createElement('button');copy.className='copy-btn';copy.type='button';copy.textContent='▢ Copy';copy.onclick=async()=>{try{await navigator.clipboard.writeText(text)}catch(e){const t=document.createElement('textarea');t.value=text;document.body.appendChild(t);t.select();document.execCommand('copy');t.remove()}copy.textContent='✓ Copied';setTimeout(()=>copy.textContent='▢ Copy',1500)};d.appendChild(copy)}messages.appendChild(d);messages.scrollTop=messages.scrollHeight;return d}
+function add(text,who,attachment,downloadFile){const d=document.createElement('div');d.className='msg '+who;const body=document.createElement('div');body.textContent=text;d.appendChild(body);if(attachment&&attachment.mimeType&&attachment.mimeType.startsWith('image/')){const img=document.createElement('img');img.alt=attachment.name||'Attached image';img.src='data:'+attachment.mimeType+';base64,'+attachment.data;d.appendChild(img)}if(downloadFile&&(downloadFile.downloadUrl||downloadFile.data)){const row=document.createElement('div');row.className='attachment-chip';const label=document.createElement('span');label.textContent='📎 '+downloadFile.filename+' · '+Math.max(1,Math.round(downloadFile.size/1024))+' KB';row.appendChild(label);const link=document.createElement('a');link.textContent='Download';if(downloadFile.downloadUrl){link.href=downloadFile.downloadUrl;link.target='_blank';link.rel='noopener'}else{link.href=URL.createObjectURL(new Blob([Uint8Array.from(atob(downloadFile.data),c=>c.charCodeAt(0))],{type:downloadFile.mimeType||'application/octet-stream'}));link.download=downloadFile.filename;link.onclick=()=>setTimeout(()=>URL.revokeObjectURL(link.href),60000)}link.style.cssText='color:#8cecff;font-weight:700;text-decoration:underline;margin-left:auto';row.appendChild(link);d.appendChild(row)}if(who==='jarvis'){const copy=document.createElement('button');copy.className='copy-btn';copy.type='button';copy.textContent='▢ Copy';copy.onclick=async()=>{try{await navigator.clipboard.writeText(text)}catch(e){const t=document.createElement('textarea');t.value=text;document.body.appendChild(t);t.select();document.execCommand('copy');t.remove()}copy.textContent='✓ Copied';setTimeout(()=>copy.textContent='▢ Copy',1500)};d.appendChild(copy)}messages.appendChild(d);messages.scrollTop=messages.scrollHeight;return d}
 
 function setAttachment(file){if(!file)return;const allowed=['application/pdf','text/plain','text/csv','application/json','text/markdown'];if(!(file.type.startsWith('image/')||allowed.includes(file.type))){$('hint').textContent='Please choose an image, PDF, TXT, CSV, JSON or Markdown file, Sir.';return;}if(file.size>3*1024*1024){$('hint').textContent='That file is larger than the 3 MB limit, Sir.';return;}const reader=new FileReader();reader.onload=()=>{const data=String(reader.result).split(',')[1]||'';pendingAttachment={name:file.name||'Camera photo',mimeType:file.type||'image/jpeg',data};renderAttachment()};reader.onerror=()=>{$('hint').textContent='I could not read that file, Sir.'};reader.readAsDataURL(file)}
 function renderAttachment(){const chip=$('attachmentChip');chip.innerHTML='';if(!pendingAttachment){chip.hidden=true;return}chip.hidden=false;const label=document.createElement('span');label.textContent='📎 '+pendingAttachment.name;chip.appendChild(label);const remove=document.createElement('button');remove.type='button';remove.textContent='×';remove.setAttribute('aria-label','Remove attachment');remove.onclick=()=>{pendingAttachment=null;renderAttachment()};chip.appendChild(remove)}
@@ -356,7 +298,7 @@ function detectFileRequest(text){
  else if(/\b(attachment form|as an attachment|attached file)\b/.test(q))format='pdf';
  return format?{format}:null;
 }
-async function createOfficeFile(prompt,format,attachment){status('Creating file','thinking');$('hint').textContent='Preparing '+format.toUpperCase()+' attachment…';chatBusy=true;try{const response=await fetch(JARVIS_AUX_API+'/create-file',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+sessionToken},body:JSON.stringify({prompt,format,attachment,deviceContext:getDeviceContext()})});const raw=await response.text();let data={};try{data=JSON.parse(raw)}catch{}if(!response.ok)throw new Error(data.error||'File creation failed (HTTP '+response.status+').');chatBusy=false;add(data.reply||'Your file is ready, Sir.','jarvis',null,data);history.push({role:'model',text:data.reply||'Your file is ready, Sir.'});history=history.slice(-20);$('hint').textContent='File created. Download the attachment from this message, Sir.';speak(data.reply||'Your file is ready, Sir.');if(!voiceOn)status('System ready');}catch(error){chatBusy=false;add('Sir, I could not create that attachment: '+error.message,'jarvis');$('hint').textContent='File creation was not completed. Your original request is still available in the conversation.';status('System ready');}}
+async function createOfficeFile(prompt,format,attachment){status('Creating file','thinking');$('hint').textContent='Preparing '+format.toUpperCase()+' attachment…';chatBusy=true;try{const response=await fetch(JARVIS_AUX_API+'/create-file',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+sessionToken},body:JSON.stringify({prompt,format,attachment,deviceContext:getDeviceContext()})});const raw=await response.text();let data={};try{data=JSON.parse(raw)}catch{}if(!response.ok)throw new Error(data.error||'File creation failed (HTTP '+response.status+').');chatBusy=false;add(data.reply||'Your file is ready, Sir.','jarvis',null,data);history.push({role:'model',text:data.reply||'Your file is ready, Sir.'});history=history.slice(-20);$('hint').textContent='File created. Tap Download to save it. The secure link works once and expires in 15 minutes, Sir.';speak(data.reply||'Your file is ready, Sir.');if(!voiceOn)status('System ready');}catch(error){chatBusy=false;add('Sir, I could not create that attachment: '+error.message,'jarvis');$('hint').textContent='File creation was not completed. Your original request is still available in the conversation.';status('System ready');}}
 function getDeviceContext(){const now=new Date();return {localTime:now.toLocaleString('en-IN',{dateStyle:'full',timeStyle:'long'}),isoTime:now.toISOString(),timeZone:Intl.DateTimeFormat().resolvedOptions().timeZone||'unknown',deviceType:detectJarvisDevice(),deviceName:currentDeviceName(),networkOnline:navigator.onLine!==false,location:deviceLocation};}
 function requestPreciseLocation(){if(!navigator.geolocation){$('hint').textContent='Location services are not available in this browser, Sir.';return;}$('hint').textContent='Requesting precise location permission…';navigator.geolocation.getCurrentPosition(pos=>{deviceLocation={latitude:Number(pos.coords.latitude.toFixed(6)),longitude:Number(pos.coords.longitude.toFixed(6)),accuracyMeters:Math.round(pos.coords.accuracy),capturedAt:new Date().toISOString()};$('locationEnable').textContent='Location: Enabled';$('hint').textContent='Precise location received (±'+deviceLocation.accuracyMeters+' m). It will accompany your AI requests, Sir.';},err=>{$('hint').textContent=err.code===1?'Location permission was denied. Enable Precise location for J.A.R.V.I.S. in Android App permissions, Sir.':err.code===2?'The phone could not determine its location. Check that Location is switched on, Sir.':'Location request timed out. Please try again, Sir.';},{enableHighAccuracy:true,timeout:20000,maximumAge:0});}
 $('locationEnable').onclick=requestPreciseLocation;
@@ -373,7 +315,7 @@ $('castButton').onclick=()=>{
     add('Sir, open your phone’s Quick Settings, tap Cast / Screen Cast / Smart View, then select the TV. The TV and phone may need to be on the same Wi-Fi network.','jarvis');
   }
 };
-function offlineReply(message,mode){const q=message.toLowerCase(),p=mode==='philosophical'?'A thought, Sir: ':mode==='witty'?'Certainly, Sir. ':'';if(/\b(where am i|my location|current location|where are we)\b/.test(q))return deviceLocation?'Your current coordinates are latitude '+deviceLocation.latitude+', longitude '+deviceLocation.longitude+', with an estimated accuracy of '+deviceLocation.accuracyMeters+' metres, Sir.':'I do not have your location yet, Sir. Tap Enable precise location and grant permission.';if(/\b(hello|hi|hey|good morning|good afternoon|good evening|good night)\b/.test(q))return 'Good day, Sir. All systems are standing by. What can I do for you?';if(/\b(time|what time)\b/.test(q))return 'The time on this device is '+new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})+', Sir.';if(/\b(date|today'?s date|what day)\b/.test(q))return 'Today is '+new Date().toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long',year:'numeric'})+', Sir.';if(/\b(who are you|your name|introduce yourself)\b/.test(q))return 'I am J.A.R.V.I.S., your personal assistant interface, Sir.';if(/\b(search|google|look up)\b/.test(q)){const t=message.replace(/^(please\s+)?(search( for)?|google|look up)\s*/i,'').trim();return t?'Here is your search: https://www.google.com/search?q='+encodeURIComponent(t):'What shall I search for, Sir?'}if(/\b(open|visit|go to)\b/.test(q)){const sites=[['youtube','https://youtube.com'],['google','https://google.com'],['gmail','https://mail.google.com'],['wikipedia','https://wikipedia.org'],['github','https://github.com']];const h=sites.find(([n])=>q.includes(n));return h?'Opening '+h[0]+': '+h[1]:'Name a site such as Google, YouTube, Gmail, Wikipedia, or GitHub, Sir.'}if(/\b(thanks|thank you)\b/.test(q))return 'Always a pleasure, Sir.';return p+'my online AI service is temporarily unavailable, Sir. Your question needs the AI model, so I cannot answer it reliably right now. Greetings, time, date, basic identity, common websites, and web searches remain available locally.'}
+function offlineReply(message,mode){const q=message.toLowerCase(),p=mode==='philosophical'?'A thought, Sir: ':mode==='witty'?'Certainly, Sir. ':'';if(/\b(where am i|my location|current location|where are we)\b/.test(q))return deviceLocation?'Your current coordinates are latitude '+deviceLocation.latitude+', longitude '+deviceLocation.longitude+', with an estimated accuracy of '+deviceLocation.accuracyMeters+' metres, Sir.':'I do not have your location yet, Sir. Tap Enable precise location and grant permission.';if(/\b(hello|hi|hey|good morning|good afternoon|good evening|good night)\b/.test(q))return 'Good day, Sir. All systems are standing by. What can I do for you?';if(/\b(time|what time)\b/.test(q))return 'The time on this device is '+new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})+', Sir.';if(/\b(date|today'?s date|what day)\b/.test(q))return 'Today is '+new Date().toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long',year:'numeric'})+', Sir.';if(/\b(who are you|your name|introduce yourself)\b/.test(q))return 'I am J.A.R.V.I.S., your personal assistant interface, Sir.';if(/\b(search|google|look up)\b/.test(q)){const t=message.replace(/^(please\s+)?(search( for)?|google|look up)\s*/i,'').trim();return t?'Here is your search: https://www.google.com/search?q='+encodeURIComponent(t):'What shall I search for, Sir?'}if(/\b(open|visit|go to)\b/.test(q)){const sites=[['youtube','https://youtube.com'],['google','https://google.com'],['gmail','https://mail.google.com'],['wikipedia','https://wikipedia.org'],['github','https://github.com']];const h=sites.find(([n])=>q.includes(n));return h?'Opening '+h[0]+': '+h[1]:'Name a site such as Google, YouTube, Gmail, Wikipedia, or GitHub, Sir.'}if(/\b(thanks|thank you)\b/.test(q))return 'Always a pleasure, Sir.';return p+'the no-key mode can handle greetings, time, date, basic identity, common websites, and web searches. Open-ended questions need an internet connection and an AI model, Sir.'}
 // Cache exact Algieba recordings on this device. Cached speech is replayed
 // locally; new wording still requires an authorised Gemini TTS request.
 const speechMemoryCache=new Map();
