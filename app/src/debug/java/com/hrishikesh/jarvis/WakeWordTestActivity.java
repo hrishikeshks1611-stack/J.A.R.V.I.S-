@@ -9,6 +9,8 @@ import android.os.Bundle;
 
 /**
  * Debug-only entry point used by Android emulator smoke tests.
+ * The test launcher starts/stops the private service from inside the app UID;
+ * never export WakeWordService itself just to make shell-based tests work.
  * The production APK does not include this Activity or its manifest entry.
  */
 public class WakeWordTestActivity extends Activity {
