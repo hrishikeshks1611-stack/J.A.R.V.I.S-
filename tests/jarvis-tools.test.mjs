@@ -21,7 +21,7 @@ test("calculator enforces input and result bounds", () => {
 
 test("tool registry exposes only the approved four tools", () => {
   const names = JARVIS_TOOL_DECLARATIONS[0].function_declarations.map(item => item.name);
-  assert.deepEqual(names, ["calculate", "get_device_status", "search_saved_memories", "search_conversation"]);
+  assert.deepEqual(names, ["calculate", "get_device_status", "request_alarm", "request_calendar_event", "search_saved_memories", "search_conversation"]);
 });
 
 test("device status reports only fields explicitly supplied by the app", async () => {
@@ -54,4 +54,27 @@ test("conversation search returns relevant messages without mutation", async () 
 test("unknown tools and malformed arguments fail closed", async () => {
   await assert.rejects(() => executeJarvisTool("run_shell", { command: "id" }));
   await assert.rejects(() => executeJarvisTool("calculate", ["2+2"]));
+});
+
+test("alarm tool only prepares a valid action for explicit app confirmation", async () => {
+  const result = await executeJarvisTool("request_alarm", { hour: 21, minute: 5, label: "Study" });
+  assert.equal(result.requiresConfirmation, true);
+  assert.deepEqual(result.pendingAction, { type: "alarm", hour: 21, minute: 5, label: "Study" });
+  await assert.rejects(() => executeJarvisTool("request_alarm", { hour: 25, minute: 0, label: "Invalid" }));
+});
+
+test("calendar tool requires future timezone-aware dates and caps event duration", async () => {
+  const result = await executeJarvisTool("request_calendar_event", {
+    title: "Project review", startIso: "2099-04-10T10:00:00+05:30",
+    endIso: "2099-04-10T11:00:00+05:30", description: "Review milestones"
+  });
+  assert.equal(result.requiresConfirmation, true);
+  assert.equal(result.pendingAction.type, "calendar");
+  assert.ok(result.pendingAction.endMillis > result.pendingAction.beginMillis);
+  await assert.rejects(() => executeJarvisTool("request_calendar_event", {
+    title: "No offset", startIso: "2099-04-10T10:00:00", endIso: "2099-04-10T11:00:00"
+  }));
+  await assert.rejects(() => executeJarvisTool("request_calendar_event", {
+    title: "Too long", startIso: "2099-04-10T10:00:00Z", endIso: "2099-04-11T00:00:00Z"
+  }));
 });
