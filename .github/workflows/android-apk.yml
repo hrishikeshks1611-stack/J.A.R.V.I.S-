@@ -36,6 +36,8 @@ jobs:
           gradle-version: '8.9'
       - name: Build phone and Android TV APKs
         run: gradle --no-daemon assemblePhoneDebug assembleTvDebug
+      - name: Verify phone APK exists
+        run: test -s "$GITHUB_WORKSPACE/app/build/outputs/apk/phone/debug/app-phone-debug.apk"
       - name: Upload phone verification artifact
         uses: actions/upload-artifact@v4
         with:
@@ -74,6 +76,12 @@ jobs:
           gradle-version: '8.9'
       - name: Build phone APK
         run: gradle --no-daemon assemblePhoneDebug
+      - name: Verify APK path before emulator launch
+        run: |
+          APK_FILE_PATH="$GITHUB_WORKSPACE/app/build/outputs/apk/phone/debug/app-phone-debug.apk"
+          echo "Checking APK: $APK_FILE_PATH"
+          test -s "$APK_FILE_PATH"
+          ls -lh "$APK_FILE_PATH"
       - name: Smoke-test foreground microphone service on Android 10
         uses: reactivecircus/android-emulator-runner@v2
         with:
@@ -83,9 +91,15 @@ jobs:
           disable-animations: true
           script: |
             set -euo pipefail
-            APK="app/build/outputs/apk/phone/debug/app-phone-debug.apk"
+            APK_FILE_PATH="$GITHUB_WORKSPACE/app/build/outputs/apk/phone/debug/app-phone-debug.apk"
+            echo "Installing APK from: $APK_FILE_PATH"
+            if [ ! -s "$APK_FILE_PATH" ]; then
+              echo "APK missing or empty in emulator job workspace."
+              find "$GITHUB_WORKSPACE/app/build/outputs/apk" -maxdepth 5 -type f -name '*.apk' -print 2>/dev/null || true
+              exit 1
+            fi
             adb wait-for-device
-            adb install "$APK"
+            adb install "$APK_FILE_PATH"
             adb shell pm grant com.hrishikesh.jarvis android.permission.RECORD_AUDIO
             adb logcat -c
             adb shell am start -W -n com.hrishikesh.jarvis/.MainActivity
@@ -93,14 +107,17 @@ jobs:
             adb shell am start -W -n com.hrishikesh.jarvis/.WakeWordTestActivity
             ready=0
             for attempt in $(seq 1 180); do
-              if adb shell dumpsys notification --noredact | grep -q "offline wake-word detection active"; then
+              if adb logcat -d -s WakeWordService:I | grep -q "offline wake-word service ready"; then
                 ready=1
+                break
+              fi
+              if adb logcat -d -s WakeWordService:E | grep -q "Failed to prepare offline wake-word service"; then
                 break
               fi
               sleep 2
             done
             if [ "$ready" -ne 1 ]; then
-              echo "Wake-word service did not reach READY within six minutes. Capturing diagnostics:"
+              echo "Wake-word service did not report READY within six minutes. Capturing diagnostics:"
               echo "----- Wake-word and Android runtime logs -----"
               adb logcat -d -v threadtime | grep -E "WakeWordTest|WakeWordService|AndroidRuntime|ActivityManager|ForegroundService|Permission" || true
               echo "----- Activity services -----"
