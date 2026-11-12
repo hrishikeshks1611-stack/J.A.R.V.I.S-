@@ -12,3 +12,10 @@ test("Gemini calls have bounded timeouts and supported fallback models", async (
   assert.ok(source.includes("[404, 429, 500, 503, 504].includes(response.status)"));
   assert.ok(source.includes("clearTimeout(timeout)"));
 });
+
+test("shared-memory calls cannot hold a chat request open indefinitely", async () => {
+  const source = await readFile(new URL("../lib/jarvis-store.js", import.meta.url), "utf8");
+  assert.ok(source.includes("new AbortController()"));
+  assert.ok(source.includes("setTimeout(() => controller.abort(), 3500)"));
+  assert.ok(source.includes("await Promise.all(touches)"));
+});
