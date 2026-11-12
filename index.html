@@ -498,9 +498,53 @@ async function speak(text){
 $('testVoice').onclick=()=>{speak('Good evening, Sir. I am JARVIS. How may I assist you today?');$('hint').textContent='Testing the British voice…';};
 $('voiceToggle').onclick=()=>{voiceOn=!voiceOn;$('voiceToggle').textContent='Voice: '+(voiceOn?'On':'Off');if(!voiceOn){if(currentAudio){currentAudio.pause();currentAudio=null;}}};
 $('clear').onclick=async()=>{if(!sessionToken){openSyncPanel();return;}try{await pairApi({action:'clear'});history=[];messages.innerHTML='';add('Conversation cleared across all your devices, Sir. What shall we discuss?','jarvis')}catch(e){$('hint').textContent=e.message}};
+function instantReply(text){
+ const q=String(text||'').trim().toLowerCase().replace(/[.!?]+$/,'').trim();
+ if(/^(?:hey(?: jarvis)?|hi(?: jarvis)?|hello(?: jarvis)?|good morning|good afternoon|good evening|good night)(?: jarvis)?$/.test(q))return 'Good '+(q.includes('morning')?'morning':q.includes('afternoon')?'afternoon':q.includes('evening')?'evening':q.includes('night')?'night':'day')+', Sir. I am here and ready.';
+ if(/^(?:thanks|thank you|thank you jarvis|thanks jarvis)$/.test(q))return 'Always a pleasure, Sir.';
+ if(/^(?:what time is it|tell me the time|current time)$/.test(q))return 'The time is '+new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})+', Sir.';
+ if(/^(?:what is the date|what is today'?s date|what day is it|today'?s date)$/.test(q))return 'Today is '+new Date().toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long',year:'numeric'})+', Sir.';
+ return null;
+}
 $('form').onsubmit=async e=>{e.preventDefault();if(!sessionToken){openSyncPanel();$('syncStatus').textContent='Pair this device before sending messages.';return;}const message=$('prompt').value.trim();if(!message&&!pendingAttachment)return;$('prompt').value='';const attachment=pendingAttachment;pendingAttachment=null;renderAttachment();add(message||'Please examine this attachment, Sir.', 'user',attachment);history.push({role:'user',text:message||'Please examine the attached file.'});const fileRequest=detectFileRequest(message);if(fileRequest){await createOfficeFile(message,fileRequest.format,attachment);return;}
+const instant=attachment?null:instantReply(message);
+if(instant){
+ add(instant,'jarvis');history.push({role:'model',text:instant});history=history.slice(-20);
+ pairApi({action:'append-local',message,reply:instant}).catch(()=>{});
+ $('hint').textContent='Ready when you are.';status('System ready');speak(instant);return;
+}
+const openYoutubeMusicOnly=/^\s*(?:jarvis[, ]+)?(?:please\s+)?(?:open|launch|start)\s+youtube\s+music(?:\s+app)?[.!?]*\s*$/i.test(message);
+const musicCommand=message.match(/^\s*(?:jarvis[, ]+)?(?:please\s+)?(?:play|search(?:\s+for)?)\s+(.+?)(?:\s+(?:on|in)\s+youtube\s+music)?[.!?]*\s*$/i);
+const explicitMusicCommand=/\byoutube\s+music\b/i.test(message)&&musicCommand;
+if(openYoutubeMusicOnly){
+ const reply=window.AndroidJarvis&&typeof window.AndroidJarvis.openApp==='function'
+  ?window.AndroidJarvis.openApp('youtube music'):'Opening YouTube Music.';
+ add(reply,'jarvis');history.push({role:'model',text:reply});history=history.slice(-20);
+ pairApi({action:'append-local',message,reply}).catch(()=>{});
+ $('hint').textContent='Opening YouTube Music, Sir.';status('System ready');speak(reply);
+ if(!window.AndroidJarvis)window.location.href='https://music.youtube.com/';
+ return;
+}
+if(musicCommand&&(explicitMusicCommand||/^\s*(?:jarvis[, ]+)?(?:please\s+)?play\s+/i.test(message))){
+ const songQuery=musicCommand[1].trim().replace(/\s+(?:on|in)\s+youtube\s+music$/i,'').trim();
+ if(songQuery){
+  const reply='Requesting playback of '+songQuery+' in YouTube Music, Sir.';
+  add(reply,'jarvis');history.push({role:'model',text:reply});history=history.slice(-20);
+  pairApi({action:'append-local',message,reply}).catch(()=>{});
+  if(window.AndroidJarvis&&typeof window.AndroidJarvis.playYoutubeMusic==='function'){
+   const nativeReply=window.AndroidJarvis.playYoutubeMusic(songQuery);
+   $('hint').textContent='Playback request sent. Check YouTube Music for the result.';
+   status('YouTube Music requested');speak(nativeReply||reply);
+  }else{
+   $('hint').textContent='Opening YouTube Music search; direct playback needs the updated Android bridge.';
+   status('YouTube Music search');speak('Opening YouTube Music search for '+songQuery+', Sir.');
+   window.location.href='https://music.youtube.com/search?q='+encodeURIComponent(songQuery);
+  }
+  return;
+ }
+}
 const appCommand=message.match(/^\s*(?:jarvis[, ]+)?(?:please\s+)?(?:open|launch|start)\s+([a-z0-9 +.-]+?)(?:\s+app)?[.!?]*\s*$/i);
-const appAliases={'whatsapp':'whatsapp','you tube':'youtube','youtube':'youtube','chrome':'chrome','gmail':'gmail','google maps':'maps','maps':'maps','spotify':'spotify','instagram':'instagram','facebook':'facebook','telegram':'telegram','camera':'camera','play store':'play store','messages':'messages','message':'messages','phone':'phone','settings':'settings','phone settings':'settings','twitter':'twitter','x':'x','reddit':'reddit','photos':'photos','google photos':'photos','calendar':'calendar','google calendar':'calendar','keep':'keep','google keep':'keep','contacts':'contacts','drive':'drive','google drive':'drive','files':'files','file manager':'files','amazon':'amazon','flipkart':'flipkart','browser':'browser','calculator':'calculator','gallery':'gallery','swiggy':'swiggy','zomato':'zomato'};
+const appAliases={'whatsapp':'whatsapp','you tube':'youtube','youtube':'youtube','youtube music':'youtube music','chrome':'chrome','gmail':'gmail','google maps':'maps','maps':'maps','spotify':'spotify','instagram':'instagram','facebook':'facebook','telegram':'telegram','camera':'camera','play store':'play store','messages':'messages','message':'messages','phone':'phone','settings':'settings','phone settings':'settings','twitter':'twitter','x':'x','reddit':'reddit','photos':'photos','google photos':'photos','calendar':'calendar','google calendar':'calendar','keep':'keep','google keep':'keep','contacts':'contacts','drive':'drive','google drive':'drive','files':'files','file manager':'files','amazon':'amazon','flipkart':'flipkart','browser':'browser','calculator':'calculator','gallery':'gallery','swiggy':'swiggy','zomato':'zomato'};
 function handleCalendarOrAlarmCommand(text){
  if(!window.AndroidJarvis)return null;
  const reminder=text.match(/^\s*(?:jarvis[, ]+)?(?:please\s+)?remind me to (.+?) at (\d{1,2})(?::(\d{2}))?\s*(am|pm)\s*[.!?]*\s*$/i);

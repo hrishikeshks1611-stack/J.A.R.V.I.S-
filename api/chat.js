@@ -154,34 +154,45 @@ export default async function handler(req, res) {
       contents[contents.length - 1].parts.push({ text: "[Live device context — use this for time/location questions; do not guess beyond it.]\n" + contextLines.join("\n") });
     }
 
-    // Try the current stable Flash model first, then two compatible fallbacks.
-    // A 503 is model-capacity pressure, so move to another model rather than
-    // making the user repeat the same request.
-    const models = ["gemini-3.8-flash", "gemini-3.5-flash-lite", "gemini-flash-latest"];
+    // Bounded, immediate fallback: never leave a request waiting indefinitely.
+    // Keep the strongest model first; move to supported lighter Flash models on
+    // capacity pressure, rate limits, unavailable model IDs, or a timed-out call.
+    const models = ["gemini-3.8-flash", "gemini-3.5-flash-lite", "gemini-3.5-flash"];
     let response;
     let data = {};
     let lastUnavailable = "";
     let lastFailureStatus = 503;
 
-    for (let modelIndex = 0; modelIndex < models.length; modelIndex++) {
-      const model = models[modelIndex];
-      if (modelIndex > 0) await new Promise(resolve => setTimeout(resolve, 700 * modelIndex));
-      response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
-          body: JSON.stringify({
-            system_instruction: { parts: [{ text: system }] },
-            contents,
-            generationConfig: { temperature: 0.7, maxOutputTokens: 1200 }
-          })
-        }
-      );
+    for (const model of models) {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 6000);
+      try {
+        response = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
+            signal: controller.signal,
+            body: JSON.stringify({
+              system_instruction: { parts: [{ text: system }] },
+              contents,
+              generationConfig: { temperature: 0.7, maxOutputTokens: 1200 }
+            })
+          }
+        );
+      } catch (error) {
+        lastUnavailable = error?.name === "AbortError"
+          ? "The model did not respond within six seconds."
+          : String(error?.message || "Network request failed.").slice(0, 240);
+        lastFailureStatus = 504;
+        console.error("Gemini model request failed:", model, lastUnavailable);
+        continue;
+      } finally {
+        clearTimeout(timeout);
+      }
 
       const raw = await response.text();
       try { data = JSON.parse(raw); } catch { data = {}; }
-
       if (response.ok) break;
 
       const detail = data?.error?.message || raw.slice(0, 500) || "No error detail returned by Google.";
@@ -189,9 +200,9 @@ export default async function handler(req, res) {
       lastUnavailable = detail;
       lastFailureStatus = response.status;
 
-      // Capacity pressure and per-model rate limits may not affect every
-      // eligible model equally. Try the remaining configured Gemini models.
-      if (response.status === 503 || response.status === 429) continue;
+      // 404 means this model is not enabled for this API key; capacity and
+      // rate-limit errors may affect models differently, so try the next one.
+      if ([404, 429, 500, 503, 504].includes(response.status)) continue;
 
       return res.status(502).json({
         error: `Gemini rejected the request (HTTP ${response.status}): ${detail}`
@@ -202,8 +213,8 @@ export default async function handler(req, res) {
       const limited = lastFailureStatus === 429;
       return res.status(limited ? 429 : 503).json({
         error: limited
-          ? "Sir, Google's request limit was reached on the available Gemini models. I tried the primary model and two fallbacks; please wait for the limit to reset. " + (lastUnavailable || "")
-          : "Sir, Google's Gemini models are temporarily at capacity. I tried the primary model and two fallbacks. Please try again shortly. " + (lastUnavailable || "")
+          ? "Sir, Google's request limit was reached. I tried the primary model and two lighter fallbacks without making you repeat the request. Please try again shortly."
+          : "Sir, the AI service did not respond in time. I tried three models with a six-second limit each. Please try again shortly."
       });
     }
 
