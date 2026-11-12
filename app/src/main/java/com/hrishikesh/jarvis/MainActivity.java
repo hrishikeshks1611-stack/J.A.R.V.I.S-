@@ -441,6 +441,29 @@ public class MainActivity extends Activity {
             });
         }
 
+        @JavascriptInterface public void openCamera() {
+            runOnUiThread(() -> {
+                Intent intent = new Intent(MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA);
+                try {
+                    if (intent.resolveActivity(getPackageManager()) == null) intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+                    startActivity(intent);
+                } catch (ActivityNotFoundException error) {
+                    Toast.makeText(MainActivity.this, "No camera app is available, Sir.", Toast.LENGTH_LONG).show();
+                }
+            });
+        }
+
+        @JavascriptInterface public void capturePhoto(boolean selfie) {
+            runOnUiThread(() -> {
+                Intent capture = new Intent(MainActivity.this, CameraCaptureActivity.class);
+                capture.putExtra(CameraCaptureActivity.EXTRA_SELFIE, selfie);
+                try { startActivity(capture); }
+                catch (ActivityNotFoundException error) {
+                    Toast.makeText(MainActivity.this, "JARVIS could not open its camera, Sir.", Toast.LENGTH_LONG).show();
+                }
+            });
+        }
+
         @JavascriptInterface public void takePhoto() {
             runOnUiThread(() -> {
                 Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
@@ -458,9 +481,37 @@ public class MainActivity extends Activity {
                     intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
                 }
                 try { startActivityForResult(intent, REQUEST_CAMERA); }
-                catch (ActivityNotFoundException e) {
+                catch (ActivityNotFoundException error) {
                     pendingCameraUri = null;
                     Toast.makeText(MainActivity.this, "The camera could not be opened.", Toast.LENGTH_LONG).show();
+                }
+            });
+        }
+
+        @JavascriptInterface public void showLastPhoto() {
+            runOnUiThread(() -> {
+                String saved = getSharedPreferences("jarvis_camera", MODE_PRIVATE).getString("last_photo_uri", null);
+                if (saved == null || saved.trim().isEmpty()) {
+                    Intent gallery = new Intent(Intent.ACTION_VIEW);
+                    gallery.setDataAndType(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, "image/*");
+                    try { startActivity(gallery); }
+                    catch (ActivityNotFoundException error) {
+                        Toast.makeText(MainActivity.this, "No photo gallery is available, Sir.", Toast.LENGTH_LONG).show();
+                    }
+                    return;
+                }
+                Uri photo = Uri.parse(saved);
+                Intent view = new Intent(Intent.ACTION_VIEW);
+                view.setDataAndType(photo, "image/jpeg");
+                view.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                try { startActivity(view); }
+                catch (ActivityNotFoundException error) {
+                    Intent gallery = new Intent(Intent.ACTION_VIEW);
+                    gallery.setDataAndType(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, "image/*");
+                    try { startActivity(gallery); }
+                    catch (ActivityNotFoundException ignored) {
+                        Toast.makeText(MainActivity.this, "The saved photo is on this device, but no gallery app is available, Sir.", Toast.LENGTH_LONG).show();
+                    }
                 }
             });
         }
