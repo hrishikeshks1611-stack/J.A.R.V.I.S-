@@ -1,5 +1,10 @@
 plugins { id 'com.android.application' }
 
+dependencies {
+    implementation 'net.java.dev.jna:jna:5.18.1@aar'
+    implementation 'com.alphacephei:vosk-android:0.3.75@aar'
+}
+
 android {
     namespace 'com.hrishikesh.jarvis'
     compileSdk 35
