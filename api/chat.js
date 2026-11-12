@@ -60,8 +60,9 @@ export default async function handler(req, res) {
         return res.status(503).json({ error: "Sir, I could not save that memory just now. Please try again shortly." });
       }
       const reply = "Certainly, Sir. I've saved this to your shared JARVIS memory: “" + explicitMemory + "”";
-      await appendConversationTurn(message, repoming vague or preachy."
-    }[mode] || "Be composed, helpful, and clear.";
+      await appendConversationTurn(message, reply);
+      return res.status(200).json({ reply, memorySaved: true });
+    }
 
     const system = [
       buildJarvisSystemInstruction(mode),
