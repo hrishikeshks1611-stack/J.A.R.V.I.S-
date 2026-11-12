@@ -21,7 +21,8 @@ test("owner transfer is authorised and performed by one atomic Redis script", as
   const targetHash = "target-session-hash";
   const calls = [];
   globalThis.fetch = async (url, options) => {
-    const command = JSON.parse(options.body)[0];
+    const redisCommands = JSON.parse(options.body);
+    const command = redisCommands[0];
     calls.push(command);
     let result;
     if (command[0] === "GET" && command[1].includes(":session:")) {
@@ -42,7 +43,7 @@ test("owner transfer is authorised and performed by one atomic Redis script", as
     } else {
       throw new Error("Unexpected Redis command: " + command.join(" "));
     }
-    return new Response(JSON.stringify([{ result }]), { status: 200 });
+    return new Response(JSON.stringify(redisCommands.map(() => ({ result }))), { status: 200 });
   };
 
   const res = {
