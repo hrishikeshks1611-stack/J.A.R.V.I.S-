@@ -211,6 +211,7 @@ public class MainActivity extends Activity {
     private void registerApps() {
         appPackages.put("whatsapp", new String[]{"com.whatsapp"});
         appPackages.put("youtube", new String[]{"com.google.android.youtube"});
+        appPackages.put("youtube music", new String[]{"com.google.android.apps.youtube.music"});
         appPackages.put("chrome", new String[]{"com.android.chrome"});
         appPackages.put("gmail", new String[]{"com.google.android.gm"});
         appPackages.put("maps", new String[]{"com.google.android.apps.maps"});
@@ -260,6 +261,36 @@ public class MainActivity extends Activity {
             return title(name) + " does not appear to be installed, Sir.";
         }
 
+
+        @JavascriptInterface public String playYoutubeMusic(String query) {
+            String songQuery = query == null ? "" : query.trim();
+            if (songQuery.isEmpty()) return "Tell me which song you'd like, Sir.";
+            runOnUiThread(() -> {
+                Intent play = new Intent(MediaStore.INTENT_ACTION_MEDIA_PLAY_FROM_SEARCH);
+                play.setPackage("com.google.android.apps.youtube.music");
+                play.putExtra(MediaStore.EXTRA_MEDIA_FOCUS, "vnd.android.cursor.item/audio");
+                play.putExtra(android.app.SearchManager.QUERY, songQuery);
+                play.putExtra(MediaStore.EXTRA_MEDIA_TITLE, songQuery);
+                try {
+                    startActivity(play);
+                } catch (ActivityNotFoundException | SecurityException unavailable) {
+                    Uri searchUri = Uri.parse("https://music.youtube.com/search?q=" + Uri.encode(songQuery));
+                    try {
+                        Intent search = new Intent(Intent.ACTION_VIEW, searchUri);
+                        search.setPackage("com.google.android.apps.youtube.music");
+                        startActivity(search);
+                    } catch (ActivityNotFoundException | SecurityException noApp) {
+                        try {
+                            startActivity(new Intent(Intent.ACTION_VIEW, searchUri));
+                        } catch (ActivityNotFoundException ignored) {
+                            Toast.makeText(MainActivity.this, "YouTube Music could not be opened, Sir.", Toast.LENGTH_LONG).show();
+                        }
+                    }
+                }
+            });
+            return "Sending a direct play request to YouTube Music for " + songQuery
+                    + ", Sir. Playback is not confirmed until the app starts the track.";
+        }
 
         @JavascriptInterface public String openCastSettings() {
             runOnUiThread(() -> {
