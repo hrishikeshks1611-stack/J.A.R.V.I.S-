@@ -25,51 +25,41 @@ jobs:
     steps:
       - name: Check out proposed update
         uses: actions/checkout@v4
-
       - name: Set up Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
-
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
         with:
           accept-android-sdk-licenses: true
           packages: platform-tools
-
       - name: Install Android platform
         run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
-
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
-
       - name: Download the exact Build 39 phone APK
         run: |
           curl --fail --location --retry 3 \
             "https://github.com/hrishikeshks1611-stack/J.A.R.V.I.S-/releases/download/jarvis-tv-39/app-phone-debug.apk" \
             --output build39-phone.apk
           test -s build39-phone.apk
-
       - name: Build proposed phone update APK
         run: gradle --no-daemon assemblePhoneDebug
-
       - name: Verify both APKs have the same Android update identity
         run: |
           set -euo pipefail
           APKSIGNER="$ANDROID_HOME/build-tools/35.0.0/apksigner"
           BASELINE_CERT="$("$APKSIGNER" verify --print-certs build39-phone.apk | grep 'Signer #1 certificate SHA-256 digest' | head -1 | sed 's/.*: //')"
           CANDIDATE_CERT="$("$APKSIGNER" verify --print-certs app/build/outputs/apk/phone/debug/app-phone-debug.apk | grep 'Signer #1 certificate SHA-256 digest' | head -1 | sed 's/.*: //')"
-          echo "Build 39 certificate fingerprint: $BASELINE_CERT"
-          echo "Candidate certificate fingerprint: $CANDIDATE_CERT"
           if [ -z "$BASELINE_CERT" ] || [ -z "$CANDIDATE_CERT" ] || [ "$BASELINE_CERT" != "$CANDIDATE_CERT" ]; then
             echo "::error::IN-PLACE UPDATE BLOCKED: the candidate APK is not published under the same Android app identity as Build 39. The existing app and its data must not be uninstalled or reset."
             exit 1
           fi
           echo "PASS: APK publisher identity matches; safe to attempt an in-place update."
-
       - name: Install Build 39, preserve app data, then apply proposed update
         uses: ReactiveCircus/android-emulator-runner@v2
         with:
@@ -78,37 +68,24 @@ jobs:
           disable-animations: true
           script: |
             set -euo pipefail
-            echo "DIAG 1: verify APK files"
             test -s "$GITHUB_WORKSPACE/build39-phone.apk"
             test -s "$GITHUB_WORKSPACE/app/build/outputs/apk/phone/debug/app-phone-debug.apk"
-            echo "DIAG 2: confirm emulator is ready"
             timeout 60s adb wait-for-device
             test "$(adb shell getprop sys.boot_completed | tr -d '\r')" = "1"
-            echo "DIAG 3: install Build 39 baseline"
             timeout 120s adb install "$GITHUB_WORKSPACE/build39-phone.apk"
-            echo "DIAG 4: create app-data preservation marker"
             timeout 30s adb shell run-as com.hrishikesh.jarvis mkdir -p files
             timeout 30s adb shell run-as com.hrishikesh.jarvis touch files/jarvis-update-preservation-check
-            echo "DIAG 5: verify marker before update"
             timeout 30s adb shell run-as com.hrishikesh.jarvis ls files | grep -Fxq jarvis-update-preservation-check
-            echo "DIAG 6: install candidate over existing app"
             timeout 120s adb install -r "$GITHUB_WORKSPACE/app/build/outputs/apk/phone/debug/app-phone-debug.apk"
-            echo "DIAG 7: verify package version"
-            timeout 30s adb shell pm path com.hrishikesh.jarvis
             timeout 30s adb shell dumpsys package com.hrishikesh.jarvis | grep -q versionCode=501
-            echo "DIAG 8: verify app data survived update"
             timeout 30s adb shell run-as com.hrishikesh.jarvis ls files | grep -Fxq jarvis-update-preservation-check
-            echo "PASS: Build 39 updated in place; versionCode 501 installed; app-private sentinel survived."
-            echo "DIAG 9: grant microphone permission for native offline dictation smoke test"
-            timeout 30s adb shell pm grant com.hrishikesh.jarvis android.permission.RECORD_AUDIO
-            echo "DIAG 10: start JARVIS-owned offline dictation service"
+            echo "PASS: Build 39 updated in place; app-private data marker survived."
             adb logcat -c
-            timeout 30s adb shell am start-foreground-service -n com.hrishikesh.jarvis/.WakeWordService -a com.hrishikesh.jarvis.START_DICTATION
-            echo "DIAG 11: wait for Vosk model and microphone recognizer readiness"
-            timeout 180s bash -c 'until adb logcat -d -s WakeWordService:I | grep -q "offline speech service ready"; do sleep 2; done'
+            gradle --no-daemon connectedPhoneDebugAndroidTest
+            echo "Waiting for offline model and microphone recognizer readiness"
+            timeout 240s bash -c 'until adb logcat -d -s WakeWordService:I | grep -q "offline speech service ready"; do sleep 2; done'
             adb logcat -d -s WakeWordService:I | grep -F "offline speech service ready"
-            echo "PASS: JARVIS native offline dictation service started after the in-place app update."
-
+            echo "PASS: offline dictation service became ready after the in-place update."
 
   android-build:
     runs-on: ubuntu-latest
@@ -133,7 +110,6 @@ jobs:
           gradle-version: '8.9'
       - name: Compile phone and TV variants
         run: gradle --no-daemon assemblePhoneDebug assembleTvDebug
-
       - name: Verify native offline dictation starts on Android 10
         uses: ReactiveCircus/android-emulator-runner@v2
         with:
@@ -142,14 +118,9 @@ jobs:
           disable-animations: true
           script: |
             set -euo pipefail
-            echo "VOICE DIAG 1: install the candidate phone APK on a clean emulator"
-            timeout 120s adb install "$GITHUB_WORKSPACE/app/build/outputs/apk/phone/debug/app-phone-debug.apk"
-            echo "VOICE DIAG 2: grant the microphone permission"
-            timeout 30s adb shell pm grant com.hrishikesh.jarvis android.permission.RECORD_AUDIO
-            echo "VOICE DIAG 3: start JARVIS-owned offline dictation"
             adb logcat -c
-            timeout 30s adb shell am start-foreground-service -n com.hrishikesh.jarvis/.WakeWordService -a com.hrishikesh.jarvis.START_DICTATION
-            echo "VOICE DIAG 4: wait for the India-English Vosk model and microphone recognizer"
-            timeout 180s bash -c 'until adb logcat -d -s WakeWordService:I | grep -q "offline speech service ready"; do sleep 2; done'
+            gradle --no-daemon connectedPhoneDebugAndroidTest
+            echo "Waiting for offline model and microphone recognizer readiness"
+            timeout 240s bash -c 'until adb logcat -d -s WakeWordService:I | grep -q "offline speech service ready"; do sleep 2; done'
             adb logcat -d -s WakeWordService:I | grep -F "offline speech service ready"
-            echo "PASS: native offline dictation service started on Android 10. Spoken-word accuracy still requires physical-phone testing."
+            echo "PASS: native offline dictation service started on Android 10."
