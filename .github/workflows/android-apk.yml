@@ -177,10 +177,45 @@ jobs:
             cat "$RUNNER_TEMP/emulator.log"
             exit 1
           fi
-          mark "Installing APK (maximum 180 seconds)."
-          if ! adb_bounded 180 install "$APK_FILE_PATH"; then
-            mark "APK installation failed or timed out; collecting diagnostics."
+          mark "Stabilizing Android package manager (require five consecutive successful checks)."
+          package_manager_stable=0
+          for attempt in $(seq 1 30); do
+            if adb_bounded 15 shell service check package 2>&1 | grep -q "found"; then
+              if adb_bounded 15 shell cmd package list packages >/dev/null 2>&1; then
+                package_manager_stable=$((package_manager_stable + 1))
+              else
+                package_manager_stable=0
+              fi
+            else
+              package_manager_stable=0
+            fi
+            if [ "$package_manager_stable" -ge 5 ]; then break; fi
+            sleep 4
+          done
+          if [ "$package_manager_stable" -lt 5 ]; then
+            mark "Package manager never reached a stable state; collecting diagnostics."
             adb devices -l || true
+            adb_bounded 20 shell service check package || true
+            adb_bounded 20 shell getprop sys.boot_completed || true
+            adb_bounded 20 shell dumpsys activity services || true
+            cat "$RUNNER_TEMP/emulator.log"
+            exit 1
+          fi
+          mark "Installing APK without streamed package-manager transport (maximum 180 seconds)."
+          installed=0
+          for attempt in 1 2 3; do
+            if adb_bounded 180 install --no-streaming -r "$APK_FILE_PATH"; then
+              installed=1
+              break
+            fi
+            mark "APK install attempt $attempt failed; waiting for package manager recovery."
+            sleep 8
+            adb_bounded 15 shell service check package || true
+          done
+          if [ "$installed" -ne 1 ]; then
+            mark "APK installation failed after three bounded attempts; collecting diagnostics."
+            adb devices -l || true
+            adb_bounded 20 shell service check package || true
             adb_bounded 20 shell dumpsys package || true
             adb_bounded 20 shell df -h /data || true
             cat "$RUNNER_TEMP/emulator.log"
