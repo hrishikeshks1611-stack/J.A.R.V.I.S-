@@ -53,3 +53,41 @@ test("YouTube Music search sends a bounded unauthenticated catalogue query", asy
   assert.equal(body.context.client.gl, "IN");
   assert.ok(request.options.signal);
 });
+
+import musicSearchHandler from "../api/music-search.js";
+
+function fakeResponse() {
+  return {
+    headers: {},
+    setHeader(name, value) { this.headers[name] = value; },
+    status(code) { this.statusCode = code; return this; },
+    json(value) { this.body = value; return this; },
+    end() { this.ended = true; return this; }
+  };
+}
+
+test("music search API handles the approved app preflight without a session", async () => {
+  const res = fakeResponse();
+  await musicSearchHandler({ method: "OPTIONS", headers: { origin: "https://hrishikeshks1611-stack.github.io" } }, res);
+  assert.equal(res.statusCode, 204);
+  assert.equal(res.headers["Access-Control-Allow-Origin"], "https://hrishikeshks1611-stack.github.io");
+});
+
+test("music search API rejects untrusted origins", async () => {
+  const res = fakeResponse();
+  await musicSearchHandler({ method: "POST", headers: { origin: "https://untrusted.example" }, body: { query: "Numb" } }, res);
+  assert.equal(res.statusCode, 403);
+});
+
+test("music search API rejects oversized queries before upstream lookup", async () => {
+  const res = fakeResponse();
+  await musicSearchHandler({ method: "POST", headers: {}, body: { query: "x".repeat(161) } }, res);
+  assert.equal(res.statusCode, 400);
+});
+
+test("music search API requires a paired JARVIS session", async () => {
+  const res = fakeResponse();
+  await musicSearchHandler({ method: "POST", headers: {}, body: { query: "Numb Linkin Park" } }, res);
+  assert.equal(res.statusCode, 401);
+  assert.match(res.body.error, /not paired/i);
+});
