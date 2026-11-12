@@ -40,7 +40,7 @@ test("one-time owner recovery is available on an unpaired phone", async () => {
 
 test("service worker cache version is bumped and script parses", async () => {
   const source = await readFile(new URL("../sw.js", import.meta.url), "utf8");
-  assert.ok(source.includes('const CACHE="jarvis-shell-v26"'));
+  assert.ok(source.includes('const CACHE="jarvis-shell-v27"'));
   assert.doesNotThrow(() => new Function(source));
 });
 
