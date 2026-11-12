@@ -29,10 +29,11 @@ function setupRedis(handlerForCommand) {
   process.env.UPSTASH_REDIS_REST_TOKEN = "test-token";
   const calls = [];
   globalThis.fetch = async (url, options) => {
-    const command = JSON.parse(options.body)[0];
+    const redisCommands = JSON.parse(options.body);
+    const command = redisCommands[0];
     calls.push(command);
     const result = await handlerForCommand(command, calls.length);
-    return new Response(JSON.stringify([{ result }]), {
+    return new Response(JSON.stringify(redisCommands.map(() => ({ result }))), {
       status: 200,
       headers: { "content-type": "application/json" }
     });
