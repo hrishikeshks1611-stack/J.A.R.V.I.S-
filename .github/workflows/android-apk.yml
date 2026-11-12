@@ -282,3 +282,5 @@ jobs:
             exit 1
           fi
           mark "Android 10 foreground-service start, offline model load, and stop checks passed."
+
+# Keep this workflow eligible for branch-push verification of the emulator smoke test.
