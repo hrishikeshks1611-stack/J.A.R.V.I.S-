@@ -67,7 +67,6 @@ public class MainActivity extends Activity {
             @Override public void onReceive(android.content.Context context, Intent intent) {
                 String action = intent == null ? null : intent.getAction();
                 if (WakeWordService.ACTION_WAKE.equals(action)) {
-                    if (ttsReady && textToSpeech != null) textToSpeech.speak("Yes, Sir?", TextToSpeech.QUEUE_FLUSH, null, "JARVIS_WAKE");
                     if (webView != null) webView.evaluateJavascript("window.jarvisNative && window.jarvisNative.onWakeWordDetected && window.jarvisNative.onWakeWordDetected()", null);
                 } else if (WakeWordService.ACTION_PARTIAL.equals(action)) {
                     String partial = intent.getStringExtra(WakeWordService.EXTRA_COMMAND);
