@@ -10,8 +10,8 @@ android {
         applicationId 'com.hrishikesh.jarvis'
         minSdk 23
         targetSdk 35
-        versionCode 500
-        versionName '5.0.0'
+        versionCode 600
+        versionName '6.0.0'
         buildConfigField 'boolean', 'JARVIS_TV', 'false'
         buildConfigField 'String', 'ASSISTANT_NAME', '"J.A.R.V.I.S."'
     }
