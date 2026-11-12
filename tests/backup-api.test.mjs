@@ -29,10 +29,11 @@ function setupRedis(handlerForCommand) {
   process.env.UPSTASH_REDIS_REST_TOKEN = "test-token";
   const calls = [];
   globalThis.fetch = async (url, options) => {
-    const command = JSON.parse(options.body)[0];
+    const redisCommands = JSON.parse(options.body);
+    const command = redisCommands[0];
     calls.push(command);
     const result = await handlerForCommand(command, calls.length);
-    return new Response(JSON.stringify([{ result }]), {
+    return new Response(JSON.stringify(redisCommands.map(() => ({ result }))), {
       status: 200,
       headers: { "content-type": "application/json" }
     });
@@ -69,7 +70,7 @@ test("backup export requires a paired device and returns conversation plus memor
   assert.equal(res.body.backup.version, 1);
   assert.deepEqual(res.body.backup.conversation, conversation);
   assert.deepEqual(res.body.backup.memories, memories);
-  assert.equal(calls.length, 5);
+  assert.equal(calls.length, 4, "GET session, pipelined TTL refresh, conversation, and memories");
 });
 
 test("backup restore requires explicit confirmation and uses one atomic Redis script", async () => {

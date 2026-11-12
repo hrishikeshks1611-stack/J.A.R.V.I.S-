@@ -19,7 +19,8 @@ test("local app actions are appended to the shared conversation", async () => {
   process.env.UPSTASH_REDIS_REST_TOKEN = "test-token";
   const calls = [];
   globalThis.fetch = async (url, options) => {
-    const command = JSON.parse(options.body)[0];
+    const redisCommands = JSON.parse(options.body);
+    const command = redisCommands[0];
     calls.push(command);
     let result;
     if (command[0] === "GET") result = JSON.stringify({ deviceId: "phone-1", deviceName: "Phone", role: "device" });
@@ -33,7 +34,7 @@ test("local app actions are appended to the shared conversation", async () => {
         { role: "model", text: "Opening YouTube, Sir.", createdAt: 1 }
       ]);
     } else throw new Error("Unexpected Redis command: " + command[0]);
-    return new Response(JSON.stringify([{ result }]), { status: 200 });
+    return new Response(JSON.stringify(redisCommands.map(() => ({ result }))), { status: 200 });
   };
   const res = {
     setHeader() {},

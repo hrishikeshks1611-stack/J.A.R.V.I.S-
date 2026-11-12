@@ -30,7 +30,8 @@ test("owner recovery requires a valid paired session and atomically preserves de
   const token = "paired-laptop-session";
   const commands = [];
   globalThis.fetch = async (_url, options) => {
-    const command = JSON.parse(options.body)[0];
+    const redisCommands = JSON.parse(options.body);
+    const command = redisCommands[0];
     commands.push(command);
     let result = 1;
     if (command[0] === "GET" && command[1] === "jarvis:v1:session:" + hash(token)) {
@@ -46,7 +47,7 @@ test("owner recovery requires a valid paired session and atomically preserves de
       result = JSON.stringify({ ok: true, deviceId: "laptop-1" });
     } else if (command[0] === "LPUSH" || command[0] === "LTRIM" || command[0] === "EXPIRE") result = 1;
     else throw new Error("Unexpected Redis command: " + command.join(" "));
-    return new Response(JSON.stringify([{ result }]), { status: 200 });
+    return new Response(JSON.stringify(redisCommands.map(() => ({ result }))), { status: 200 });
   };
   const res = {
     headers: {},
@@ -73,14 +74,15 @@ test("owner recovery rejects a wrong credential before changing ownership", asyn
   const token = "paired-laptop-session";
   const commands = [];
   globalThis.fetch = async (_url, options) => {
-    const command = JSON.parse(options.body)[0];
+    const redisCommands = JSON.parse(options.body);
+    const command = redisCommands[0];
     commands.push(command);
     let result = 1;
     if (command[0] === "GET" && command[1] === "jarvis:v1:session:" + hash(token)) result = JSON.stringify({ deviceId: "laptop-1", deviceName: "Laptop", role: "device" });
     else if (command[0] === "INCR") result = 1;
     else if (command[0] === "LPUSH" || command[0] === "LTRIM" || command[0] === "EXPIRE") result = 1;
     else throw new Error("Unexpected Redis command: " + command.join(" "));
-    return new Response(JSON.stringify([{ result }]), { status: 200 });
+    return new Response(JSON.stringify(redisCommands.map(() => ({ result }))), { status: 200 });
   };
   const res = { setHeader() {}, status(code) { this.statusCode = code; return this; }, json(value) { this.body = value; return this; }, end() { return this; } };
   await handler({ method: "POST", headers: { authorization: "Bearer " + token }, body: { action: "recover-owner", recoveryCode: "wrong" } }, res);

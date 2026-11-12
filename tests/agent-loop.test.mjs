@@ -54,7 +54,8 @@ test("chat agent executes an allow-listed tool and returns a confirmation-gated 
       }), { status: 200 });
     }
 
-    const command = JSON.parse(options.body)[0];
+    const redisCommands = JSON.parse(options.body);
+    const command = redisCommands[0];
     redisCalls.push(command);
     let result = null;
     if (command[0] === "GET" && command[1] === "jarvis:v1:session:" + hashToken(token)) {
@@ -71,7 +72,7 @@ test("chat agent executes an allow-listed tool and returns a confirmation-gated 
     } else {
       throw new Error("Unexpected Redis command: " + command[0]);
     }
-    return new Response(JSON.stringify([{ result }]), { status: 200 });
+    return new Response(JSON.stringify(redisCommands.map(() => ({ result }))), { status: 200 });
   };
 
   const res = response();
