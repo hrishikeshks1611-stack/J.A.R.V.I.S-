@@ -40,14 +40,14 @@ jobs:
       - name: Upload phone verification artifact
         uses: actions/upload-artifact@v4
         with:
-          name: JARVIS-Android-phone-complete-build
+          name: JARVIS-Android-phone-debug-verification-complete
           path: app/build/outputs/apk/phone/debug/app-phone-debug.apk
           if-no-files-found: error
           retention-days: 30
       - name: Upload Android TV verification artifact
         uses: actions/upload-artifact@v4
         with:
-          name: JARVIS-Android-TV-complete-build
+          name: JARVIS-Android-TV-debug-verification-complete
           path: app/build/outputs/apk/tv/debug/app-tv-debug.apk
           if-no-files-found: error
           retention-days: 30
