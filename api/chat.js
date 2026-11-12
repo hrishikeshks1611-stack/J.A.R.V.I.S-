@@ -154,7 +154,7 @@ export default async function handler(req, res) {
       contents[contents.length - 1].parts.push({ text: "[Live device context — use this for time/location questions; do not guess beyond it.]\n" + contextLines.join("\n") });
     }
 
-    // Bounded, immediate fallback: never leave a request waiting indefinitely.
+    // Bounded, immediate fallback: never leave a request waiting indefinitely (six seconds per model).
     // Keep the strongest model first; move to supported lighter Flash models on
     // capacity pressure, rate limits, unavailable model IDs, or a timed-out call.
     const models = ["gemini-3.8-flash", "gemini-3.5-flash-lite", "gemini-3.5-flash"];
