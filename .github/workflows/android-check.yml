@@ -9,7 +9,7 @@ on:
       - 'settings.gradle'
       - '.github/workflows/android-check.yml'
   pull_request:
-    branches: [ main, jarvis-five-pillars-upgrade, fix/parallel-install-preview ]
+    branches: [ main, jarvis-five-pillars-upgrade, feature/youtube-music-direct-playback ]
     paths:
       - 'app/**'
       - '*.gradle'
