@@ -261,6 +261,39 @@ public class MainActivity extends Activity {
         }
 
 
+        @JavascriptInterface public String playYoutubeMusic(String query) {
+            String songQuery = query == null ? "" : query.trim();
+            if (songQuery.isEmpty()) return "Tell me which song you'd like, Sir.";
+            Intent play = new Intent(MediaStore.INTENT_ACTION_MEDIA_PLAY_FROM_SEARCH);
+            play.setPackage("com.google.android.apps.youtube.music");
+            play.putExtra(MediaStore.EXTRA_MEDIA_FOCUS, "vnd.android.cursor.item/audio");
+            play.putExtra(android.app.SearchManager.QUERY, songQuery);
+            play.putExtra(MediaStore.EXTRA_MEDIA_TITLE, songQuery);
+            runOnUiThread(() -> {
+                try {
+                    startActivity(play);
+                } catch (ActivityNotFoundException | SecurityException unavailable) {
+                    try {
+                        Intent search = new Intent(Intent.ACTION_VIEW,
+                                Uri.parse("https://music.youtube.com/search?q=" + Uri.encode(songQuery)));
+                        search.setPackage("com.google.android.apps.youtube.music");
+                        startActivity(search);
+                    } catch (ActivityNotFoundException | SecurityException noApp) {
+                        try {
+                            Intent browserSearch = new Intent(Intent.ACTION_VIEW,
+                                    Uri.parse("https://music.youtube.com/search?q=" + Uri.encode(songQuery)));
+                            startActivity(browserSearch);
+                        } catch (ActivityNotFoundException ignored) {
+                            Toast.makeText(MainActivity.this,
+                                    "YouTube Music could not be opened, Sir.", Toast.LENGTH_LONG).show();
+                        }
+                    }
+                }
+            });
+            return "Sending a direct play request to YouTube Music for " + songQuery
+                    + ", Sir. I will not claim playback until the app confirms it.";
+        }
+
         @JavascriptInterface public String openCastSettings() {
             runOnUiThread(() -> {
                 Intent cast = new Intent(android.provider.Settings.ACTION_CAST_SETTINGS);
