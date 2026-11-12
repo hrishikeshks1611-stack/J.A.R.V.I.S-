@@ -24,10 +24,11 @@ test("native bridge exposes confirmation-based Clock and Calendar actions", asyn
   assert.ok(manifest.includes('com.android.alarm.permission.SET_ALARM'));
 });
 
-test("Android release metadata identifies JARVIS 5.0 and advances installed version", async () => {
+test("Android update metadata advances production JARVIS from 5.0.0 to 5.0.1", async () => {
   const gradle = await readFile(new URL("../app/build.gradle", import.meta.url), "utf8");
-  assert.match(gradle, /versionCode\s+500/);
-  assert.match(gradle, /versionName\s+'5\.0\.0'/);
+  assert.match(gradle, /applicationId\s+'com\.hrishikesh\.jarvis'/);
+  assert.match(gradle, /versionCode\s+501/);
+  assert.match(gradle, /versionName\s+'5\.0\.1'/);
 });
 
 test("APK workflow cannot publish debug-signed builds as downloadable releases", async () => {
