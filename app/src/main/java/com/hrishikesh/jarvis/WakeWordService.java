@@ -365,7 +365,9 @@ public class WakeWordService extends Service implements RecognitionListener {
         if (wakeDetectedInUtterance) {
             wakeDetectedInUtterance = false;
             String partialWakeCommand = extractWakeCommand(text);
-            if (partialWakeCommand != null && !partialWakeCommand.isEmpty()) {
+            if (partialWakeCommand == null) {
+                Log.w("WakeWordService", "Partial wake hypothesis was not present in final transcript; ignoring it");
+            } else if (!partialWakeCommand.isEmpty()) {
                 broadcast(ACTION_COMMAND, partialWakeCommand);
                 updateNotification("Microphone ON · offline wake-word detection active");
             } else {
