@@ -658,11 +658,20 @@ if(openYoutubeMusicOnly){
  else window.location.href='https://music.youtube.com/';
  return;
 }
-if(musicCommand&&(explicitMusicCommand||/^\s*(?:jarvis[, ]+)?(?:please\s+)?play\s+/i.test(message))){
- const songQuery=musicCommand[1].trim().replace(/\s+(?:on|in)\s+youtube\s+music$/i,'').trim();
+if(musicCommand&&(explicitMusicCommand||/^\\s*(?:jarvis[, ]+)?(?:please\\s+)?play\\s+/i.test(message))){
+ const songQuery=musicCommand[1].trim().replace(/\\s+(?:on|in)\\s+youtube\\s+music$/i,'').trim();
  if(songQuery){
-  $('hint').textContent='Finding the exact song in YouTube Music…';
-  status('Resolving track');
+  // A short acknowledgement is spoken immediately. Do not interrupt Algieba
+  // with a second, longer utterance just before launching the music app.
+  const acknowledgement='Certainly, Sir.';
+  add(acknowledgement,'jarvis');history.push({role:'model',text:acknowledgement});history=history.slice(-20);
+  pairApi({action:'append-local',message,reply:acknowledgement}).catch(()=>{});
+  $('hint').textContent='Finding your music, Sir…';status('Resolving track');
+  const acknowledgementFinished=(async()=>{
+   speak(acknowledgement);
+   const started=Date.now();
+   while(currentAudio&&Date.now()-started<7000)await new Promise(resolve=>setTimeout(resolve,100));
+  })();
   try{
    const response=await fetch(JARVIS_API+'/music-search',{
     method:'POST',
@@ -672,22 +681,19 @@ if(musicCommand&&(explicitMusicCommand||/^\s*(?:jarvis[, ]+)?(?:please\s+)?play\
    const data=await response.json().catch(()=>({}));
    if(!response.ok||!data.selected||!data.selected.videoId)throw new Error(data.error||'No matching track was returned.');
    const track=data.selected;
-   const trackReply='Found '+track.title+(track.artist&&track.artist!=='Unknown artist'?' by '+track.artist:'')+'. Opening it in YouTube Music, Sir.';
-   add(trackReply,'jarvis');history.push({role:'model',text:trackReply});history=history.slice(-20);
-   pairApi({action:'append-local',message,reply:trackReply}).catch(()=>{});
-   $('hint').textContent='Opening '+track.title+' in YouTube Music…';
-   status('Launching track');speak(trackReply);
+   $('hint').textContent='Playing '+track.title+' in YouTube Music…';
+   status('Launching track');
+   await acknowledgementFinished;
+   // The watch URL is handed to Android after the acknowledgement finishes,
+   // avoiding navigation cutting off the Alfred/Algieba voice stream.
    window.location.href='https://music.youtube.com/watch?v='+encodeURIComponent(track.videoId);
   }catch(error){
-   const fallback='I could not identify the exact track, Sir. Opening YouTube Music search instead.';
-   add(fallback,'jarvis');history.push({role:'model',text:fallback});history=history.slice(-20);
-   pairApi({action:'append-local',message,reply:fallback}).catch(()=>{});
-   $('hint').textContent='Using YouTube Music search fallback.';
-   status('Search fallback');
+   $('hint').textContent='Opening YouTube Music search for '+songQuery+'…';
+   status('Opening music app');
+   await acknowledgementFinished;
    if(window.AndroidJarvis&&typeof window.AndroidJarvis.playYoutubeMusic==='function'){
-    const nativeReply=window.AndroidJarvis.playYoutubeMusic(songQuery);speak(nativeReply||fallback);
+    window.AndroidJarvis.playYoutubeMusic(songQuery);
    }else{
-    speak(fallback);
     window.location.href='https://music.youtube.com/search?q='+encodeURIComponent(songQuery);
    }
   }
