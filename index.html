@@ -934,6 +934,12 @@ $('wakeWordButton').onclick=()=>{
  if(window.AndroidJarvis&&typeof window.AndroidJarvis.openWakeWordSettings==='function'){
   window.AndroidJarvis.openWakeWordSettings();return;
  }
+ if(window.AndroidJarvis){
+  $('wakeWordButton').textContent='Wake phrases need app update';
+  $('hint').textContent='Build 39 does not include the Android microphone permission and native wake-word service. Use the separate microphone button for tap-to-speak; continuous wake phrases need a compatible app update, Sir.';
+  status('Native wake-word support needs app update');
+  return;
+ }
  if(browserWakeEnabled){stopBrowserWake();return;}
  if(!BrowserSpeechRecognition){
   add('This browser does not support continuous wake-word recognition. The microphone button remains available, Sir.','jarvis');
