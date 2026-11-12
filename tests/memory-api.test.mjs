@@ -49,13 +49,17 @@ test("clearing saved memories requires an explicit confirmation flag", async () 
   process.env.UPSTASH_REDIS_REST_TOKEN = "test-token";
   let calls = 0;
   globalThis.fetch = async (url, options) => {
-    const command = JSON.parse(options.body)[0];
-    calls++;
-    let result;
-    if (command[0] === "GET") result = JSON.stringify({ deviceId: "phone-1", deviceName: "Phone", role: "device" });
-    else if (command[0] === "EXPIRE") result = 1;
-    else throw new Error("Memory deletion must not happen without confirmation");
-    return new Response(JSON.stringify([{ result }]), { status: 200 });
+    const commands = JSON.parse(options.body);
+    const results = [];
+    for (const command of commands) {
+      calls++;
+      let result;
+      if (command[0] === "GET") result = JSON.stringify({ deviceId: "phone-1", deviceName: "Phone", role: "device" });
+      else if (command[0] === "EXPIRE") result = 1;
+      else throw new Error("Memory deletion must not happen without confirmation");
+      results.push({ result });
+    }
+    return new Response(JSON.stringify(results), { status: 200 });
   };
   const res = response();
   await handler({
