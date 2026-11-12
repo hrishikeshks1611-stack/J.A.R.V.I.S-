@@ -13,6 +13,9 @@ test("native bridge exposes confirmation-based Clock and Calendar actions", asyn
   assert.ok(source.includes("application/vnd.openxmlformats-officedocument.wordprocessingml.document"));
   assert.ok(source.includes("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"));
   assert.ok(source.includes("public String openCastSettings()"));
+  assert.ok(source.includes("MediaStore.INTENT_ACTION_MEDIA_PLAY_FROM_SEARCH"));
+  assert.ok(source.includes("public String playYoutubeMusic(String query)"));
+  assert.ok(source.includes('play.setPackage("com.google.android.apps.youtube.music")'));
   assert.ok(source.includes("Settings.ACTION_CAST_SETTINGS"));
   assert.ok(source.includes("public String setAlarm(int hour, int minute, String label)"));
   assert.ok(source.includes("AlarmClock.ACTION_SET_ALARM"));
