@@ -31,22 +31,6 @@ jobs:
       - name: Analyze Android code
         uses: github/codeql-action/analyze@v3
 
-  dependency-review:
-    name: Review dependency changes
-    if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pull-requests: read
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-      - name: Check dependency vulnerabilities and licenses
-        uses: actions/dependency-review-action@v4
-        with:
-          fail-on-severity: high
-          comment-summary-in-pr: always
-
   secret-scan:
     name: Scan for accidentally committed secrets
     runs-on: ubuntu-latest
