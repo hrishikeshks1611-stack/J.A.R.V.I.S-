@@ -658,8 +658,8 @@ if(openYoutubeMusicOnly){
  else window.location.href='https://music.youtube.com/';
  return;
 }
-if(musicCommand&&(explicitMusicCommand||/^\\s*(?:jarvis[, ]+)?(?:please\\s+)?play\\s+/i.test(message))){
- const songQuery=musicCommand[1].trim().replace(/\\s+(?:on|in)\\s+youtube\\s+music$/i,'').trim();
+if(musicCommand&&(explicitMusicCommand||/^\s*(?:jarvis[, ]+)?(?:please\s+)?play\s+/i.test(message))){
+ const songQuery=musicCommand[1].trim().replace(/\s+(?:on|in)\s+youtube\s+music$/i,'').trim();
  if(songQuery){
   // A short acknowledgement is spoken immediately. Do not interrupt Algieba
   // with a second, longer utterance just before launching the music app.
