@@ -15,8 +15,10 @@ android {
         applicationId 'com.hrishikesh.jarvis'
         minSdk 23
         targetSdk 35
-        versionCode 500
-        versionName '5.0.0'
+        // Incremented from production main's 500 so Android can apply this
+        // candidate as an update over the current production APK.
+        versionCode 501
+        versionName '5.0.1'
         buildConfigField 'boolean', 'JARVIS_TV', 'false'
         buildConfigField 'String', 'ASSISTANT_NAME', '"J.A.R.V.I.S."'
     }
