@@ -12,6 +12,10 @@ on:
       - '.github/workflows/android-apk.yml'
 permissions:
   contents: read
+
+concurrency:
+  group: jarvis-android-verification-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -55,7 +59,7 @@ jobs:
 
   android-10-emulator-smoke:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 15
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -112,7 +116,7 @@ jobs:
           adb_bounded() {
             local seconds="$1"
             shift
-            timeout --signal=TERM --kill-after=5s "${seconds}s" adb "$@"
+            timeout --signal=TERM --kill-after=2s "${seconds}s" adb "$@"
           }
           mark "Creating Android 10 API 29 emulator."
           export ANDROID_AVD_HOME="$RUNNER_TEMP/android-avd"
@@ -164,7 +168,7 @@ jobs:
           mark "Waiting for Android package manager to become responsive (maximum 90 seconds)."
           package_manager_ready=0
           for attempt in $(seq 1 30); do
-            if adb_bounded 15 shell cmd package list packages >/dev/null 2>&1; then
+            if adb_bounded 5 shell cmd package list packages >/dev/null 2>&1; then
               package_manager_ready=1
               break
             fi
@@ -179,9 +183,9 @@ jobs:
           fi
           mark "Stabilizing Android package manager (require five consecutive successful checks)."
           package_manager_stable=0
-          for attempt in $(seq 1 30); do
-            if adb_bounded 15 shell service check package 2>&1 | grep -q "found"; then
-              if adb_bounded 15 shell cmd package list packages >/dev/null 2>&1; then
+          for attempt in $(seq 1 18); do
+            if adb_bounded 5 shell service check package 2>&1 | grep -q "found"; then
+              if adb_bounded 5 shell cmd package list packages >/dev/null 2>&1; then
                 package_manager_stable=$((package_manager_stable + 1))
               else
                 package_manager_stable=0
@@ -190,7 +194,7 @@ jobs:
               package_manager_stable=0
             fi
             if [ "$package_manager_stable" -ge 5 ]; then break; fi
-            sleep 4
+            sleep 3
           done
           if [ "$package_manager_stable" -lt 5 ]; then
             mark "Package manager never reached a stable state; collecting diagnostics."
@@ -204,7 +208,7 @@ jobs:
           mark "Installing APK without streamed package-manager transport (maximum 180 seconds)."
           installed=0
           for attempt in 1 2 3; do
-            if adb_bounded 180 install --no-streaming -r "$APK_FILE_PATH"; then
+            if adb_bounded 75 install --no-streaming -r "$APK_FILE_PATH"; then
               installed=1
               break
             fi
@@ -233,18 +237,18 @@ jobs:
           adb_bounded 45 shell am start -W -n com.hrishikesh.jarvis/.WakeWordTestActivity
 
           ready=0
-          mark "Waiting up to four minutes for WakeWordService READY."
-          for attempt in $(seq 1 120); do
-            if adb_bounded 12 logcat -d -s WakeWordService:I 2>/dev/null | grep -q "offline wake-word service ready"; then
+          mark "Waiting up to 90 seconds for WakeWordService READY."
+          for attempt in $(seq 1 45); do
+            if adb_bounded 4 logcat -d -s WakeWordService:I WakeWordService:E 2>/dev/null | grep -q "offline wake-word service ready"; then
               ready=1
               mark "READY detected on poll $attempt."
               break
             fi
-            if adb_bounded 12 logcat -d -s WakeWordService:E 2>/dev/null | grep -q "Failed to prepare offline wake-word service"; then
+            if adb_bounded 4 logcat -d -s WakeWordService:I WakeWordService:E 2>/dev/null | grep -q "Failed to prepare offline wake-word service"; then
               mark "WakeWordService reported a preparation failure on poll $attempt."
               break
             fi
-            if [ $((attempt % 10)) -eq 0 ]; then mark "Still waiting for READY ($attempt/120 polls)."; fi
+            if [ $((attempt % 10)) -eq 0 ]; then mark "Still waiting for READY ($attempt/45 polls)."; fi
             sleep 2
           done
 
