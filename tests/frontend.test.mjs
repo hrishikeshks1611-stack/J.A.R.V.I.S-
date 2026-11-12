@@ -40,7 +40,7 @@ test("one-time owner recovery is available on an unpaired phone", async () => {
 
 test("service worker cache version is bumped and script parses", async () => {
   const source = await readFile(new URL("../sw.js", import.meta.url), "utf8");
-  assert.ok(source.includes('const CACHE="jarvis-shell-v26"'));
+  assert.ok(source.includes('const CACHE="jarvis-shell-v27"'));
   assert.doesNotThrow(() => new Function(source));
 });
 
@@ -257,4 +257,19 @@ test("Algieba voice starts after a short pre-buffer while the audio stream is st
   assert.match(player, /parts\.push\(chunk\.slice\(\)\);deliverChunk\(chunk\)/);
   assert.ok(player.includes("Playback begins after a short pre-buffer"));
   assert.ok(!player.includes("Buffer the complete PCM response before playback"));
+});
+
+
+test("native JARVIS voice input displays partial transcription while the user is speaking", async () => {
+  const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+  assert.ok(html.includes("onSpeechPartial:(transcript)=>"));
+  assert.ok(html.includes("$('prompt').value=transcript;status('Listening · '+transcript,'listening')"));
+  assert.ok(html.includes("onSpeechResult:(transcript)=>{$('prompt').value=transcript;$('form').requestSubmit();}"));
+});
+
+
+test("JARVIS personality always addresses the owner as Sir", async () => {
+  const source = await readFile(new URL("../lib/jarvis-personality.js", import.meta.url), "utf8");
+  assert.ok(source.includes("Address the user as Sir in every reply"));
+  assert.ok(source.includes("Never address the user by their personal name"));
 });

@@ -24,10 +24,11 @@ test("native bridge exposes confirmation-based Clock and Calendar actions", asyn
   assert.ok(manifest.includes('com.android.alarm.permission.SET_ALARM'));
 });
 
-test("Android release metadata identifies JARVIS 5.0 and advances installed version", async () => {
+test("Android update metadata advances production JARVIS from 5.0.0 to 5.0.1", async () => {
   const gradle = await readFile(new URL("../app/build.gradle", import.meta.url), "utf8");
-  assert.match(gradle, /versionCode\s+500/);
-  assert.match(gradle, /versionName\s+'5\.0\.0'/);
+  assert.match(gradle, /applicationId\s+'com\.hrishikesh\.jarvis'/);
+  assert.match(gradle, /versionCode\s+501/);
+  assert.match(gradle, /versionName\s+'5\.0\.1'/);
 });
 
 test("APK workflow cannot publish debug-signed builds as downloadable releases", async () => {
@@ -45,4 +46,28 @@ test("live Android bridge sends YouTube Music play-from-search intents", async (
   assert.ok(source.includes("MediaStore.INTENT_ACTION_MEDIA_PLAY_FROM_SEARCH"));
   assert.ok(source.includes('play.setPackage("com.google.android.apps.youtube.music")'));
   assert.ok(manifest.includes('com.google.android.apps.youtube.music'));
+});
+
+
+test("phone microphone uses JARVIS-owned offline dictation instead of the keyboard speech intent", async () => {
+  const source = await readFile(new URL("../app/src/main/java/com/hrishikesh/jarvis/MainActivity.java", import.meta.url), "utf8");
+  const service = await readFile(new URL("../app/src/main/java/com/hrishikesh/jarvis/WakeWordService.java", import.meta.url), "utf8");
+  const manifest = await readFile(new URL("../app/src/main/AndroidManifest.xml", import.meta.url), "utf8");
+  const settings = await readFile(new URL("../app/src/main/java/com/hrishikesh/jarvis/WakeWordActivity.java", import.meta.url), "utf8");
+  assert.ok(source.includes("public void startVoiceRecognition()"));
+  assert.ok(source.includes("startOfflineDictation()"));
+  assert.ok(source.includes("WakeWordService.ACTION_DICTATION"));
+  assert.ok(source.includes("requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, REQUEST_AUDIO_INPUT)"));
+  assert.doesNotMatch(source, /RecognizerIntent|ACTION_RECOGNIZE_SPEECH/);
+  assert.ok(service.includes('ACTION_DICTATION = "com.hrishikesh.jarvis.START_DICTATION"'));
+  assert.ok(service.includes("dictationMode"));
+  assert.ok(service.includes("broadcast(ACTION_COMMAND, text)"));
+  assert.ok(service.includes("ACTION_PARTIAL"));
+  assert.ok(service.includes("partialTranscript(hypothesis)"));
+  assert.ok(service.includes("dictationTimeoutHandler.postDelayed(dictationTimeout, 20000)"));
+  assert.ok(service.includes("vosk-model-small-en-in-0.4"));
+  assert.ok(service.includes("vosk-model-small-en-in-0.4.zip"));
+  assert.ok(manifest.includes('android:name="android.permission.RECORD_AUDIO"'));
+  assert.ok(manifest.includes('android:name=".WakeWordService"'));
+  assert.ok(settings.includes("offline English (India) model"));
 });
