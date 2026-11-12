@@ -52,8 +52,9 @@ jobs:
       - name: Confirm package identity and prepare clean-install test
         run: |
           set -euo pipefail
-          BASELINE_PACKAGE="$(apkanalyzer manifest application-id build39-phone.apk)"
-          CANDIDATE_PACKAGE="$(apkanalyzer manifest application-id app/build/outputs/apk/phone/debug/app-phone-debug.apk)"
+          AAPT="$ANDROID_HOME/build-tools/35.0.0/aapt"
+          BASELINE_PACKAGE="$("$AAPT" dump badging build39-phone.apk | sed -n "s/^package: name='\([^']*\)'.*/\1/p" | head -1)"
+          CANDIDATE_PACKAGE="$("$AAPT" dump badging app/build/outputs/apk/phone/debug/app-phone-debug.apk | sed -n "s/^package: name='\([^']*\)'.*/\1/p" | head -1)"
           test "$BASELINE_PACKAGE" = "com.hrishikesh.jarvis"
           test "$CANDIDATE_PACKAGE" = "$BASELINE_PACKAGE"
           echo "PASS: candidate keeps the existing JARVIS package. This test will replace only the emulator copy; no real phone is touched."
