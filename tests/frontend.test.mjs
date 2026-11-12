@@ -40,8 +40,18 @@ test("one-time owner recovery is available on an unpaired phone", async () => {
 
 test("service worker cache version is bumped and script parses", async () => {
   const source = await readFile(new URL("../sw.js", import.meta.url), "utf8");
-  assert.ok(source.includes('const CACHE="jarvis-shell-v27"'));
+  assert.ok(source.includes('const CACHE="jarvis-shell-v28"'));
   assert.doesNotThrow(() => new Function(source));
+});
+
+
+test("hosted interface provides a foreground fallback for all four JARVIS wake phrases", async () => {
+  const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+  assert.ok(html.includes("const BrowserSpeechRecognition=window.SpeechRecognition||window.webkitSpeechRecognition"));
+  assert.ok(html.includes("hey\\s+jarvis|hello\\s+jarvis|wake\\s+up\\s+jarvis|jarvis\\s*,?\\s*are\\s+you\\s+there"));
+  assert.ok(html.includes("recognition.continuous=true"));
+  assert.ok(html.includes("function captureBrowserWakeCommand()"));
+  assert.ok(html.includes("document.addEventListener('visibilitychange'"));
 });
 
 test("four voice camera phrases use native camera, capture, selfie and latest-photo actions", async () => {
