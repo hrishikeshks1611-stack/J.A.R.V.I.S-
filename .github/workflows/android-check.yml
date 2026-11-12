@@ -2,14 +2,14 @@ name: JARVIS Android compile checks
 
 on:
   push:
-    branches: [ jarvis-5.0-development, jarvis-5-to-10-continuation ]
+    branches: [ jarvis-5.0-development, jarvis-5-to-10-continuation, fix/parallel-install-preview ]
     paths:
       - 'app/**'
       - '*.gradle'
       - 'settings.gradle'
       - '.github/workflows/android-check.yml'
   pull_request:
-    branches: [ main, jarvis-five-pillars-upgrade ]
+    branches: [ main, jarvis-five-pillars-upgrade, fix/parallel-install-preview ]
     paths:
       - 'app/**'
       - '*.gradle'
@@ -40,5 +40,12 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
-      - name: Compile phone and TV variants
-        run: gradle --no-daemon assemblePhoneDebug assembleTvDebug
+      - name: Compile phone, TV, and side-by-side preview variants
+        run: gradle --no-daemon assemblePhoneDebug assembleTvDebug assemblePhonePreviewDebug
+      - name: Upload side-by-side preview APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: JARVIS-phone-preview-side-by-side
+          path: app/build/outputs/apk/phonePreview/debug/app-phonePreview-debug.apk
+          if-no-files-found: error
+          retention-days: 14
