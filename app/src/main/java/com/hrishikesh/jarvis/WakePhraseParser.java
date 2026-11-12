@@ -6,7 +6,8 @@ import java.util.regex.Pattern;
 
 /** Pure-Java wake phrase parsing, independent of Android audio hardware. */
 public final class WakePhraseParser {
-    private static final Pattern WAKE_WORD = Pattern.compile("\\bjarvis\\b");
+    private static final Pattern WAKE_PREFIX = Pattern.compile(
+            "^(?:(?:hey|hello) jarvis|wake up jarvis|jarvis(?: are you there)?)(?:\\\\b|$)");
 
     private WakePhraseParser() { }
 
@@ -14,20 +15,19 @@ public final class WakePhraseParser {
         if (input == null) return "";
         return input.toLowerCase(Locale.ROOT)
                 .replaceAll("[^a-z0-9 ]", " ")
-                .replaceAll("\\s+", " ")
+                .replaceAll("\\\\s+", " ")
                 .trim();
     }
 
     public static boolean containsWakeWord(String input) {
-        return WAKE_WORD.matcher(normalize(input)).find();
+        return WAKE_PREFIX.matcher(normalize(input)).find();
     }
 
-    /** null = no wake word; empty = wake phrase alone; otherwise trailing command. */
+    /** null = no supported wake phrase; empty = phrase alone; otherwise trailing command. */
     public static String extractWakeCommand(String input) {
         String text = normalize(input);
-        Matcher matcher = WAKE_WORD.matcher(text);
-        int wake = -1;
-        while (matcher.find()) wake = matcher.start();
-        return wake < 0 ? null : text.substring(wake + "jarvis".length()).trim();
+        Matcher matcher = WAKE_PREFIX.matcher(text);
+        if (!matcher.find()) return null;
+        return text.substring(matcher.end()).trim();
     }
 }
