@@ -70,7 +70,7 @@ test("backup export requires a paired device and returns conversation plus memor
   assert.equal(res.body.backup.version, 1);
   assert.deepEqual(res.body.backup.conversation, conversation);
   assert.deepEqual(res.body.backup.memories, memories);
-  assert.equal(calls.length, 5);
+  assert.equal(calls.length, 4, "GET session, pipelined TTL refresh, conversation, and memories");
 });
 
 test("backup restore requires explicit confirmation and uses one atomic Redis script", async () => {
