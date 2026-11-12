@@ -1,6 +1,9 @@
 package com.hrishikesh.jarvis;
 
 import android.app.Activity;
+import android.app.SearchManager;
+import android.content.BroadcastReceiver;
+import android.content.IntentFilter;
 import android.Manifest;
 import android.content.pm.PackageManager;
 import android.content.ContentValues;
@@ -51,6 +54,7 @@ public class MainActivity extends Activity {
     private SharedPreferences voicePrefs;
     private String pendingSpeech = null;
     private final Map<String, String[]> appPackages = new HashMap<>();
+    private BroadcastReceiver wakeWordReceiver;
 
     @Override public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -58,6 +62,23 @@ public class MainActivity extends Activity {
         getWindow().setNavigationBarColor(android.graphics.Color.rgb(5, 11, 24));
         registerApps();
         initializeOfflineSpeech();
+        wakeWordReceiver = new BroadcastReceiver() {
+            @Override public void onReceive(android.content.Context context, Intent intent) {
+                String action = intent == null ? null : intent.getAction();
+                if (WakeWordService.ACTION_WAKE.equals(action)) {
+                    if (ttsReady && textToSpeech != null) textToSpeech.speak("Yes, Sir?", TextToSpeech.QUEUE_FLUSH, null, "JARVIS_WAKE");
+                    if (webView != null) webView.evaluateJavascript("window.jarvisNative && window.jarvisNative.onWakeWordDetected && window.jarvisNative.onWakeWordDetected()", null);
+                } else if (WakeWordService.ACTION_COMMAND.equals(action)) {
+                    String command = intent.getStringExtra(WakeWordService.EXTRA_COMMAND);
+                    if (command != null && webView != null) webView.evaluateJavascript("window.jarvisNative && window.jarvisNative.onSpeechResult(" + JSONObject.quote(command) + ")", null);
+                }
+            }
+        };
+        IntentFilter wakeFilter = new IntentFilter();
+        wakeFilter.addAction(WakeWordService.ACTION_WAKE);
+        wakeFilter.addAction(WakeWordService.ACTION_COMMAND);
+        if (android.os.Build.VERSION.SDK_INT >= 33) registerReceiver(wakeWordReceiver, wakeFilter, android.content.Context.RECEIVER_NOT_EXPORTED);
+        else registerReceiver(wakeWordReceiver, wakeFilter);
         webView = new WebView(this);
         webView.setFocusable(true);
         webView.setFocusableInTouchMode(true);
@@ -260,34 +281,45 @@ public class MainActivity extends Activity {
         }
 
 
-        @JavascriptInterface public String playYoutubeMusic(String query) {
-            String songQuery = query == null ? "" : query.trim();
-            if (songQuery.isEmpty()) return "Tell me which song you'd like, Sir.";
-            runOnUiThread(() -> {
-                Intent play = new Intent(MediaStore.INTENT_ACTION_MEDIA_PLAY_FROM_SEARCH);
-                play.setPackage("com.google.android.apps.youtube.music");
-                play.putExtra(MediaStore.EXTRA_MEDIA_FOCUS, "vnd.android.cursor.item/audio");
-                play.putExtra(android.app.SearchManager.QUERY, songQuery);
-                play.putExtra(MediaStore.EXTRA_MEDIA_TITLE, songQuery);
+        @JavascriptInterface public String playYoutubeMusic(String requested) {
+            final String query = requested == null ? "" : requested.trim();
+            if (query.isEmpty() || query.length() > 200) {
+                return "ERROR:Please provide a song title, Sir.";
+            }
+
+            Intent play = new Intent(MediaStore.INTENT_ACTION_MEDIA_PLAY_FROM_SEARCH);
+            play.setPackage("com.google.android.apps.youtube.music");
+            // Use Android's song-specific play contract, not a generic search.
+            // The receiving music app needs both the song focus and title to
+            // attempt playback rather than merely showing an unstructured result list.
+            play.putExtra(MediaStore.EXTRA_MEDIA_FOCUS, "vnd.android.cursor.item/audio");
+            play.putExtra(MediaStore.EXTRA_MEDIA_TITLE, query);
+            play.putExtra(SearchManager.QUERY, query);
+            play.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+
+            if (play.resolveActivity(getPackageManager()) != null) {
                 try {
                     startActivity(play);
-                } catch (ActivityNotFoundException | SecurityException unavailable) {
-                    Uri searchUri = Uri.parse("https://music.youtube.com/search?q=" + Uri.encode(songQuery));
-                    try {
-                        Intent search = new Intent(Intent.ACTION_VIEW, searchUri);
-                        search.setPackage("com.google.android.apps.youtube.music");
-                        startActivity(search);
-                    } catch (ActivityNotFoundException | SecurityException noApp) {
-                        try {
-                            startActivity(new Intent(Intent.ACTION_VIEW, searchUri));
-                        } catch (ActivityNotFoundException ignored) {
-                            Toast.makeText(MainActivity.this, "YouTube Music could not be opened, Sir.", Toast.LENGTH_LONG).show();
-                        }
-                    }
+                    return "APP_OPENED_UNCONFIRMED:Opened YouTube Music with a play-from-search request for " + query + "; playback state is not available.";
+                } catch (ActivityNotFoundException | SecurityException e) {
+                    runOnUiThread(() -> openYoutubeMusicSearchFallback(query));
+                    return "SEARCH_FALLBACK:YouTube Music rejected the play request; opened search results instead.";
                 }
-            });
-            return "Sending a direct play request to YouTube Music for " + songQuery
-                    + ", Sir. Playback is not confirmed until the app starts the track.";
+            }
+
+            runOnUiThread(() -> openYoutubeMusicSearchFallback(query));
+            return "SEARCH_FALLBACK:YouTube Music does not expose the play-from-search action on this device.";
+        }
+
+        private void openYoutubeMusicSearchFallback(String query) {
+            Intent search = new Intent(Intent.ACTION_VIEW,
+                    Uri.parse("https://music.youtube.com/search?q=" + Uri.encode(query)));
+            try { startActivity(search); }
+            catch (ActivityNotFoundException e) {
+                runOnUiThread(() -> Toast.makeText(MainActivity.this,
+                        "YouTube Music or a compatible browser is not available, Sir.",
+                        Toast.LENGTH_LONG).show());
+            }
         }
 
         @JavascriptInterface public String openCastSettings() {
@@ -502,6 +534,10 @@ public class MainActivity extends Activity {
             runOnUiThread(() -> { if (textToSpeech != null) textToSpeech.stop(); });
         }
 
+        @JavascriptInterface public void openWakeWordSettings() {
+            runOnUiThread(() -> startActivity(new Intent(MainActivity.this, WakeWordActivity.class)));
+        }
+
         @JavascriptInterface public void startVoiceRecognition() {
             runOnUiThread(() -> {
                 Intent intent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
@@ -636,6 +672,7 @@ public class MainActivity extends Activity {
     }
 
     @Override protected void onDestroy() {
+        if (wakeWordReceiver != null) { try { unregisterReceiver(wakeWordReceiver); } catch (Exception ignored) { } wakeWordReceiver = null; }
         if (textToSpeech != null) { textToSpeech.stop(); textToSpeech.shutdown(); }
         if (webView != null) webView.destroy();
         super.onDestroy();

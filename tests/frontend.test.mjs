@@ -27,8 +27,34 @@ test("saved-memory UI is explicit and has deletion controls", async () => {
 
 test("service worker cache version is bumped and script parses", async () => {
   const source = await readFile(new URL("../sw.js", import.meta.url), "utf8");
-  assert.ok(source.includes('const CACHE="jarvis-shell-v23"'));
+  assert.ok(source.includes('const CACHE="jarvis-shell-v28"'));
   assert.doesNotThrow(() => new Function(source));
+});
+
+test("YouTube Music song commands use native play-from-search and disclose fallback", async () => {
+  const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+  const java = await readFile(new URL("../app/src/main/java/com/hrishikesh/jarvis/MainActivity.java", import.meta.url), "utf8");
+  const manifest = await readFile(new URL("../app/src/main/AndroidManifest.xml", import.meta.url), "utf8");
+  assert.ok(html.includes("const musicCommand = message.match("));
+  assert.ok(html.includes("id=\"wakeWordButton\""));
+  assert.ok(html.includes("onWakeWordDetected"));
+  assert.ok(html.includes("window.AndroidJarvis.playYoutubeMusic(songQuery)"));
+  assert.ok(html.includes("startsWith('PLAY_REQUESTED:')"));
+  assert.ok(html.includes("playback is not confirmed."));
+  assert.ok(html.includes("Native YouTube Music control is unavailable in this app build"));
+  assert.ok(java.includes("@JavascriptInterface public String playYoutubeMusic(String requested)"));
+  assert.ok(java.includes("MediaStore.INTENT_ACTION_MEDIA_PLAY_FROM_SEARCH"));
+  assert.ok(java.includes("APP_OPENED_UNCONFIRMED:"));
+  assert.ok(java.includes('"vnd.android.cursor.item/audio"'));
+  assert.ok(java.includes("MediaStore.EXTRA_MEDIA_TITLE"));
+  assert.ok(java.includes("SearchManager.QUERY"));
+  assert.ok(html.includes("Search opened; playback was not confirmed."));
+  assert.ok(html.includes("YouTube Music opened; playback is unverified."));
+  assert.ok(html.includes("If it shows search results, please select the track."));
+  assert.ok(html.includes("Please select a track to start playback."));
+  assert.ok(java.includes("https://music.youtube.com/search?q="));
+  assert.ok(java.includes("query.length() > 200"));
+  assert.ok(manifest.includes('<package android:name="com.google.android.apps.youtube.music" />'));
 });
 
 test("native app launch results are sent to shared conversation history", async () => {
@@ -164,25 +190,24 @@ test("office requests choose useful output formats and return a real download li
 });
 
 
+test("YouTube Music play commands use native playback request and disclose fallback", async () => {
+  const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+  assert.ok(html.includes("window.AndroidJarvis.playYoutubeMusic(songQuery)"));
+  assert.ok(html.includes("startsWith('PLAY_REQUESTED:')"));
+  assert.ok(html.includes("playback is not confirmed."));
+  assert.ok(html.includes("Native YouTube Music control is unavailable in this app build"));
+  assert.ok(html.includes("'https://music.youtube.com/search?q='+encodeURIComponent(songQuery)"));
+});
+
+
 test("simple greetings and utility replies are immediate and narrowly matched", async () => {
   const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
   const start = html.indexOf("function instantReply");
   const end = html.indexOf("$('form').onsubmit", start);
   assert.ok(start >= 0 && end > start);
-  const instantReply = vm.runInNewContext(html.slice(start, end) + "\ninstantReply", {
-    Date,
-    Intl
-  });
+  const instantReply = vm.runInNewContext(html.slice(start, end) + "\ninstantReply", { Date, Intl });
   assert.match(instantReply("Good morning"), /Good morning, Sir/);
   assert.match(instantReply("hello"), /Good day, Sir/);
   assert.match(instantReply("what time is it"), /The time is/);
   assert.equal(instantReply("Good morning, can you explain relativity?"), null);
-});
-
-test("YouTube Music commands use the native play bridge and honest search fallback", async () => {
-  const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
-  assert.ok(html.includes("AndroidJarvis.playYoutubeMusic(songQuery)"));
-  assert.ok(html.includes("Playback request sent. Check YouTube Music for the result."));
-  assert.ok(html.includes("music.youtube.com/search?q="));
-  assert.ok(html.includes("'youtube music':'youtube music'"));
 });

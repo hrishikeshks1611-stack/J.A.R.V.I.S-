@@ -4,7 +4,7 @@ name: Build JARVIS Android and TV APK verification artifacts
 on:
   workflow_dispatch:
   push:
-    branches: [ main ]
+    branches: [ main, jarvis-intelligence-tools ]
     paths:
       - 'app/**'
       - '*.gradle'
@@ -12,6 +12,10 @@ on:
       - '.github/workflows/android-apk.yml'
 permissions:
   contents: read
+
+concurrency:
+  group: jarvis-android-verification-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -36,6 +40,8 @@ jobs:
           gradle-version: '8.9'
       - name: Build phone and Android TV APKs
         run: gradle --no-daemon assemblePhoneDebug assembleTvDebug
+      - name: Verify phone APK exists
+        run: test -s "$GITHUB_WORKSPACE/app/build/outputs/apk/phone/debug/app-phone-debug.apk"
       - name: Upload phone verification artifact
         uses: actions/upload-artifact@v4
         with:
@@ -50,3 +56,231 @@ jobs:
           path: app/build/outputs/apk/tv/debug/app-tv-debug.apk
           if-no-files-found: error
           retention-days: 30
+
+  android-10-emulator-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          accept-android-sdk-licenses: true
+          packages: platform-tools
+      - name: Install Android platform
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+      - name: Build phone APK
+        run: gradle --no-daemon assemblePhoneDebug
+      - name: Verify APK path before emulator launch
+        run: |
+          APK_FILE_PATH="$GITHUB_WORKSPACE/app/build/outputs/apk/phone/debug/app-phone-debug.apk"
+          echo "Checking APK: $APK_FILE_PATH"
+          test -s "$APK_FILE_PATH"
+          ls -lh "$APK_FILE_PATH"
+      - name: Install Android 10 emulator image (retry transient SDK download failures)
+        shell: bash
+        run: |
+          set -euo pipefail
+          PACKAGE="system-images;android-29;google_apis;x86_64"
+          for attempt in 1 2 3; do
+            echo "[$(date -u +%FT%TZ)] Installing emulator and Android 10 image (attempt $attempt/3)"
+            if timeout --signal=TERM --kill-after=10s 240s sdkmanager --install "emulator" "$PACKAGE"; then
+              break
+            fi
+            if [ "$attempt" -eq 3 ]; then
+              echo "Android emulator SDK installation failed after three bounded attempts."
+              exit 1
+            fi
+            rm -rf "$ANDROID_HOME/.temp" "$ANDROID_HOME/temp"
+            sleep 10
+          done
+          test -x "$ANDROID_HOME/emulator/emulator"
+          test -d "$ANDROID_HOME/system-images/android-29/google_apis/x86_64"
+      - name: Smoke-test foreground microphone service on Android 10
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK_FILE_PATH="$GITHUB_WORKSPACE/app/build/outputs/apk/phone/debug/app-phone-debug.apk"
+          test -s "$APK_FILE_PATH"
+          mark() { echo "[$(date -u +%FT%TZ)] $*"; }
+          adb_bounded() {
+            local seconds="$1"
+            shift
+            timeout --signal=TERM --kill-after=2s "${seconds}s" adb "$@"
+          }
+          mark "Creating Android 10 API 29 emulator."
+          export ANDROID_AVD_HOME="$RUNNER_TEMP/android-avd"
+          mkdir -p "$ANDROID_AVD_HOME"
+          echo "no" | timeout --signal=TERM --kill-after=5s 30s avdmanager create avd --force --name jarvis-api29 --package "system-images;android-29;google_apis;x86_64" --device pixel_2 -p "$ANDROID_AVD_HOME/jarvis-api29.avd"
+          mark "Verifying Android 10 AVD registration."
+          test -s "$ANDROID_AVD_HOME/jarvis-api29.ini"
+          test -d "$ANDROID_AVD_HOME/jarvis-api29.avd"
+          avdmanager list avd
+          mark "Preparing KVM access for the GitHub Actions runner."
+          if [ -e /dev/kvm ]; then
+            sudo chmod 666 /dev/kvm
+            test -r /dev/kvm && test -w /dev/kvm
+            ls -l /dev/kvm
+          else
+            mark "KVM device is absent; x86_64 Android emulator cannot boot on this runner."
+            exit 1
+          fi
+          mark "Starting emulator with hardware acceleration enabled."
+          "$ANDROID_HOME/emulator/emulator" -avd jarvis-api29 -no-window -no-audio -no-boot-anim -no-snapshot -gpu swiftshader_indirect -accel auto -memory 2048 -cores 2 > "$RUNNER_TEMP/emulator.log" 2>&1 &
+          EMULATOR_PID=$!
+          cleanup() {
+            timeout 8s adb emu kill >/dev/null 2>&1 || true
+            kill "$EMULATOR_PID" >/dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
+
+          mark "Waiting for ADB device (maximum 150 seconds)."
+          if ! timeout --signal=TERM --kill-after=5s 150s adb wait-for-device; then
+            mark "ADB wait-for-device timed out; emulator output follows."
+            cat "$RUNNER_TEMP/emulator.log"
+            exit 1
+          fi
+
+          booted=0
+          for attempt in $(seq 1 90); do
+            mark "Boot check $attempt/90."
+            if adb_bounded 12 shell getprop sys.boot_completed 2>/dev/null | tr -d '\r' | grep -q '^1$'; then
+              booted=1
+              break
+            fi
+            if ! kill -0 "$EMULATOR_PID" 2>/dev/null; then
+              mark "Emulator process exited during boot."
+              cat "$RUNNER_TEMP/emulator.log"
+              exit 1
+            fi
+            sleep 2
+          done
+          if [ "$booted" -ne 1 ]; then
+            mark "Android 10 emulator did not finish booting within three minutes."
+            cat "$RUNNER_TEMP/emulator.log"
+            exit 1
+          fi
+
+          mark "Disabling emulator animations."
+          adb_bounded 15 shell settings put global window_animation_scale 0
+          adb_bounded 15 shell settings put global transition_animation_scale 0
+          adb_bounded 15 shell settings put global animator_duration_scale 0
+          mark "Waiting for Android package manager (maximum 60 seconds; no redundant stability loop)."
+          package_manager_ready=0
+          for attempt in $(seq 1 20); do
+            if adb_bounded 8 shell cmd package list packages >/dev/null 2>&1; then
+              package_manager_ready=1
+              break
+            fi
+            sleep 2
+          done
+          if [ "$package_manager_ready" -ne 1 ]; then
+            mark "Android package manager did not become responsive; collecting diagnostics."
+            adb devices -l || true
+            adb_bounded 15 shell getprop sys.boot_completed || true
+            adb_bounded 15 shell dumpsys activity services || true
+            cat "$RUNNER_TEMP/emulator.log"
+            exit 1
+          fi
+
+          mark "Installing APK (one attempt, then verify package state even if adb times out)."
+          installed=0
+          if adb_bounded 60 install --no-streaming -r "$APK_FILE_PATH"; then
+            installed=1
+          fi
+          if [ "$installed" -ne 1 ]; then
+            mark "Checking whether Package Manager completed installation before adb timed out."
+            if adb_bounded 15 shell pm path com.hrishikesh.jarvis 2>/dev/null | grep -q "package:"; then
+              installed=1
+              mark "Package Manager confirms APK is installed; not repeating a successful install."
+            fi
+          fi
+          if [ "$installed" -ne 1 ]; then
+            mark "APK installation failed; collecting diagnostics."
+            adb devices -l || true
+            adb_bounded 15 shell pm list packages | grep -i jarvis || true
+            adb_bounded 15 shell df -h /data || true
+            cat "$RUNNER_TEMP/emulator.log"
+            exit 1
+          fi
+          mark "Granting microphone permission."
+          adb_bounded 60 shell pm grant com.hrishikesh.jarvis android.permission.RECORD_AUDIO
+          mark "Microphone permission granted; clearing emulator logs."
+          adb_bounded 30 logcat -c
+
+          mark "Launching debug wake-word test activity directly (MainActivity is not required for this service test)."
+          adb_bounded 20 shell am start -n com.hrishikesh.jarvis/.WakeWordTestActivity
+          ready=0
+          service_failed=0
+          mark "Waiting up to 180 seconds for WakeWordService READY; each poll uses one bounded logcat read."
+          for attempt in $(seq 1 60); do
+            snapshot="$(adb_bounded 3 logcat -d -v brief -s WakeWordService WakeWordTest 2>/dev/null || true)"
+            if printf '%s\n' "$snapshot" | grep -q "offline wake-word service ready"; then
+              ready=1
+              mark "READY detected on poll $attempt."
+              break
+            fi
+            if printf '%s\n' "$snapshot" | grep -Eq "Failed to prepare offline wake-word service|unable to establish foreground notification|Offline speech recognition error"; then
+              service_failed=1
+              mark "WakeWordService emitted a startup/runtime failure on poll $attempt."
+              printf '%s\n' "$snapshot"
+              break
+            fi
+            if [ $((attempt % 5)) -eq 0 ]; then
+              mark "Still waiting for READY ($attempt/60 polls); current service state:"
+              adb_bounded 5 shell dumpsys activity services com.hrishikesh.jarvis | grep -A 18 -B 3 "WakeWordService" || true
+            fi
+            sleep 2
+          done
+
+          if [ "$ready" -ne 1 ]; then
+            mark "Wake-word service did not report READY. Collecting complete bounded diagnostics."
+            adb_bounded 20 logcat -d -v threadtime > "$RUNNER_TEMP/wakeword-logcat.txt" || true
+            grep -E "WakeWordTest|WakeWordService|AndroidRuntime|ActivityManager|ForegroundService|Permission|AudioRecord|Vosk|linker" "$RUNNER_TEMP/wakeword-logcat.txt" | tail -n 250 || true
+            adb_bounded 20 shell dumpsys activity services com.hrishikesh.jarvis || true
+            adb_bounded 10 shell pidof com.hrishikesh.jarvis || true
+            adb_bounded 20 shell dumpsys package com.hrishikesh.jarvis | grep -A 10 RECORD_AUDIO || true
+            cat "$RUNNER_TEMP/emulator.log"
+            if [ "$service_failed" -eq 1 ]; then
+              mark "The service reported a concrete startup/runtime error; failing with diagnostics above."
+            else
+              mark "No READY or explicit failure was observed within the bounded 120-second startup window."
+            fi
+            exit 1
+          fi
+
+          mark "Confirming the microphone recorder stayed active after startup."
+          sleep 4
+          if adb_bounded 12 logcat -d -s WakeWordService:E 2>/dev/null | grep -q "Offline speech recognition error"; then
+            mark "The native microphone recorder failed after the listener thread launched."
+            adb_bounded 20 logcat -d -v threadtime | grep -E "WakeWordService|AndroidRuntime|AudioRecord|Permission" || true
+            exit 1
+          fi
+          if ! adb_bounded 20 shell dumpsys activity services com.hrishikesh.jarvis | grep -q "WakeWordService"; then
+            mark "Wake-word foreground service exited after startup."
+            adb_bounded 20 logcat -d -v threadtime | grep -E "WakeWordService|AndroidRuntime|AudioRecord|Permission" || true
+            exit 1
+          fi
+
+          mark "Requesting clean wake-word service stop."
+          adb_bounded 10 shell am start -n com.hrishikesh.jarvis/.WakeWordTestActivity -a com.hrishikesh.jarvis.TEST_STOP_WAKE
+          mark "Stop request dispatched; verifying service termination independently."
+          sleep 3
+          if adb_bounded 20 shell dumpsys activity services com.hrishikesh.jarvis | grep -q WakeWordService; then
+            mark "Wake-word service did not stop cleanly."
+            adb_bounded 20 logcat -d -v threadtime | grep -E "WakeWordTest|WakeWordService|AndroidRuntime|ActivityManager" || true
+            exit 1
+          fi
+          mark "Android 10 foreground-service start, offline model load, and stop checks passed."
+
+# Keep this workflow eligible for branch-push verification of the emulator smoke test.
