@@ -4,7 +4,7 @@ on:
   push:
     branches: [ main, jarvis-5.0-development, jarvis-5-to-10-continuation, fix/parallel-install-preview ]
   pull_request:
-    branches: [ main, jarvis-5-to-10-continuation, jarvis-five-pillars-upgrade, fix/parallel-install-preview ]
+    branches: [ main, jarvis-5-to-10-continuation, jarvis-five-pillars-upgrade, feature/youtube-music-direct-playback ]
 
 permissions:
   contents: read
