@@ -4,7 +4,7 @@ on:
   push:
     branches: [ main, jarvis-5.0-development, jarvis-6.0-development ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, jarvis-6.0-development ]
 
 permissions:
   contents: read
