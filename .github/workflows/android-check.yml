@@ -7,6 +7,7 @@ on:
       - 'app/**'
       - '*.gradle'
       - 'settings.gradle'
+      - 'gradle.properties'
       - '.github/workflows/android-check.yml'
   pull_request:
     branches: [ main, jarvis-6.0-development, jarvis-rebirth-6.0 ]
