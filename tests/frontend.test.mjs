@@ -169,7 +169,7 @@ test("simple greetings and utility replies are immediate and narrowly matched", 
   const start = html.indexOf("function instantReply");
   const end = html.indexOf("$('form').onsubmit", start);
   assert.ok(start >= 0 && end > start);
-  const instantReply = vm.runInNewContext(html.slice(start, end).replace(/\\n$/, "") + "\\ninstantReply", {
+  const instantReply = vm.runInNewContext(html.slice(start, end) + "\ninstantReply", {
     Date,
     Intl
   });
