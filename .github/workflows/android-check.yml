@@ -52,7 +52,7 @@ jobs:
           script: |
             set -euo pipefail
             adb logcat -c
-            gradle --no-daemon connectedPhoneDebugAndroidTest
+            timeout 180s gradle --no-daemon connectedPhoneDebugAndroidTest
             echo "Waiting for the real Android AudioRecord capture loop to start"
             if ! timeout 300s bash -c 'until adb logcat -d -s WakeWordService | grep -q "Audio capture active:"; do sleep 2; done'; then
               echo "Wake-word service did not become ready. Full service log follows:"
