@@ -630,12 +630,14 @@ const openYoutubeMusicOnly=/^\s*(?:jarvis[, ]+)?(?:please\s+)?(?:open|launch|sta
 const musicCommand=message.match(/^\s*(?:jarvis[, ]+)?(?:please\s+)?(?:play|search(?:\s+for)?)\s+(.+?)(?:\s+(?:on|in)\s+youtube\s+music)?[.!?]*\s*$/i);
 const explicitMusicCommand=/\byoutube\s+music\b/i.test(message)&&musicCommand;
 if(openYoutubeMusicOnly){
- const reply=window.AndroidJarvis&&typeof window.AndroidJarvis.openApp==='function'
-  ?window.AndroidJarvis.openApp('youtube music'):'Opening YouTube Music.';
+ const hasNativeMusicBridge=window.AndroidJarvis&&typeof window.AndroidJarvis.playYoutubeMusic==='function';
+ const reply=hasNativeMusicBridge
+  ?window.AndroidJarvis.openApp('youtube music'):'Opening YouTube Music, Sir.';
  add(reply,'jarvis');history.push({role:'model',text:reply});history=history.slice(-20);
  pairApi({action:'append-local',message,reply}).catch(()=>{});
- $('hint').textContent='Opening YouTube Music, Sir.';status('System ready');speak(reply);
- if(!window.AndroidJarvis)window.location.href='https://music.youtube.com/';
+ $('hint').textContent='Opening YouTube Music, Sir.';status('System ready');
+ if(hasNativeMusicBridge)speak(reply);
+ else window.location.href='https://music.youtube.com/';
  return;
 }
 if(musicCommand&&(explicitMusicCommand||/^\s*(?:jarvis[, ]+)?(?:please\s+)?play\s+/i.test(message))){
