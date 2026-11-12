@@ -258,6 +258,19 @@ jobs:
             exit 1
           fi
 
+          mark "Confirming the microphone recorder stayed active after startup."
+          sleep 4
+          if adb_bounded 12 logcat -d -s WakeWordService:E 2>/dev/null | grep -q "Offline speech recognition error"; then
+            mark "The native microphone recorder failed after the listener thread launched."
+            adb_bounded 20 logcat -d -v threadtime | grep -E "WakeWordService|AndroidRuntime|AudioRecord|Permission" || true
+            exit 1
+          fi
+          if ! adb_bounded 20 shell dumpsys activity services com.hrishikesh.jarvis | grep -q "WakeWordService"; then
+            mark "Wake-word foreground service exited after startup."
+            adb_bounded 20 logcat -d -v threadtime | grep -E "WakeWordService|AndroidRuntime|AudioRecord|Permission" || true
+            exit 1
+          fi
+
           mark "Requesting clean wake-word service stop."
           adb_bounded 45 shell am start -W -n com.hrishikesh.jarvis/.WakeWordTestActivity -a com.hrishikesh.jarvis.TEST_STOP_WAKE
           sleep 3
