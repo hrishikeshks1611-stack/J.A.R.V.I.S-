@@ -39,7 +39,7 @@ test("one-time owner recovery is available on an unpaired phone", async () => {
 
 test("service worker cache version is bumped and script parses", async () => {
   const source = await readFile(new URL("../sw.js", import.meta.url), "utf8");
-  assert.ok(source.includes('const CACHE="jarvis-shell-v25"'));
+  assert.ok(source.includes('const CACHE="jarvis-shell-v26"'));
   assert.doesNotThrow(() => new Function(source));
 });
 
@@ -157,6 +157,22 @@ test("full backup UI exports and restores shared conversation plus memories with
   assert.ok(html.includes("sessionRole!=='owner'"));
 });
 
+test("animated 3D reactor remains the default and respects reduced-motion preferences", async () => {
+  const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+  assert.ok(html.includes("@keyframes reactorBreath"));
+  assert.ok(html.includes("@keyframes corePulse"));
+  assert.ok(html.includes(".ring{"));
+  assert.ok(html.includes("@media (prefers-reduced-motion: reduce)"));
+  assert.ok(html.includes(".reactor-core{animation:none!important}"));
+});
+
+test("Cast control is honestly labelled as an Android settings shortcut, not in-app mirroring", async () => {
+  const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+  assert.ok(html.includes('id="castButton" type="button" aria-label="Open Android Cast settings"'));
+  assert.ok(html.includes("JARVIS does not mirror the screen itself"));
+  assert.ok(html.includes("JARVIS does not stream the screen itself"));
+});
+
 test("Mission Control exposes local diagnostics, a bounded briefing and explicit local-only routines", async () => {
   const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
   for (const id of ["missionButton", "missionPanel", "mcTime", "mcDevice", "mcNetwork", "mcBattery", "mcPair", "mcVoice", "runBriefing", "focusRoutine", "nightRoutine", "normalRoutine"]) {
@@ -184,4 +200,28 @@ test("owner-only Security Audit screen exposes activity filters", async () => {
   assert.ok(html.includes("pairApi({action:'security-audit'})"));
   assert.ok(html.includes("FIRST SEEN IN RECENT LOG"));
   assert.ok(html.includes("auditFailedOnly"));
+});
+
+
+test("permissioned tool calls are shown and alarm/calendar actions require a separate user click", async () => {
+  const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+  assert.ok(html.includes("function add(text,who,attachment,downloadFile,toolCalls,pendingActions)"));
+  assert.ok(html.includes("TOOL REPORT"));
+  assert.ok(html.includes("Review alarm in Clock"));
+  assert.ok(html.includes("Calendar editor opened · save there to confirm"));
+  assert.ok(html.includes("data.toolCalls,data.pendingActions"));
+  assert.ok(html.includes("deviceType,deviceName:deviceType,networkOnline:navigator.onLine!==false"));
+});
+
+
+test("shared conversation clearing requires explicit confirmation across paired devices", async () => {
+  const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+  assert.ok(html.includes("Clear the shared JARVIS conversation on all paired devices? This cannot be undone."));
+  assert.ok(html.includes("pairApi({action:'clear',confirm:true})"));
+});
+
+test("Office Engine describes inline file delivery without claiming an expiring secure link", async () => {
+  const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+  assert.ok(html.includes("The file is delivered directly to this device and is not retained in durable server history"));
+  assert.ok(!html.includes("The secure link works once and expires in 15 minutes"));
 });

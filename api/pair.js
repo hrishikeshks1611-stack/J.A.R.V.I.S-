@@ -172,7 +172,16 @@ export default async function handler(req, res) {
       return res.status(200).json({ messages: await readHistory() });
     }
     if (action === "clear") {
+      if (body.confirm !== true) {
+        return res.status(400).json({ error: "Confirm before clearing the shared conversation across all paired devices." });
+      }
       await saveHistory([]);
+      await audit("success", {
+        deviceId: session.deviceId,
+        deviceName: session.deviceName,
+        role: session.role,
+        reason: "shared_conversation_cleared"
+      }).catch(() => {});
       return res.status(200).json({ cleared: true });
     }
     if (action === "create-code") {
