@@ -70,11 +70,8 @@ public class WakeWordActivity extends Activity {
     }
 
     private void enableWakeWord() {
-        boolean audioGranted = checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED;
-        boolean notificationsGranted = Build.VERSION.SDK_INT < 33 || checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED;
-        if (!audioGranted || !notificationsGranted) {
-            if (Build.VERSION.SDK_INT >= 33) requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO, Manifest.permission.POST_NOTIFICATIONS}, REQUEST_AUDIO);
-            else requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, REQUEST_AUDIO);
+        if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, REQUEST_AUDIO);
             return;
         }
         prefs.edit().putBoolean("enabled", true).apply();
@@ -94,8 +91,7 @@ public class WakeWordActivity extends Activity {
         super.onRequestPermissionsResult(requestCode, permissions, results);
         if (requestCode == REQUEST_AUDIO) {
             boolean audioGranted = checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED;
-            boolean notificationsGranted = Build.VERSION.SDK_INT < 33 || checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED;
-            if (audioGranted && notificationsGranted) enableWakeWord();
+            if (audioGranted) enableWakeWord();
             else {
                 updating = true;
                 microphoneSwitch.setChecked(false);
