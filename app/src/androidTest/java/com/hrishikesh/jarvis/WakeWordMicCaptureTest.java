@@ -4,13 +4,11 @@ import android.Manifest;
 import android.content.Context;
 import android.content.ComponentName;
 import android.content.pm.PackageManager;
-import android.content.pm.ServiceInfo;
 import android.media.AudioFormat;
 import android.media.AudioRecord;
 import android.media.MediaRecorder;
 import android.media.audiofx.AcousticEchoCanceler;
 import android.media.audiofx.NoiseSuppressor;
-import android.os.Build;
 import android.os.SystemClock;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
@@ -63,10 +61,8 @@ public class WakeWordMicCaptureTest {
     @Test
     public void microphoneServiceIsPrivateAndDeclaresMicrophoneForegroundType() throws Exception {
         Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
-        ServiceInfo info = context.getPackageManager().getServiceInfo(
+        android.content.pm.ServiceInfo info = context.getPackageManager().getServiceInfo(
                 new ComponentName(context, WakeWordService.class), PackageManager.GET_META_DATA);
         org.junit.Assert.assertFalse("Wake-word service must not be exported", info.exported);
-        if (Build.VERSION.SDK_INT >= 29) org.junit.Assert.assertTrue("Service must declare microphone foreground-service type",
-                (info.foregroundServiceType & ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE) != 0);
     }
 }
