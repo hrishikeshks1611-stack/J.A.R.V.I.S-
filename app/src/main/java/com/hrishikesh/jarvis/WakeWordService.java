@@ -114,10 +114,11 @@ public class WakeWordService extends Service implements RecognitionListener {
             Log.i("WakeWordService", "prepareAndListen: recognizer created");
             speechService = new SpeechService(recognizer, 16000.0f);
             Log.i("WakeWordService", "prepareAndListen: speech service created; starting microphone recognition");
-            speechService.startListening(this);
-            Log.i("WakeWordService", "prepareAndListen: startListening returned successfully");
+            boolean listeningStarted = speechService.startListening(this);
+            if (!listeningStarted) throw new IllegalStateException("Vosk refused to start microphone recognition");
+            Log.i("WakeWordService", "prepareAndListen: microphone recognition listener thread launched");
             updateNotification("Microphone ON · offline wake-word detection active");
-            Log.i("WakeWordService", "prepareAndListen: offline wake-word service ready");
+            Log.i("WakeWordService", "offline wake-word service ready");
         } catch (Exception | LinkageError error) {
             Log.e("WakeWordService", "Failed to prepare offline wake-word service", error);
             updateNotification("Wake-word setup failed. Open JARVIS and switch the microphone OFF.");
