@@ -230,35 +230,44 @@ jobs:
           mark "Microphone permission granted; clearing emulator logs."
           adb_bounded 30 logcat -c
 
-          mark "Launching MainActivity (maximum 45 seconds)."
-          adb_bounded 45 shell am start -W -n com.hrishikesh.jarvis/.MainActivity
-          sleep 3
-          mark "Launching debug wake-word test activity (maximum 45 seconds)."
-          adb_bounded 45 shell am start -W -n com.hrishikesh.jarvis/.WakeWordTestActivity
-
+          mark "Launching debug wake-word test activity directly (MainActivity is not required for this service test)."
+          adb_bounded 20 shell am start -n com.hrishikesh.jarvis/.WakeWordTestActivity
           ready=0
-          mark "Waiting up to 90 seconds for WakeWordService READY."
-          for attempt in $(seq 1 45); do
-            if adb_bounded 4 logcat -d -s WakeWordService:I WakeWordService:E 2>/dev/null | grep -q "offline wake-word service ready"; then
+          service_failed=0
+          mark "Waiting up to 120 seconds for WakeWordService READY; each poll uses one bounded logcat read."
+          for attempt in $(seq 1 40); do
+            snapshot="$(adb_bounded 3 logcat -d -v brief -s WakeWordService WakeWordTest 2>/dev/null || true)"
+            if printf '%s\n' "$snapshot" | grep -q "offline wake-word service ready"; then
               ready=1
               mark "READY detected on poll $attempt."
               break
             fi
-            if adb_bounded 4 logcat -d -s WakeWordService:I WakeWordService:E 2>/dev/null | grep -q "Failed to prepare offline wake-word service"; then
-              mark "WakeWordService reported a preparation failure on poll $attempt."
+            if printf '%s\n' "$snapshot" | grep -Eq "Failed to prepare offline wake-word service|unable to establish foreground notification|Offline speech recognition error"; then
+              service_failed=1
+              mark "WakeWordService emitted a startup/runtime failure on poll $attempt."
+              printf '%s\n' "$snapshot"
               break
             fi
-            if [ $((attempt % 10)) -eq 0 ]; then mark "Still waiting for READY ($attempt/45 polls)."; fi
-            sleep 2
+            if [ $((attempt % 5)) -eq 0 ]; then
+              mark "Still waiting for READY ($attempt/40 polls); current service state:"
+              adb_bounded 5 shell dumpsys activity services com.hrishikesh.jarvis | grep -A 18 -B 3 "WakeWordService" || true
+            fi
+            sleep 3
           done
 
           if [ "$ready" -ne 1 ]; then
-            mark "Wake-word service did not report READY. Collecting bounded diagnostics."
-            adb_bounded 20 logcat -d -v threadtime | grep -E "WakeWordTest|WakeWordService|AndroidRuntime|ActivityManager|ForegroundService|Permission" || true
+            mark "Wake-word service did not report READY. Collecting complete bounded diagnostics."
+            adb_bounded 20 logcat -d -v threadtime > "$RUNNER_TEMP/wakeword-logcat.txt" || true
+            grep -E "WakeWordTest|WakeWordService|AndroidRuntime|ActivityManager|ForegroundService|Permission|AudioRecord|Vosk|linker" "$RUNNER_TEMP/wakeword-logcat.txt" | tail -n 250 || true
             adb_bounded 20 shell dumpsys activity services com.hrishikesh.jarvis || true
             adb_bounded 10 shell pidof com.hrishikesh.jarvis || true
             adb_bounded 20 shell dumpsys package com.hrishikesh.jarvis | grep -A 10 RECORD_AUDIO || true
             cat "$RUNNER_TEMP/emulator.log"
+            if [ "$service_failed" -eq 1 ]; then
+              mark "The service reported a concrete startup/runtime error; failing with diagnostics above."
+            else
+              mark "No READY or explicit failure was observed within the bounded 120-second startup window."
+            fi
             exit 1
           fi
 
