@@ -10,6 +10,7 @@ import android.media.AudioRecord;
 import android.media.MediaRecorder;
 import android.media.audiofx.AcousticEchoCanceler;
 import android.media.audiofx.NoiseSuppressor;
+import android.os.SystemClock;
 
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
@@ -64,8 +65,14 @@ public class WakeWordServiceSmokeTest {
             recorder.startRecording();
             org.junit.Assert.assertEquals(AudioRecord.RECORDSTATE_RECORDING, recorder.getRecordingState());
             byte[] pcm = new byte[3200];
-            int captured = recorder.read(pcm, 0, pcm.length);
-            org.junit.Assert.assertTrue("Android must deliver PCM frames from the microphone", captured > 0);
+            int captured = 0;
+            long deadline = SystemClock.elapsedRealtime() + 5000;
+            while (captured == 0 && SystemClock.elapsedRealtime() < deadline) {
+                captured = recorder.read(pcm, 0, pcm.length, AudioRecord.READ_NON_BLOCKING);
+                if (captured == 0) SystemClock.sleep(20);
+            }
+            org.junit.Assert.assertTrue("Android must deliver PCM frames from the microphone; read result=" + captured,
+                    captured > 0);
         } finally {
             try { recorder.stop(); } catch (Exception ignored) { }
             if (ns != null) { try { ns.setEnabled(false); ns.release(); } catch (Exception ignored) { } }
