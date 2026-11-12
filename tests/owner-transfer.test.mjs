@@ -21,28 +21,32 @@ test("owner transfer is authorised and performed by one atomic Redis script", as
   const targetHash = "target-session-hash";
   const calls = [];
   globalThis.fetch = async (url, options) => {
-    const command = JSON.parse(options.body)[0];
-    calls.push(command);
-    let result;
-    if (command[0] === "GET" && command[1].includes(":session:")) {
-      result = JSON.stringify({ deviceId: "owner-device", deviceName: "Phone", role: "owner" });
-    } else if (command[0] === "EXPIRE") {
-      result = 1;
-    } else if (command[0] === "GET" && command[1] === "jarvis:v1:device:laptop-device") {
-      result = JSON.stringify({ deviceId: "laptop-device", deviceName: "Laptop", role: "device", sessionHash: targetHash });
-    } else if (["LPUSH", "LTRIM", "EXPIRE"].includes(command[0])) {
-      result = 1;
-    } else if (command[0] === "EVAL") {
-      assert.equal(command[2], "5");
-      assert.equal(command[3], "jarvis:v1:owner:token-hash");
-      assert.ok(command[1].includes("target.role = 'owner'"));
-      assert.ok(command[1].includes("current.role = 'device'"));
-      assert.equal(command[9], targetHash);
-      result = JSON.stringify({ ok: true, ownerDeviceId: "laptop-device", previousOwnerDeviceId: "owner-device" });
-    } else {
-      throw new Error("Unexpected Redis command: " + command.join(" "));
+    const commands = JSON.parse(options.body);
+    const results = [];
+    for (const command of commands) {
+      calls.push(command);
+      let result;
+      if (command[0] === "GET" && command[1].includes(":session:")) {
+        result = JSON.stringify({ deviceId: "owner-device", deviceName: "Phone", role: "owner" });
+      } else if (command[0] === "EXPIRE") {
+        result = 1;
+      } else if (command[0] === "GET" && command[1] === "jarvis:v1:device:laptop-device") {
+        result = JSON.stringify({ deviceId: "laptop-device", deviceName: "Laptop", role: "device", sessionHash: targetHash });
+      } else if (["LPUSH", "LTRIM", "EXPIRE"].includes(command[0])) {
+        result = 1;
+      } else if (command[0] === "EVAL") {
+        assert.equal(command[2], "5");
+        assert.equal(command[3], "jarvis:v1:owner:token-hash");
+        assert.ok(command[1].includes("target.role = 'owner'"));
+        assert.ok(command[1].includes("current.role = 'device'"));
+        assert.equal(command[9], targetHash);
+        result = JSON.stringify({ ok: true, ownerDeviceId: "laptop-device", previousOwnerDeviceId: "owner-device" });
+      } else {
+        throw new Error("Unexpected Redis command: " + command.join(" "));
+      }
+      results.push({ result });
     }
-    return new Response(JSON.stringify([{ result }]), { status: 200 });
+    return new Response(JSON.stringify(results), { status: 200 });
   };
 
   const res = {
