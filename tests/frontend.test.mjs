@@ -211,3 +211,20 @@ test("simple greetings and utility replies are immediate and narrowly matched", 
   assert.match(instantReply("what time is it"), /The time is/);
   assert.equal(instantReply("Good morning, can you explain relativity?"), null);
 });
+
+test("JARVIS greetings follow the device local time instead of a fixed evening greeting", async () => {
+  const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+  assert.match(html, /function timeGreeting\(date=new Date\(\)\)/);
+  assert.match(html, /hour>=5&&hour<12\)return 'Good morning, Sir'/);
+  assert.match(html, /hour>=12&&hour<17\)return 'Good afternoon, Sir'/);
+  assert.match(html, /hour>=17&&hour<22\)return 'Good evening, Sir'/);
+  assert.match(html, /initialWelcome\.textContent=timeGreeting\(\)/);
+  assert.doesNotMatch(html, /speak\('Good evening, Sir\. I am JARVIS/);
+});
+
+test("JARVIS Android launcher icon uses the upgraded cyan ARC reactor design", async () => {
+  const icon = await readFile(new URL("../app/src/main/res/drawable/ic_jarvis_launcher.xml", import.meta.url), "utf8");
+  assert.match(icon, /#36CAFF/);
+  assert.match(icon, /#A6F4FF/);
+  assert.match(icon, /android:pathData="M54,36l17,10v20/);
+});
