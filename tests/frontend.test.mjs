@@ -266,3 +266,10 @@ test("native JARVIS voice input displays partial transcription while the user is
   assert.ok(html.includes("$('prompt').value=transcript;status('Listening · '+transcript,'listening')"));
   assert.ok(html.includes("onSpeechResult:(transcript)=>{$('prompt').value=transcript;$('form').requestSubmit();}"));
 });
+
+
+test("JARVIS personality always addresses the owner as Sir", async () => {
+  const source = await readFile(new URL("../lib/jarvis-personality.js", import.meta.url), "utf8");
+  assert.ok(source.includes("Address the user as Sir in every reply"));
+  assert.ok(source.includes("Never address the user by their personal name"));
+});
