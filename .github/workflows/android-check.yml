@@ -64,8 +64,8 @@ jobs:
           disable-animations: true
           script: |
             set -euo pipefail
-            BASE_APK="build39-phone.apk"
-            UPDATE_APK="app/build/outputs/apk/phone/debug/app-phone-debug.apk"
+            BASE_APK="${GITHUB_WORKSPACE}/build39-phone.apk"
+            UPDATE_APK="${GITHUB_WORKSPACE}/app/build/outputs/apk/phone/debug/app-phone-debug.apk"
             test -s "$BASE_APK"
             test -s "$UPDATE_APK"
             adb install "$BASE_APK"
