@@ -42,6 +42,7 @@ public class WakeWordService extends Service implements RecognitionListener {
     private volatile boolean stopped = false;
     private volatile boolean awaitingCommand = false;
     private volatile boolean dictationMode = false;
+    private volatile boolean wakeDetectedInUtterance = false;
     private volatile boolean preparing = false;
     private final Handler commandTimeoutHandler = new Handler(Looper.getMainLooper());
     private final Handler dictationTimeoutHandler = new Handler(Looper.getMainLooper());
@@ -303,9 +304,22 @@ public class WakeWordService extends Service implements RecognitionListener {
     }
 
     @Override public void onPartialResult(String hypothesis) {
-        if (!dictationMode) return;
         String partial = partialTranscript(hypothesis);
-        if (!partial.isEmpty()) broadcast(ACTION_PARTIAL, partial);
+        if (partial.isEmpty()) return;
+        if (dictationMode) {
+            broadcast(ACTION_PARTIAL, partial);
+            return;
+        }
+        String normalized = partial.toLowerCase(Locale.ROOT)
+                .replaceAll("[^a-z0-9 ]", " ").replaceAll("\\s+", " ").trim();
+        boolean wakeNamePresent = java.util.regex.Pattern.compile("\\bjarvis\\b")
+                .matcher(normalized).find();
+        if (!awaitingCommand && !wakeDetectedInUtterance && wakeNamePresent) {
+            wakeDetectedInUtterance = true;
+            broadcast(ACTION_WAKE, null);
+            updateNotification("JARVIS detected · listening for your command");
+            Log.i("WakeWordService", "Wake phrase detected in partial speech");
+        }
     }
 
     @Override public void onFinalResult(String hypothesis) {
@@ -344,6 +358,21 @@ public class WakeWordService extends Service implements RecognitionListener {
             } else {
                 updateNotification("Voice input complete · microphone stopped");
                 stopSelf();
+            }
+            return;
+        }
+
+        if (wakeDetectedInUtterance) {
+            wakeDetectedInUtterance = false;
+            String partialWakeCommand = extractWakeCommand(text);
+            if (partialWakeCommand != null && !partialWakeCommand.isEmpty()) {
+                broadcast(ACTION_COMMAND, partialWakeCommand);
+                updateNotification("Microphone ON · offline wake-word detection active");
+            } else {
+                awaitingCommand = true;
+                commandTimeoutHandler.removeCallbacks(commandTimeout);
+                commandTimeoutHandler.postDelayed(commandTimeout, 8000);
+                updateNotification("JARVIS awake · listening for your command");
             }
             return;
         }
@@ -390,6 +419,7 @@ public class WakeWordService extends Service implements RecognitionListener {
         dictationTimeoutHandler.removeCallbacks(dictationTimeout);
         dictationMode = false;
         awaitingCommand = false;
+        wakeDetectedInUtterance = false;
         stopped = true;
         active = false;
         HttpURLConnection connection = modelConnection;
