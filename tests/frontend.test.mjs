@@ -225,3 +225,16 @@ test("Office Engine describes inline file delivery without claiming an expiring 
   assert.ok(html.includes("The file is delivered directly to this device and is not retained in durable server history"));
   assert.ok(!html.includes("The secure link works once and expires in 15 minutes"));
 });
+
+
+test("live app answers exact greetings locally and routes YouTube Music commands", async () => {
+  const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+  const start = html.indexOf("function instantReply");
+  const end = html.indexOf("$('form').onsubmit", start);
+  assert.ok(start >= 0 && end > start);
+  const instantReply = vm.runInNewContext(html.slice(start, end) + "\\ninstantReply", { Date, Intl });
+  assert.match(instantReply("Good morning"), /Good morning, Sir/);
+  assert.equal(instantReply("Good morning, explain this to me"), null);
+  assert.ok(html.includes("AndroidJarvis.playYoutubeMusic(songQuery)"));
+  assert.ok(html.includes("music.youtube.com/search?q="));
+});
