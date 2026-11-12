@@ -312,8 +312,7 @@ public class WakeWordService extends Service implements RecognitionListener {
         }
         String normalized = partial.toLowerCase(Locale.ROOT)
                 .replaceAll("[^a-z0-9 ]", " ").replaceAll("\\s+", " ").trim();
-        boolean wakeNamePresent = java.util.regex.Pattern.compile("\\bjarvis\\b")
-                .matcher(normalized).find();
+        boolean wakeNamePresent = containsWakeWord(normalized);
         if (!awaitingCommand && !wakeDetectedInUtterance && wakeNamePresent) {
             wakeDetectedInUtterance = true;
             broadcast(ACTION_WAKE, null);
@@ -324,6 +323,14 @@ public class WakeWordService extends Service implements RecognitionListener {
 
     @Override public void onFinalResult(String hypothesis) {
         handleRecognizedPhrase(hypothesis);
+    }
+
+    /** Returns true only when JARVIS appears as a complete spoken word. */
+    public static boolean containsWakeWord(String recognizedText) {
+        if (recognizedText == null || recognizedText.trim().isEmpty()) return false;
+        String normalized = recognizedText.toLowerCase(Locale.ROOT)
+                .replaceAll("[^a-z0-9 ]", " ").replaceAll("\\s+", " ").trim();
+        return java.util.regex.Pattern.compile("\\bjarvis\\b").matcher(normalized).find();
     }
 
     /**
