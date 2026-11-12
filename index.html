@@ -559,18 +559,18 @@ const appAliases={'whatsapp':'whatsapp','you tube':'youtube','youtube':'youtube'
 function handleNativeCameraCommand(text){
  if(!window.AndroidJarvis)return null;
  const command=String(text||'').trim().toLowerCase();
- if(/\\b(selfie|take a self-?portrait)\\b/.test(command)){
+ if(/\b(selfie|take a self-?portrait)\b/.test(command)){
   if(typeof window.AndroidJarvis.capturePhoto!=='function')return 'Front-camera capture is not available in this app build, Sir.';
   window.AndroidJarvis.capturePhoto(true);return 'Opening the front camera for your selfie, Sir.';
  }
- if(/\\b(show|open|view)\\b.*\\b(last|latest|most recent)\\b.*\\b(photo|picture|image)\\b/.test(command)){
+ if(/\b(show|open|view)\b.*\b(last|latest|most recent)\b.*\b(photo|picture|image)\b/.test(command)){
   if(typeof window.AndroidJarvis.showLastPhoto!=='function')return 'Showing the latest saved photo is not available in this app build, Sir.';
   window.AndroidJarvis.showLastPhoto();return 'Opening your latest saved photo, Sir.';
  }
- if(/\\b(open|launch)\\s+(the\\s+)?camera\\b/.test(command)){
+ if(/\b(open|launch)\s+(the\s+)?camera\b/.test(command)){
   if(typeof window.AndroidJarvis.openCamera==='function'){window.AndroidJarvis.openCamera();return 'Opening the camera, Sir.';}
  }
- if(/\\b(take|capture)\\s+(a\\s+)?(photo|picture)\\b/.test(command)){
+ if(/\b(take|capture)\s+(a\s+)?(photo|picture)\b/.test(command)){
   if(typeof window.AndroidJarvis.capturePhoto==='function'){window.AndroidJarvis.capturePhoto(false);return 'Opening the rear camera to take a photo, Sir.';}
   if(typeof window.AndroidJarvis.takePhoto==='function'){window.AndroidJarvis.takePhoto();return 'Opening the camera to take a photo, Sir.';}
  }
