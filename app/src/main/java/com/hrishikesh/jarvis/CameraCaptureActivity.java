@@ -1,7 +1,7 @@
 package com.hrishikesh.jarvis;
 
 import android.Manifest;
-import android.app.Activity;
+import androidx.activity.ComponentActivity;
 import android.content.ContentValues;
 import android.content.pm.PackageManager;
 import android.net.Uri;
@@ -25,7 +25,7 @@ import androidx.core.content.ContextCompat;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-public final class CameraCaptureActivity extends Activity {
+public final class CameraCaptureActivity extends ComponentActivity {
     public static final String EXTRA_SELFIE = "camera_selfie";
     private static final int REQUEST_CAMERA_PERMISSION = 9301;
     private PreviewView previewView;
