@@ -47,3 +47,24 @@ test("live Android bridge sends YouTube Music play-from-search intents", async (
   assert.ok(source.includes('play.setPackage("com.google.android.apps.youtube.music")'));
   assert.ok(manifest.includes('com.google.android.apps.youtube.music'));
 });
+
+
+test("Android camera bridge supports camera launch, automatic photo, selfie and last-photo viewing", async () => {
+  const source = await readFile(new URL("../app/src/main/java/com/hrishikesh/jarvis/MainActivity.java", import.meta.url), "utf8");
+  const camera = await readFile(new URL("../app/src/main/java/com/hrishikesh/jarvis/CameraCaptureActivity.java", import.meta.url), "utf8");
+  const manifest = await readFile(new URL("../app/src/main/AndroidManifest.xml", import.meta.url), "utf8");
+  const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+  assert.ok(source.includes("public void openCamera()"));
+  assert.ok(source.includes("public void takePhoto()"));
+  assert.ok(source.includes("public void capturePhoto(boolean selfie)"));
+  assert.ok(source.includes("public void showLastPhoto()"));
+  assert.ok(camera.includes("CameraSelector.DEFAULT_FRONT_CAMERA"));
+  assert.ok(camera.includes("CameraSelector.DEFAULT_BACK_CAMERA"));
+  assert.ok(camera.includes("imageCapture.takePicture"));
+  assert.ok(camera.includes('putString("last_photo_uri"'));
+  assert.ok(manifest.includes('android.permission.CAMERA'));
+  assert.ok(manifest.includes('android:name=".CameraCaptureActivity"'));
+  assert.ok(html.includes("window.AndroidJarvis.capturePhoto(true)"));
+  assert.ok(html.includes("window.AndroidJarvis.capturePhoto(false)"));
+  assert.match(html, /cameraAction==='show'/);
+});
