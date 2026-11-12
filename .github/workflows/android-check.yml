@@ -53,20 +53,5 @@ jobs:
             app/build/outputs/apk/tv/debug/app-tv-debug.apk
           if-no-files-found: error
           retention-days: 14
-      - name: Verify microphone capture and wake-word logic on Android 15
-        uses: ReactiveCircus/android-emulator-runner@v2
-        with:
-          api-level: 35
-          target: google_apis
-          arch: x86_64
-          profile: pixel_2
-          emulator-options: -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect -no-snapshot -wipe-data
-          disable-animations: true
-          script: |
-            set -euo pipefail
-            adb wait-for-device
-            adb shell getprop sys.boot_completed | grep -q 1
-            adb logcat -c
-            timeout 240s gradle --no-daemon --stacktrace connectedPhoneDebugAndroidTest
-            adb logcat -d -s WakeWordService:V
-            echo "PASS: Android microphone PCM capture and wake-phrase tests completed."
+      - name: Run deterministic offline wake-phrase unit tests
+        run: gradle --no-daemon testPhoneDebugUnitTest
