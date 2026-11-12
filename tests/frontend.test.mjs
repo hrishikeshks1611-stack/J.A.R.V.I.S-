@@ -60,6 +60,8 @@ test("YouTube Music voice commands use the native playback bridge or search fall
   assert.ok(html.includes("const openYoutubeMusicOnly="));
   assert.ok(html.includes("AndroidJarvis.playYoutubeMusic(songQuery)"));
   assert.ok(html.includes("window.AndroidJarvis.openApp('youtube music')"));
+  assert.ok(html.includes("const hasNativeMusicBridge=window.AndroidJarvis&&typeof window.AndroidJarvis.playYoutubeMusic==='function'"));
+  assert.ok(html.includes("else window.location.href='https://music.youtube.com/'"));
   assert.ok(html.includes("music.youtube.com/search?q="));
 });
 
