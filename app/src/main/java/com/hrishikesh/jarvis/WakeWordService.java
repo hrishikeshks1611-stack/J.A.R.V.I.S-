@@ -7,6 +7,11 @@ import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Intent;
 import android.content.pm.ServiceInfo;
+import android.media.AudioFormat;
+import android.media.AudioRecord;
+import android.media.MediaRecorder;
+import android.media.audiofx.AcousticEchoCanceler;
+import android.media.audiofx.NoiseSuppressor;
 import android.os.Build;
 import android.os.IBinder;
 import android.os.Handler;
@@ -17,7 +22,6 @@ import org.json.JSONObject;
 import org.vosk.Model;
 import org.vosk.Recognizer;
 import org.vosk.android.RecognitionListener;
-import org.vosk.android.SpeechService;
 
 import java.io.BufferedInputStream;
 import java.io.File;
@@ -59,7 +63,12 @@ public class WakeWordService extends Service implements RecognitionListener {
     private volatile HttpURLConnection modelConnection;
     private static volatile boolean active = false;
     private Model model;
-    private SpeechService speechService;
+    private Recognizer recognizer;
+    private volatile AudioRecord audioRecord;
+    private volatile boolean recording = false;
+    private Thread audioThread;
+    private NoiseSuppressor noiseSuppressor;
+    private AcousticEchoCanceler echoCanceler;
 
     public static boolean isActive() { return active; }
 
@@ -88,13 +97,13 @@ public class WakeWordService extends Service implements RecognitionListener {
         if (intent != null && ACTION_DICTATION.equals(intent.getAction())) {
             dictationMode = true;
             dictationTimeoutHandler.removeCallbacks(dictationTimeout);
-            if (speechService != null) {
+            if (audioRecord != null && recording) {
                 dictationTimeoutHandler.postDelayed(dictationTimeout, 20000);
                 updateNotification("JARVIS voice input · speak now · audio stays on this phone");
             }
         }
         synchronized (this) {
-            if (!preparing && model == null && speechService == null) {
+            if (!preparing && model == null && audioRecord == null) {
                 preparing = true;
                 stopped = false;
                 Log.i("WakeWordService", "onStartCommand: launching offline model preparation thread");
@@ -129,13 +138,11 @@ public class WakeWordService extends Service implements RecognitionListener {
             Log.i("WakeWordService", "prepareAndListen: loading native Vosk model");
             model = new Model(modelDir.getAbsolutePath());
             Log.i("WakeWordService", "prepareAndListen: native Vosk model loaded");
-            Recognizer recognizer = new Recognizer(model, 16000.0f);
+            recognizer = new Recognizer(model, 16000.0f);
             Log.i("WakeWordService", "prepareAndListen: recognizer created");
-            speechService = new SpeechService(recognizer, 16000.0f);
-            Log.i("WakeWordService", "prepareAndListen: speech service created; starting microphone recognition");
-            boolean listeningStarted = speechService.startListening(this);
-            if (!listeningStarted) throw new IllegalStateException("Vosk refused to start microphone recognition");
-            Log.i("WakeWordService", "prepareAndListen: microphone recognition listener thread launched");
+            Log.i("WakeWordService", "prepareAndListen: opening 16 kHz mono voice microphone");
+            startAudioCapture();
+            Log.i("WakeWordService", "prepareAndListen: microphone capture thread launched");
             if (dictationMode) {
                 dictationTimeoutHandler.removeCallbacks(dictationTimeout);
                 dictationTimeoutHandler.postDelayed(dictationTimeout, 20000);
@@ -151,6 +158,106 @@ public class WakeWordService extends Service implements RecognitionListener {
             stopSelf();
         } finally {
             preparing = false;
+        }
+    }
+
+
+    /**
+     * Captures mono 16 kHz PCM using Android's voice-recognition input route.
+     * Where supported, Android's hardware noise suppression and echo cancellation
+     * are enabled for this microphone audio session.
+     */
+    private void startAudioCapture() throws Exception {
+        final int sampleRate = 16000;
+        final int channelConfig = AudioFormat.CHANNEL_IN_MONO;
+        final int encoding = AudioFormat.ENCODING_PCM_16BIT;
+        int minimum = AudioRecord.getMinBufferSize(sampleRate, channelConfig, encoding);
+        if (minimum <= 0) throw new IllegalStateException("Invalid microphone buffer size: " + minimum);
+
+        int bufferSize = Math.max(minimum * 2, 6400);
+        AudioRecord recorder = new AudioRecord(MediaRecorder.AudioSource.VOICE_RECOGNITION,
+                sampleRate, channelConfig, encoding, bufferSize);
+        if (recorder.getState() != AudioRecord.STATE_INITIALIZED) {
+            recorder.release();
+            throw new IllegalStateException("Android could not initialize the voice microphone");
+        }
+        audioRecord = recorder;
+
+        int sessionId = recorder.getAudioSessionId();
+        if (NoiseSuppressor.isAvailable()) {
+            try {
+                noiseSuppressor = NoiseSuppressor.create(sessionId);
+                if (noiseSuppressor != null) {
+                    noiseSuppressor.setEnabled(true);
+                    Log.i("WakeWordService", "Hardware noise suppression enabled");
+                }
+            } catch (RuntimeException error) {
+                Log.w("WakeWordService", "Noise suppression could not be enabled", error);
+            }
+        } else {
+            Log.i("WakeWordService", "Hardware noise suppression unsupported on this device");
+        }
+        if (AcousticEchoCanceler.isAvailable()) {
+            try {
+                echoCanceler = AcousticEchoCanceler.create(sessionId);
+                if (echoCanceler != null) {
+                    echoCanceler.setEnabled(true);
+                    Log.i("WakeWordService", "Hardware acoustic echo cancellation enabled");
+                }
+            } catch (RuntimeException error) {
+                Log.w("WakeWordService", "Echo cancellation could not be enabled", error);
+            }
+        }
+
+        try {
+            recorder.startRecording();
+            if (recorder.getRecordingState() != AudioRecord.RECORDSTATE_RECORDING) {
+                throw new IllegalStateException("Android did not start microphone recording");
+            }
+        } catch (Exception error) {
+            releaseAudioEffects();
+            recorder.release();
+            audioRecord = null;
+            throw error;
+        }
+
+        recording = true;
+        audioThread = new Thread(() -> {
+            byte[] pcm = new byte[3200]; // 100 ms at 16 kHz, mono, PCM16.
+            Log.i("WakeWordService", "Audio capture active: VOICE_RECOGNITION / 16000 Hz / mono / PCM16");
+            try {
+                while (recording && !stopped) {
+                    int count = recorder.read(pcm, 0, pcm.length);
+                    if (count > 0) {
+                        Recognizer activeRecognizer = recognizer;
+                        if (activeRecognizer == null) break;
+                        if (activeRecognizer.acceptWaveForm(pcm, count)) onResult(activeRecognizer.getResult());
+                        else onPartialResult(activeRecognizer.getPartialResult());
+                    } else if (count < 0) {
+                        throw new IllegalStateException("Microphone read failed with code " + count);
+                    }
+                }
+            } catch (Exception | LinkageError error) {
+                if (recording && !stopped) {
+                    Log.e("WakeWordService", "Microphone capture failed", error);
+                    onError(error instanceof Exception ? (Exception) error
+                            : new IllegalStateException("Native microphone processing failed", error));
+                }
+            } finally {
+                Log.i("WakeWordService", "Audio capture thread stopped");
+            }
+        }, "JarvisAudioCapture");
+        audioThread.start();
+    }
+
+    private void releaseAudioEffects() {
+        if (noiseSuppressor != null) {
+            try { noiseSuppressor.setEnabled(false); noiseSuppressor.release(); } catch (Exception ignored) { }
+            noiseSuppressor = null;
+        }
+        if (echoCanceler != null) {
+            try { echoCanceler.setEnabled(false); echoCanceler.release(); } catch (Exception ignored) { }
+            echoCanceler = null;
         }
     }
 
@@ -310,14 +417,10 @@ public class WakeWordService extends Service implements RecognitionListener {
             broadcast(ACTION_PARTIAL, partial);
             return;
         }
-
-        // Do not wait for end-of-speech: Vosk may delay a final result until
-        // the speaker pauses. Trigger the butler response as soon as a partial
-        // hypothesis contains the complete wake name. The final result below
-        // decides whether a command followed in the same utterance.
         String normalized = partial.toLowerCase(Locale.ROOT)
                 .replaceAll("[^a-z0-9 ]", " ").replaceAll("\\s+", " ").trim();
-        if (!awaitingCommand && !wakeDetectedInUtterance && containsWakeWord(normalized)) {
+        boolean wakeNamePresent = containsWakeWord(normalized);
+        if (!awaitingCommand && !wakeDetectedInUtterance && wakeNamePresent) {
             wakeDetectedInUtterance = true;
             broadcast(ACTION_WAKE, null);
             updateNotification("JARVIS detected · listening for your command");
@@ -327,6 +430,14 @@ public class WakeWordService extends Service implements RecognitionListener {
 
     @Override public void onFinalResult(String hypothesis) {
         handleRecognizedPhrase(hypothesis);
+    }
+
+    /** Returns true only when JARVIS appears as a complete spoken word. */
+    public static boolean containsWakeWord(String recognizedText) {
+        if (recognizedText == null || recognizedText.trim().isEmpty()) return false;
+        String normalized = recognizedText.toLowerCase(Locale.ROOT)
+                .replaceAll("[^a-z0-9 ]", " ").replaceAll("\\s+", " ").trim();
+        return java.util.regex.Pattern.compile("\\bjarvis\\b").matcher(normalized).find();
     }
 
     /**
@@ -343,12 +454,6 @@ public class WakeWordService extends Service implements RecognitionListener {
         int wake = -1;
         while (matcher.find()) wake = matcher.start();
         return wake < 0 ? null : text.substring(wake + "jarvis".length()).trim();
-    }
-
-    private static boolean containsWakeWord(String text) {
-        if (text == null || text.isEmpty()) return false;
-        return java.util.regex.Pattern.compile("\\bjarvis\\b")
-                .matcher(text.toLowerCase(Locale.ROOT)).find();
     }
 
     private void handleRecognizedPhrase(String hypothesis) {
@@ -373,9 +478,11 @@ public class WakeWordService extends Service implements RecognitionListener {
 
         if (wakeDetectedInUtterance) {
             wakeDetectedInUtterance = false;
-            String command = extractWakeCommand(text);
-            if (command != null && !command.isEmpty()) {
-                broadcast(ACTION_COMMAND, command);
+            String partialWakeCommand = extractWakeCommand(text);
+            if (partialWakeCommand == null) {
+                Log.w("WakeWordService", "Partial wake hypothesis was not present in final transcript; ignoring it");
+            } else if (!partialWakeCommand.isEmpty()) {
+                broadcast(ACTION_COMMAND, partialWakeCommand);
                 updateNotification("Microphone ON · offline wake-word detection active");
             } else {
                 awaitingCommand = true;
@@ -433,10 +540,25 @@ public class WakeWordService extends Service implements RecognitionListener {
         active = false;
         HttpURLConnection connection = modelConnection;
         if (connection != null) connection.disconnect();
-        if (speechService != null) {
-            speechService.stop();
-            speechService.shutdown();
-            speechService = null;
+        recording = false;
+        AudioRecord recorder = audioRecord;
+        if (recorder != null) {
+            try { if (recorder.getRecordingState() == AudioRecord.RECORDSTATE_RECORDING) recorder.stop(); }
+            catch (Exception error) { Log.w("WakeWordService", "Error stopping microphone capture", error); }
+        }
+        Thread capture = audioThread;
+        if (capture != null && capture != Thread.currentThread()) {
+            try { capture.join(1500); } catch (InterruptedException interrupted) { Thread.currentThread().interrupt(); }
+        }
+        releaseAudioEffects();
+        if (recorder != null) {
+            try { recorder.release(); } catch (Exception ignored) { }
+            audioRecord = null;
+        }
+        audioThread = null;
+        if (recognizer != null) {
+            recognizer.close();
+            recognizer = null;
         }
         if (model != null) {
             model.close();
