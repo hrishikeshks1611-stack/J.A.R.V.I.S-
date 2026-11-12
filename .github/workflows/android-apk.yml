@@ -126,7 +126,9 @@ jobs:
           test -s "$ANDROID_AVD_HOME/jarvis-api29.ini"
           test -d "$ANDROID_AVD_HOME/jarvis-api29.avd"
           avdmanager list avd
-          "$ANDROID_HOME/emulator/emulator" -avd jarvis-api29 -no-window -no-audio -no-boot-anim -no-snapshot -gpu swiftshader_indirect -accel off > "$RUNNER_TEMP/emulator.log" 2>&1 &
+          mark "Starting emulator with automatic hardware acceleration (KVM when available)."
+          ls -l /dev/kvm || true
+          "$ANDROID_HOME/emulator/emulator" -avd jarvis-api29 -no-window -no-audio -no-boot-anim -no-snapshot -gpu swiftshader_indirect -accel auto -memory 2048 -cores 2 > "$RUNNER_TEMP/emulator.log" 2>&1 &
           EMULATOR_PID=$!
           cleanup() {
             timeout 8s adb emu kill >/dev/null 2>&1 || true
@@ -165,63 +167,41 @@ jobs:
           adb_bounded 15 shell settings put global window_animation_scale 0
           adb_bounded 15 shell settings put global transition_animation_scale 0
           adb_bounded 15 shell settings put global animator_duration_scale 0
-          mark "Waiting for Android package manager to become responsive (maximum 90 seconds)."
+          mark "Waiting for Android package manager (maximum 60 seconds; no redundant stability loop)."
           package_manager_ready=0
-          for attempt in $(seq 1 30); do
-            if adb_bounded 5 shell cmd package list packages >/dev/null 2>&1; then
+          for attempt in $(seq 1 20); do
+            if adb_bounded 8 shell cmd package list packages >/dev/null 2>&1; then
               package_manager_ready=1
               break
             fi
-            sleep 3
+            sleep 2
           done
           if [ "$package_manager_ready" -ne 1 ]; then
             mark "Android package manager did not become responsive; collecting diagnostics."
             adb devices -l || true
-            adb_bounded 20 shell getprop || true
+            adb_bounded 15 shell getprop sys.boot_completed || true
+            adb_bounded 15 shell dumpsys activity services || true
             cat "$RUNNER_TEMP/emulator.log"
             exit 1
           fi
-          mark "Stabilizing Android package manager (require five consecutive successful checks)."
-          package_manager_stable=0
-          for attempt in $(seq 1 18); do
-            if adb_bounded 5 shell service check package 2>&1 | grep -q "found"; then
-              if adb_bounded 5 shell cmd package list packages >/dev/null 2>&1; then
-                package_manager_stable=$((package_manager_stable + 1))
-              else
-                package_manager_stable=0
-              fi
-            else
-              package_manager_stable=0
-            fi
-            if [ "$package_manager_stable" -ge 5 ]; then break; fi
-            sleep 3
-          done
-          if [ "$package_manager_stable" -lt 5 ]; then
-            mark "Package manager never reached a stable state; collecting diagnostics."
-            adb devices -l || true
-            adb_bounded 20 shell service check package || true
-            adb_bounded 20 shell getprop sys.boot_completed || true
-            adb_bounded 20 shell dumpsys activity services || true
-            cat "$RUNNER_TEMP/emulator.log"
-            exit 1
-          fi
-          mark "Installing APK without streamed package-manager transport (maximum 180 seconds)."
+
+          mark "Installing APK (one attempt, then verify package state even if adb times out)."
           installed=0
-          for attempt in 1 2 3; do
-            if adb_bounded 75 install --no-streaming -r "$APK_FILE_PATH"; then
-              installed=1
-              break
-            fi
-            mark "APK install attempt $attempt failed; waiting for package manager recovery."
-            sleep 8
-            adb_bounded 15 shell service check package || true
-          done
+          if adb_bounded 60 install --no-streaming -r "$APK_FILE_PATH"; then
+            installed=1
+          fi
           if [ "$installed" -ne 1 ]; then
-            mark "APK installation failed after three bounded attempts; collecting diagnostics."
+            mark "Checking whether Package Manager completed installation before adb timed out."
+            if adb_bounded 15 shell pm path com.hrishikesh.jarvis 2>/dev/null | grep -q "package:"; then
+              installed=1
+              mark "Package Manager confirms APK is installed; not repeating a successful install."
+            fi
+          fi
+          if [ "$installed" -ne 1 ]; then
+            mark "APK installation failed; collecting diagnostics."
             adb devices -l || true
-            adb_bounded 20 shell service check package || true
-            adb_bounded 20 shell dumpsys package || true
-            adb_bounded 20 shell df -h /data || true
+            adb_bounded 15 shell pm list packages | grep -i jarvis || true
+            adb_bounded 15 shell df -h /data || true
             cat "$RUNNER_TEMP/emulator.log"
             exit 1
           fi
@@ -234,8 +214,8 @@ jobs:
           adb_bounded 20 shell am start -n com.hrishikesh.jarvis/.WakeWordTestActivity
           ready=0
           service_failed=0
-          mark "Waiting up to 120 seconds for WakeWordService READY; each poll uses one bounded logcat read."
-          for attempt in $(seq 1 40); do
+          mark "Waiting up to 180 seconds for WakeWordService READY; each poll uses one bounded logcat read."
+          for attempt in $(seq 1 60); do
             snapshot="$(adb_bounded 3 logcat -d -v brief -s WakeWordService WakeWordTest 2>/dev/null || true)"
             if printf '%s\n' "$snapshot" | grep -q "offline wake-word service ready"; then
               ready=1
@@ -249,10 +229,10 @@ jobs:
               break
             fi
             if [ $((attempt % 5)) -eq 0 ]; then
-              mark "Still waiting for READY ($attempt/40 polls); current service state:"
+              mark "Still waiting for READY ($attempt/60 polls); current service state:"
               adb_bounded 5 shell dumpsys activity services com.hrishikesh.jarvis | grep -A 18 -B 3 "WakeWordService" || true
             fi
-            sleep 3
+            sleep 2
           done
 
           if [ "$ready" -ne 1 ]; then
