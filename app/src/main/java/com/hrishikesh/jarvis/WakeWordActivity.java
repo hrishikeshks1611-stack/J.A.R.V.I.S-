@@ -36,7 +36,7 @@ public class WakeWordActivity extends Activity {
         root.addView(title);
 
         TextView detail = new TextView(this);
-        detail.setText("When enabled, JARVIS listens locally for “JARVIS”, “Hello JARVIS” or “Wake up JARVIS”. Audio is processed on this phone and is never uploaded. The offline English model is downloaded once during setup; no microphone audio is sent.");
+        detail.setText("When enabled, JARVIS listens locally for “JARVIS”, “Hello JARVIS” or “Wake up JARVIS”. Audio is processed on this phone and is never uploaded. The offline English (India) model is downloaded once during setup; no microphone audio is sent.");
         detail.setTextColor(android.graphics.Color.WHITE);
         detail.setTextSize(15);
         detail.setPadding(0, 22, 0, 22);

@@ -56,6 +56,20 @@ jobs:
       - name: Build proposed phone update APK
         run: gradle --no-daemon assemblePhoneDebug
 
+      - name: Verify both APKs have the same Android update identity
+        run: |
+          set -euo pipefail
+          APKSIGNER="$ANDROID_HOME/build-tools/35.0.0/apksigner"
+          BASELINE_CERT="$("$APKSIGNER" verify --print-certs build39-phone.apk | grep 'Signer #1 certificate SHA-256 digest' | head -1 | sed 's/.*: //')"
+          CANDIDATE_CERT="$("$APKSIGNER" verify --print-certs app/build/outputs/apk/phone/debug/app-phone-debug.apk | grep 'Signer #1 certificate SHA-256 digest' | head -1 | sed 's/.*: //')"
+          echo "Build 39 certificate fingerprint: $BASELINE_CERT"
+          echo "Candidate certificate fingerprint: $CANDIDATE_CERT"
+          if [ -z "$BASELINE_CERT" ] || [ -z "$CANDIDATE_CERT" ] || [ "$BASELINE_CERT" != "$CANDIDATE_CERT" ]; then
+            echo "::error::IN-PLACE UPDATE BLOCKED: the candidate APK is not published under the same Android app identity as Build 39. The existing app and its data must not be uninstalled or reset."
+            exit 1
+          fi
+          echo "PASS: APK publisher identity matches; safe to attempt an in-place update."
+
       - name: Install Build 39, preserve app data, then apply proposed update
         uses: ReactiveCircus/android-emulator-runner@v2
         with:
@@ -85,6 +99,15 @@ jobs:
             echo "DIAG 8: verify app data survived update"
             timeout 30s adb shell run-as com.hrishikesh.jarvis ls files | grep -Fxq jarvis-update-preservation-check
             echo "PASS: Build 39 updated in place; versionCode 501 installed; app-private sentinel survived."
+            echo "DIAG 9: grant microphone permission for native offline dictation smoke test"
+            timeout 30s adb shell pm grant com.hrishikesh.jarvis android.permission.RECORD_AUDIO
+            echo "DIAG 10: start JARVIS-owned offline dictation service"
+            adb logcat -c
+            timeout 30s adb shell am start-foreground-service -n com.hrishikesh.jarvis/.WakeWordService -a com.hrishikesh.jarvis.START_DICTATION
+            echo "DIAG 11: wait for Vosk model and microphone recognizer readiness"
+            timeout 180s bash -c 'until adb logcat -d -s WakeWordService:I | grep -q "offline speech service ready"; do sleep 2; done'
+            adb logcat -d -s WakeWordService:I | grep -F "offline speech service ready"
+            echo "PASS: JARVIS native offline dictation service started after the in-place app update."
 
 
   android-build:
@@ -110,3 +133,23 @@ jobs:
           gradle-version: '8.9'
       - name: Compile phone and TV variants
         run: gradle --no-daemon assemblePhoneDebug assembleTvDebug
+
+      - name: Verify native offline dictation starts on Android 10
+        uses: ReactiveCircus/android-emulator-runner@v2
+        with:
+          api-level: 29
+          arch: x86_64
+          disable-animations: true
+          script: |
+            set -euo pipefail
+            echo "VOICE DIAG 1: install the candidate phone APK on a clean emulator"
+            timeout 120s adb install "$GITHUB_WORKSPACE/app/build/outputs/apk/phone/debug/app-phone-debug.apk"
+            echo "VOICE DIAG 2: grant the microphone permission"
+            timeout 30s adb shell pm grant com.hrishikesh.jarvis android.permission.RECORD_AUDIO
+            echo "VOICE DIAG 3: start JARVIS-owned offline dictation"
+            adb logcat -c
+            timeout 30s adb shell am start-foreground-service -n com.hrishikesh.jarvis/.WakeWordService -a com.hrishikesh.jarvis.START_DICTATION
+            echo "VOICE DIAG 4: wait for the India-English Vosk model and microphone recognizer"
+            timeout 180s bash -c 'until adb logcat -d -s WakeWordService:I | grep -q "offline speech service ready"; do sleep 2; done'
+            adb logcat -d -s WakeWordService:I | grep -F "offline speech service ready"
+            echo "PASS: native offline dictation service started on Android 10. Spoken-word accuracy still requires physical-phone testing."

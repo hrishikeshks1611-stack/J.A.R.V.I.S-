@@ -258,3 +258,11 @@ test("Algieba voice starts after a short pre-buffer while the audio stream is st
   assert.ok(player.includes("Playback begins after a short pre-buffer"));
   assert.ok(!player.includes("Buffer the complete PCM response before playback"));
 });
+
+
+test("native JARVIS voice input displays partial transcription while the user is speaking", async () => {
+  const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+  assert.ok(html.includes("onSpeechPartial:(transcript)=>"));
+  assert.ok(html.includes("$('prompt').value=transcript;status('Listening · '+transcript,'listening')"));
+  assert.ok(html.includes("onSpeechResult:(transcript)=>{$('prompt').value=transcript;$('form').requestSubmit();}"));
+});

@@ -32,15 +32,25 @@ import java.util.zip.ZipInputStream;
 public class WakeWordService extends Service implements RecognitionListener {
     public static final String ACTION_WAKE = "com.hrishikesh.jarvis.WAKE_DETECTED";
     public static final String ACTION_COMMAND = "com.hrishikesh.jarvis.WAKE_COMMAND";
+    public static final String ACTION_PARTIAL = "com.hrishikesh.jarvis.WAKE_PARTIAL";
     public static final String EXTRA_COMMAND = "command";
+    public static final String ACTION_DICTATION = "com.hrishikesh.jarvis.START_DICTATION";
     private static final String ACTION_STOP = "com.hrishikesh.jarvis.STOP_WAKE";
     private static final String CHANNEL = "jarvis_private_microphone";
     private static final int NOTIFICATION_ID = 7202;
-    private static final String MODEL_URL = "https://alphacephei.com/vosk/models/vosk-model-small-en-us-0.15.zip";
+    private static final String MODEL_URL = "https://alphacephei.com/vosk/models/vosk-model-small-en-in-0.4.zip";
     private volatile boolean stopped = false;
     private volatile boolean awaitingCommand = false;
+    private volatile boolean dictationMode = false;
     private volatile boolean preparing = false;
     private final Handler commandTimeoutHandler = new Handler(Looper.getMainLooper());
+    private final Handler dictationTimeoutHandler = new Handler(Looper.getMainLooper());
+    private final Runnable dictationTimeout = () -> {
+        if (!dictationMode) return;
+        dictationMode = false;
+        updateNotification("No speech detected · microphone stopped");
+        if (!getSharedPreferences("jarvis_wake_word", MODE_PRIVATE).getBoolean("enabled", false)) stopSelf();
+    };
     private final Runnable commandTimeout = () -> {
         awaitingCommand = false;
         updateNotification("Microphone ON · offline wake-word detection active");
@@ -74,6 +84,14 @@ public class WakeWordService extends Service implements RecognitionListener {
             stopSelf();
             return START_NOT_STICKY;
         }
+        if (intent != null && ACTION_DICTATION.equals(intent.getAction())) {
+            dictationMode = true;
+            dictationTimeoutHandler.removeCallbacks(dictationTimeout);
+            if (speechService != null) {
+                dictationTimeoutHandler.postDelayed(dictationTimeout, 20000);
+                updateNotification("JARVIS voice input · speak now · audio stays on this phone");
+            }
+        }
         synchronized (this) {
             if (!preparing && model == null && speechService == null) {
                 preparing = true;
@@ -90,11 +108,11 @@ public class WakeWordService extends Service implements RecognitionListener {
     private void prepareAndListen() {
         try {
             Log.i("WakeWordService", "prepareAndListen: checking local Vosk model");
-            File modelDir = new File(getFilesDir(), "vosk-model-small-en-us-0.15");
+            File modelDir = new File(getFilesDir(), "vosk-model-small-en-in-0.4");
             if (!new File(modelDir, "am").isDirectory() || !new File(modelDir, "conf").isDirectory()) {
                 Log.i("WakeWordService", "prepareAndListen: local model absent; beginning one-time download");
                 updateNotification("Downloading offline speech model once. No microphone audio is uploaded.");
-                File archive = new File(getCacheDir(), "vosk-model-small-en-us-0.15.zip");
+                File archive = new File(getCacheDir(), "vosk-model-small-en-in-0.4.zip");
                 downloadModel(archive);
                 Log.i("WakeWordService", "prepareAndListen: model archive downloaded; extracting");
                 unpackModel(archive, modelDir);
@@ -117,8 +135,14 @@ public class WakeWordService extends Service implements RecognitionListener {
             boolean listeningStarted = speechService.startListening(this);
             if (!listeningStarted) throw new IllegalStateException("Vosk refused to start microphone recognition");
             Log.i("WakeWordService", "prepareAndListen: microphone recognition listener thread launched");
-            updateNotification("Microphone ON · offline wake-word detection active");
-            Log.i("WakeWordService", "offline wake-word service ready");
+            if (dictationMode) {
+                dictationTimeoutHandler.removeCallbacks(dictationTimeout);
+                dictationTimeoutHandler.postDelayed(dictationTimeout, 20000);
+                updateNotification("JARVIS voice input · speak now · audio stays on this phone");
+            } else {
+                updateNotification("Microphone ON · offline wake-word detection active");
+            }
+            Log.i("WakeWordService", "offline speech service ready");
         } catch (Exception | LinkageError error) {
             Log.e("WakeWordService", "Failed to prepare offline wake-word service", error);
             updateNotification("Wake-word setup failed. Open JARVIS and switch the microphone OFF.");
@@ -135,7 +159,7 @@ public class WakeWordService extends Service implements RecognitionListener {
         connection.setConnectTimeout(20000);
         connection.setReadTimeout(60000);
         connection.setInstanceFollowRedirects(true);
-        connection.setRequestProperty("User-Agent", "JARVIS-Offline-WakeWord/1.0");
+        connection.setRequestProperty("User-Agent", "JARVIS-Offline-Voice/1.1");
         try {
             int code = connection.getResponseCode();
             if (code != 200) throw new IllegalStateException("Model download HTTP " + code);
@@ -266,6 +290,11 @@ public class WakeWordService extends Service implements RecognitionListener {
         catch (Exception ignored) { return ""; }
     }
 
+    private String partialTranscript(String json) {
+        try { return new JSONObject(json).optString("partial", "").trim(); }
+        catch (Exception ignored) { return ""; }
+    }
+
     // Vosk emits each completed phrase through onResult when silence is detected.
     // onFinalResult is only emitted when the audio stream ends, so handling only
     // that callback would make a continuously-running wake word appear unresponsive.
@@ -273,7 +302,11 @@ public class WakeWordService extends Service implements RecognitionListener {
         handleRecognizedPhrase(hypothesis);
     }
 
-    @Override public void onPartialResult(String hypothesis) { }
+    @Override public void onPartialResult(String hypothesis) {
+        if (!dictationMode) return;
+        String partial = partialTranscript(hypothesis);
+        if (!partial.isEmpty()) broadcast(ACTION_PARTIAL, partial);
+    }
 
     @Override public void onFinalResult(String hypothesis) {
         handleRecognizedPhrase(hypothesis);
@@ -283,6 +316,21 @@ public class WakeWordService extends Service implements RecognitionListener {
         String text = transcript(hypothesis).toLowerCase(Locale.ROOT)
                 .replaceAll("[^a-z0-9 ]", " ").replaceAll("\\s+", " ").trim();
         if (text.isEmpty()) return;
+
+        if (dictationMode) {
+            dictationTimeoutHandler.removeCallbacks(dictationTimeout);
+            dictationMode = false;
+            broadcast(ACTION_COMMAND, text);
+            boolean wakeWordEnabled = getSharedPreferences("jarvis_wake_word", MODE_PRIVATE)
+                    .getBoolean("enabled", false);
+            if (wakeWordEnabled) {
+                updateNotification("Microphone ON · offline wake-word detection active");
+            } else {
+                updateNotification("Voice input complete · microphone stopped");
+                stopSelf();
+            }
+            return;
+        }
 
         if (awaitingCommand) {
             commandTimeoutHandler.removeCallbacks(commandTimeout);
@@ -329,6 +377,8 @@ public class WakeWordService extends Service implements RecognitionListener {
     @Override public void onDestroy() {
         Log.i("WakeWordService", "onDestroy: stopping offline wake-word service");
         commandTimeoutHandler.removeCallbacks(commandTimeout);
+        dictationTimeoutHandler.removeCallbacks(dictationTimeout);
+        dictationMode = false;
         awaitingCommand = false;
         stopped = true;
         active = false;
