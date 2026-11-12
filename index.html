@@ -80,7 +80,7 @@ footer{text-align:center;color:#577c99;font-size:10px;letter-spacing:.12em;paddi
   <div class="sync-actions"><button class="sync-primary" id="saveMemory" type="button">Save memory</button><button id="cancelMemoryEdit" type="button" hidden>Cancel edit</button><button id="exportMemories" type="button">Copy export JSON</button><button id="clearMemories" type="button">Clear all memories</button></div>
   <h3>Your saved notes</h3><div id="memoryList"></div>
   <h3>Full backup</h3>
-  <p class="sync-muted">A full backup includes your recent conversation and saved notes. It contains private chat data; keep the exported JSON somewhere secure.</p>
+  <p class="sync-muted">Migration backup includes your shared conversation, saved notes, and this device’s custom routines. It excludes sign-in tokens and temporary speech cache. It contains private chat data; keep the exported JSON somewhere secure.</p>
   <textarea id="backupText" rows="5" placeholder="Exported backup appears here. To restore, paste a JARVIS backup JSON here…" disabled></textarea>
   <div class="sync-actions"><button id="exportBackup" type="button">Export full backup</button><button class="sync-primary" id="restoreBackup" type="button">Restore full backup</button></div>
   <div class="sync-actions"><button id="closeMemory" type="button">Close</button></div>
@@ -160,27 +160,47 @@ $('exportMemories').onclick=async()=>{
   $('memoryStatus').textContent='Your saved memories have been copied as JSON. Paste them into a file to keep a backup, Sir.';
  }catch(e){$('memoryStatus').textContent=e.message;}
 };
+function normalizeMigrationRoutines(value){
+ if(!Array.isArray(value)||value.length>8)throw new Error('The backup contains an invalid number of custom routines.');
+ const allowedModes=new Set(['focus','night','normal']);
+ return value.map((item,index)=>{
+  if(!item||typeof item.name!=='string'||!item.name.trim()||item.name.trim().length>32||!allowedModes.has(item.mode))throw new Error('The backup contains an invalid custom routine.');
+  const id=typeof item.id==='string'&&item.id.length>0&&item.id.length<=80?item.id:'migration-'+index;
+  return {id,name:item.name.trim(),mode:item.mode};
+ });
+}
 $('exportBackup').onclick=async()=>{
  try{
-  const data=await backupApi({action:'export'}),backup=data.backup;
+  const data=await backupApi({action:'export'}),cloud=data.backup;
+  const backup={format:'jarvis-device-migration',version:1,exportedAt:new Date().toISOString(),cloud,device:{customRoutines:readCustomRoutines()}};
   const json=JSON.stringify(backup,null,2);
   $('backupText').value=json;
   if(navigator.clipboard&&navigator.clipboard.writeText)await navigator.clipboard.writeText(json);
   else{$('backupText').focus();$('backupText').select();document.execCommand('copy');}
-  $('memoryStatus').textContent='Full backup copied. It includes '+(backup.conversation||[]).length+' conversation messages and '+(backup.memories||[]).length+' saved notes, Sir. Keep it somewhere secure.';
+  $('memoryStatus').textContent='Migration backup copied. It includes '+(cloud.conversation||[]).length+' conversation messages, '+(cloud.memories||[]).length+' saved notes and '+backup.device.customRoutines.length+' custom routines, Sir. Keep it somewhere secure.';
  }catch(e){$('memoryStatus').textContent=e.message;}
 };
 $('restoreBackup').onclick=async()=>{
  if(chatBusy){$('memoryStatus').textContent='Please wait for the current conversation request to finish before restoring a backup, Sir.';return;}
  const raw=$('backupText').value.trim();
- if(!raw){$('memoryStatus').textContent='Paste a JARVIS full-backup JSON document first, Sir.';return;}
+ if(!raw){$('memoryStatus').textContent='Paste a JARVIS migration backup JSON document first, Sir.';return;}
  let backup;
  try{backup=JSON.parse(raw);}catch(e){$('memoryStatus').textContent='That backup is not valid JSON, Sir.';return;}
- if(!confirm('Restore this backup? It will replace the shared conversation and saved memories on every paired JARVIS device. This cannot be undone.'))return;
+ const isMigration=backup&&backup.format==='jarvis-device-migration'&&backup.version===1;
+ const cloudBackup=isMigration?backup.cloud:backup;
+ let localRoutines=null;
+ try{if(isMigration)localRoutines=normalizeMigrationRoutines(backup.device&&backup.device.customRoutines);}
+ catch(e){$('memoryStatus').textContent=e.message;return;}
+ if(!confirm('Restore this backup? It will replace the shared conversation and saved memories on every paired JARVIS device'+(isMigration?' and restore this device’s custom routines':'')+'. This cannot be undone.'))return;
  try{
-  const result=await backupApi({action:'restore',backup,confirm:true});
+  const result=await backupApi({action:'restore',backup:cloudBackup,confirm:true});
+  let localStatus='';
+  if(isMigration){
+   try{localStorage.setItem(CUSTOM_ROUTINE_KEY,JSON.stringify(localRoutines));renderCustomRoutines();localStatus=' and '+localRoutines.length+' custom routines on this device';}
+   catch(e){localStatus='; shared data was restored, but this device could not save its custom routines';}
+  }
   resetMemoryEditor();await restoreSharedHistory();await renderMemories();
-  $('memoryStatus').textContent='Restored '+result.counts.conversation+' conversation messages and '+result.counts.memories+' saved notes across your paired devices, Sir.';
+  $('memoryStatus').textContent='Restored '+result.counts.conversation+' conversation messages and '+result.counts.memories+' saved notes across your paired devices'+localStatus+', Sir.';
  }catch(e){$('memoryStatus').textContent=e.message;}
 };
 $('clearMemories').onclick=async()=>{

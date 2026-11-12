@@ -40,7 +40,7 @@ test("one-time owner recovery is available on an unpaired phone", async () => {
 
 test("service worker cache version is bumped and script parses", async () => {
   const source = await readFile(new URL("../sw.js", import.meta.url), "utf8");
-  assert.ok(source.includes('const CACHE="jarvis-shell-v26"'));
+  assert.ok(source.includes('const CACHE="jarvis-shell-v27"'));
   assert.doesNotThrow(() => new Function(source));
 });
 
@@ -158,10 +158,27 @@ test("full backup UI exports and restores shared conversation plus memories with
   assert.ok(html.includes("id=\"restoreBackup\""));
   assert.ok(html.includes("JARVIS_AUX_API+'/backup'"));
   assert.ok(html.includes("backupApi({action:'export'})"));
-  assert.ok(html.includes("backupApi({action:'restore',backup,confirm:true})"));
+  assert.ok(html.includes("backupApi({action:'restore',backup:cloudBackup,confirm:true})"));
   assert.ok(html.includes("Restore this backup? It will replace the shared conversation and saved memories"));
   assert.ok(html.includes("await restoreSharedHistory();await renderMemories();"));
   assert.ok(html.includes("sessionRole!=='owner'"));
+});
+
+test("device migration backups validate and restore bounded custom routines", async () => {
+  const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+  assert.ok(html.includes("format:'jarvis-device-migration'"));
+  assert.ok(html.includes("device:{customRoutines:readCustomRoutines()}"));
+  assert.ok(html.includes("backup:cloudBackup,confirm:true"));
+  assert.ok(html.includes("localStorage.setItem(CUSTOM_ROUTINE_KEY,JSON.stringify(localRoutines))"));
+  const start = html.indexOf("function normalizeMigrationRoutines(");
+  const end = html.indexOf("\n$('exportBackup')", start);
+  assert.ok(start >= 0 && end > start);
+  const normalize = new Function(html.slice(start, end) + "; return normalizeMigrationRoutines;")();
+  assert.deepEqual(normalize([{id:"r1",name:"Focus",mode:"focus"}]), [{id:"r1",name:"Focus",mode:"focus"}]);
+  assert.deepEqual(normalize([]), []);
+  assert.throws(() => normalize(Array.from({length:9},(_,i)=>({name:"Routine "+i,mode:"focus"}))), /invalid number/i);
+  assert.throws(() => normalize([{name:"",mode:"focus"}]), /invalid custom routine/i);
+  assert.throws(() => normalize([{name:"Sleep",mode:"unsafe"}]), /invalid custom routine/i);
 });
 
 test("animated 3D reactor remains the default and respects reduced-motion preferences", async () => {
