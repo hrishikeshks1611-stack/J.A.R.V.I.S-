@@ -44,15 +44,19 @@ test("service worker cache version is bumped and script parses", async () => {
   assert.doesNotThrow(() => new Function(source));
 });
 
-test("voice photo command opens the permission-controlled camera flow", async () => {
+test("four voice camera phrases use native camera, capture, selfie and latest-photo actions", async () => {
   const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
   assert.ok(html.includes("window.AndroidJarvis.saveFile(downloadFile.filename,downloadFile.mimeType||'application/octet-stream',downloadFile.data)"));
   assert.ok(html.includes("link.textContent='Saved to Downloads'"));
-  assert.ok(html.includes("const takePhotoCommand="));
-  assert.ok(html.includes("$('camera').click()"));
-  assert.ok(html.includes("Please use the camera shutter to take the photo."));
+  assert.ok(html.includes("const cameraCommandText="));
+  assert.ok(html.includes("cameraAction==='open'"));
+  assert.ok(html.includes("cameraAction==='photo'"));
+  assert.ok(html.includes("cameraAction==='selfie'"));
+  assert.ok(html.includes("cameraAction==='show'"));
+  assert.ok(html.includes("window.AndroidJarvis.capturePhoto(true)"));
+  assert.ok(html.includes("window.AndroidJarvis.capturePhoto(false)"));
+  assert.ok(html.includes("window.AndroidJarvis.showLastPhoto()"));
   assert.ok(html.includes('id="cameraInput"'));
-  assert.ok(html.includes('capture="environment"'));
 });
 
 test("YouTube Music voice commands use the native playback bridge or search fallback", async () => {

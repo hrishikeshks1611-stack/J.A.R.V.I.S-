@@ -24,10 +24,11 @@ test("native bridge exposes confirmation-based Clock and Calendar actions", asyn
   assert.ok(manifest.includes('com.android.alarm.permission.SET_ALARM'));
 });
 
-test("Android release metadata identifies JARVIS 5.0 and advances installed version", async () => {
+test("Android update metadata advances production JARVIS from 5.0.0 to 5.0.1", async () => {
   const gradle = await readFile(new URL("../app/build.gradle", import.meta.url), "utf8");
-  assert.match(gradle, /versionCode\s+500/);
-  assert.match(gradle, /versionName\s+'5\.0\.0'/);
+  assert.match(gradle, /applicationId\s+'com\.hrishikesh\.jarvis'/);
+  assert.match(gradle, /versionCode\s+501/);
+  assert.match(gradle, /versionName\s+'5\.0\.1'/);
 });
 
 test("APK workflow cannot publish debug-signed builds as downloadable releases", async () => {
@@ -45,4 +46,25 @@ test("live Android bridge sends YouTube Music play-from-search intents", async (
   assert.ok(source.includes("MediaStore.INTENT_ACTION_MEDIA_PLAY_FROM_SEARCH"));
   assert.ok(source.includes('play.setPackage("com.google.android.apps.youtube.music")'));
   assert.ok(manifest.includes('com.google.android.apps.youtube.music'));
+});
+
+
+test("Android camera bridge supports camera launch, automatic photo, selfie and last-photo viewing", async () => {
+  const source = await readFile(new URL("../app/src/main/java/com/hrishikesh/jarvis/MainActivity.java", import.meta.url), "utf8");
+  const camera = await readFile(new URL("../app/src/main/java/com/hrishikesh/jarvis/CameraCaptureActivity.java", import.meta.url), "utf8");
+  const manifest = await readFile(new URL("../app/src/main/AndroidManifest.xml", import.meta.url), "utf8");
+  const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+  assert.ok(source.includes("public void openCamera()"));
+  assert.ok(source.includes("public void takePhoto()"));
+  assert.ok(source.includes("public void capturePhoto(boolean selfie)"));
+  assert.ok(source.includes("public void showLastPhoto()"));
+  assert.ok(camera.includes("CameraSelector.DEFAULT_FRONT_CAMERA"));
+  assert.ok(camera.includes("CameraSelector.DEFAULT_BACK_CAMERA"));
+  assert.ok(camera.includes("imageCapture.takePicture"));
+  assert.ok(camera.includes('putString("last_photo_uri"'));
+  assert.ok(manifest.includes('android.permission.CAMERA'));
+  assert.ok(manifest.includes('android:name=".CameraCaptureActivity"'));
+  assert.ok(html.includes("window.AndroidJarvis.capturePhoto(true)"));
+  assert.ok(html.includes("window.AndroidJarvis.capturePhoto(false)"));
+  assert.match(html, /cameraAction==='show'/);
 });
