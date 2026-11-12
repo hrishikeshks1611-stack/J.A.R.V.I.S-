@@ -126,8 +126,16 @@ jobs:
           test -s "$ANDROID_AVD_HOME/jarvis-api29.ini"
           test -d "$ANDROID_AVD_HOME/jarvis-api29.avd"
           avdmanager list avd
-          mark "Starting emulator with automatic hardware acceleration (KVM when available)."
-          ls -l /dev/kvm || true
+          mark "Preparing KVM access for the GitHub Actions runner."
+          if [ -e /dev/kvm ]; then
+            sudo chmod 666 /dev/kvm
+            test -r /dev/kvm && test -w /dev/kvm
+            ls -l /dev/kvm
+          else
+            mark "KVM device is absent; x86_64 Android emulator cannot boot on this runner."
+            exit 1
+          fi
+          mark "Starting emulator with hardware acceleration enabled."
           "$ANDROID_HOME/emulator/emulator" -avd jarvis-api29 -no-window -no-audio -no-boot-anim -no-snapshot -gpu swiftshader_indirect -accel auto -memory 2048 -cores 2 > "$RUNNER_TEMP/emulator.log" 2>&1 &
           EMULATOR_PID=$!
           cleanup() {
