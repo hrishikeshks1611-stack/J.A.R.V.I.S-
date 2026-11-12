@@ -40,7 +40,7 @@ async function staticFile(req,res,pathname) {
 }
 const server=createServer(async(req,res)=>{
   const url=new URL(req.url||"/","http://localhost");
-  if(req.method==="GET"&&url.pathname==="/healthz"){res.writeHead(200,{"Content-Type":"application/json","Cache-Control":"no-store"});res.end(JSON.stringify({ok:true,service:"jarvis-staging",version:"6.0.0"}));return;}
+  if(req.method==="GET"&&url.pathname==="/healthz"){res.writeHead(200,{"Content-Type":"application/json","Cache-Control":"no-store"});res.end(JSON.stringify({ok:true,service:"jarvis-staging",version:"6.0.0",features:{fileCreation:Boolean(process.env.JARVIS||process.env.GEMINI_API_KEY),fileDelivery:"secure-download",fileHistoryPersistence:false,sharedConversationPersistenceConfigured:Boolean(process.env.UPSTASH_REDIS_REST_URL&&process.env.UPSTASH_REDIS_REST_TOKEN)}}));return;}
   const downloadMatch = /^\/api\/download-file\/([a-f0-9]{64})$/.exec(url.pathname);
   if (downloadMatch) { downloadFile(req, res, downloadMatch[1]); return; }
   const handler=routes.get(url.pathname);
