@@ -24,7 +24,9 @@ export default async function handler(req, res) {
   }
 
   try {
-    const session = await getSession(req);
+    // Chat requests renew the session TTL; speech only validates it. Avoid
+    // two extra Redis writes on every spoken answer.
+    const session = await getSession(req, { touch: false });
     if (!session) return res.status(401).json({ error: "This device is not paired with JARVIS. Open Devices & Sync to pair it." });
   } catch (error) {
     console.error("JARVIS speech session check failed:", error);
