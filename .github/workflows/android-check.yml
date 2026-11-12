@@ -1,4 +1,4 @@
-name: JARVIS Android compile checks
+name: JARVIS Android update compatibility checks
 
 on:
   push:
@@ -14,31 +14,70 @@ on:
       - 'app/**'
       - '*.gradle'
       - 'settings.gradle'
+      - '.github/workflows/android-check.yml'
 
 permissions:
   contents: read
 
 jobs:
-  android-build:
+  android-update-smoke:
     runs-on: ubuntu-latest
     steps:
-      - name: Check out repository
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.2.2
+      - name: Check out proposed update
+        uses: actions/checkout@v4
+
+      - name: Check out current production baseline
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: baseline
+
       - name: Set up Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
+
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
         with:
           accept-android-sdk-licenses: true
           packages: platform-tools
+
       - name: Install Android platform
         run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
+
+      - name: Build current production phone APK
+        run: gradle --no-daemon -p baseline assemblePhoneDebug
+
+      - name: Build proposed phone update APK
+        run: gradle --no-daemon assemblePhoneDebug
+
+      - name: Install production app, preserve test data, then apply update
+        uses: ReactiveCircus/android-emulator-runner@v2
+        with:
+          api-level: 29
+          arch: x86_64
+          disable-animations: true
+          script: |
+            set -euo pipefail
+            BASE_APK="baseline/app/build/outputs/apk/phone/debug/app-phone-debug.apk"
+            UPDATE_APK="app/build/outputs/apk/phone/debug/app-phone-debug.apk"
+            test -s "$BASE_APK"
+            test -s "$UPDATE_APK"
+            adb install "$BASE_APK"
+            adb shell run-as com.hrishikesh.jarvis sh -c 'mkdir -p files && printf preserved > files/jarvis-update-preservation-check'
+            adb install -r "$UPDATE_APK"
+            adb shell pm path com.hrishikesh.jarvis
+            adb shell dumpsys package com.hrishikesh.jarvis | grep -q 'versionCode=501'
+            RESULT="$(adb shell run-as com.hrishikesh.jarvis cat files/jarvis-update-preservation-check | tr -d '\r')"
+            test "$RESULT" = "preserved"
+            echo "PASS: production package updated in place, versionCode 501 installed, app-private sentinel data preserved."
+
       - name: Compile phone and TV variants
         run: gradle --no-daemon assemblePhoneDebug assembleTvDebug
