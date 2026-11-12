@@ -17,10 +17,10 @@ test("native bridge exposes confirmation-based Clock and Calendar actions", asyn
   assert.ok(manifest.includes('com.android.alarm.permission.SET_ALARM'));
 });
 
-test("Android release metadata identifies JARVIS 5.0 and advances installed version", async () => {
+test("Android release metadata identifies JARVIS 6.0 and advances installed version", async () => {
   const gradle = await readFile(new URL("../app/build.gradle", import.meta.url), "utf8");
-  assert.match(gradle, /versionCode\s+500/);
-  assert.match(gradle, /versionName\s+'5\.0\.0'/);
+  assert.match(gradle, /versionCode\s+600/);
+  assert.match(gradle, /versionName\s+'6\.0\.0'/);
 });
 
 test("APK workflow cannot publish debug-signed builds as downloadable releases", async () => {
@@ -39,4 +39,19 @@ test("Android bridge requests play-from-search from the YouTube Music package", 
   assert.ok(source.includes('setPackage("com.google.android.apps.youtube.music")'));
   assert.ok(source.includes("SEARCH_FALLBACK:"));
   assert.ok(manifest.includes('package android:name="com.google.android.apps.youtube.music"'));
+});
+
+test("native CameraX capture supports rear photos, selfies, and latest-photo retrieval", async () => {
+  const activity = await readFile(new URL("../app/src/main/java/com/hrishikesh/jarvis/CameraCaptureActivity.java", import.meta.url), "utf8");
+  const bridge = await readFile(new URL("../app/src/main/java/com/hrishikesh/jarvis/MainActivity.java", import.meta.url), "utf8");
+  const manifest = await readFile(new URL("../app/src/main/AndroidManifest.xml", import.meta.url), "utf8");
+  const gradle = await readFile(new URL("../app/build.gradle", import.meta.url), "utf8");
+  assert.ok(activity.includes("CameraSelector.DEFAULT_FRONT_CAMERA"));
+  assert.ok(activity.includes("CameraSelector.DEFAULT_BACK_CAMERA"));
+  assert.ok(activity.includes("last_photo_uri"));
+  assert.ok(bridge.includes("public void capturePhoto(boolean selfie)"));
+  assert.ok(bridge.includes("public void showLastPhoto()"));
+  assert.ok(manifest.includes('android.permission.CAMERA'));
+  assert.ok(manifest.includes('.CameraCaptureActivity'));
+  assert.ok(gradle.includes('androidx.camera:camera-view:1.4.2'));
 });
