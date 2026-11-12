@@ -15,6 +15,16 @@ import org.junit.runner.RunWith;
 @RunWith(AndroidJUnit4.class)
 public class WakeWordServiceSmokeTest {
     @Test
+    public void recognizesAllRequestedWakePhraseForms() {
+        org.junit.Assert.assertEquals("", WakeWordService.extractWakeCommand("Hey JARVIS"));
+        org.junit.Assert.assertEquals("", WakeWordService.extractWakeCommand("Hello, JARVIS!"));
+        org.junit.Assert.assertEquals("", WakeWordService.extractWakeCommand("Wake up, JARVIS"));
+        org.junit.Assert.assertEquals("are you there", WakeWordService.extractWakeCommand("JARVIS, are you there?"));
+        org.junit.Assert.assertEquals("open the lights", WakeWordService.extractWakeCommand("Hey JARVIS, open the lights"));
+        org.junit.Assert.assertNull(WakeWordService.extractWakeCommand("jarvisian system"));
+    }
+
+    @Test
     public void startsPrivateDictationServiceThroughTheAppUid() throws Exception {
         android.app.Instrumentation instrumentation = InstrumentationRegistry.getInstrumentation();
         Context context = instrumentation.getTargetContext();
