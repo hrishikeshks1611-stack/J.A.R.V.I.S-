@@ -40,7 +40,7 @@ test("one-time owner recovery is available on an unpaired phone", async () => {
 
 test("service worker cache version is bumped and script parses", async () => {
   const source = await readFile(new URL("../sw.js", import.meta.url), "utf8");
-  assert.ok(source.includes('const CACHE="jarvis-shell-v28"'));
+  assert.ok(source.includes('const CACHE="jarvis-shell-v29"'));
   assert.doesNotThrow(() => new Function(source));
 });
 
@@ -52,6 +52,13 @@ test("hosted interface provides a foreground fallback for all four JARVIS wake p
   assert.ok(html.includes("recognition.continuous=true"));
   assert.ok(html.includes("function captureBrowserWakeCommand()"));
   assert.ok(html.includes("document.addEventListener('visibilitychange'"));
+});
+
+
+test("Build 39 does not request unavailable browser microphone permission for wake phrases", async () => {
+  const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+  assert.ok(html.includes("Build 39 does not include the Android microphone permission and native wake-word service"));
+  assert.ok(html.includes("continuous wake phrases need a compatible app update"));
 });
 
 test("four voice camera phrases use native camera, capture, selfie and latest-photo actions", async () => {
