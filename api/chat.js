@@ -137,7 +137,9 @@ export default async function handler(req, res) {
 
     for (let modelIndex = 0; modelIndex < models.length && !completed; modelIndex++) {
       const model = models[modelIndex];
-      if (modelIndex > 0) await new Promise(resolve => setTimeout(resolve, 700 * modelIndex));
+      // Do not add artificial backoff between fallback models: the failed
+      // upstream response has already consumed the wait. Preserve the same
+      // ordered fallbacks and generation settings to protect answer quality.
       const modelContents = JSON.parse(JSON.stringify(contents));
       let modelFailed = false;
 
