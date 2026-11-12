@@ -162,3 +162,27 @@ test("office requests choose useful output formats and return a real download li
   assert.ok(html.includes("downloadFile.downloadUrl"));
   assert.ok(html.includes("secure link works once and expires in 15 minutes"));
 });
+
+
+test("simple greetings and utility replies are immediate and narrowly matched", async () => {
+  const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+  const start = html.indexOf("function instantReply");
+  const end = html.indexOf("$('form').onsubmit", start);
+  assert.ok(start >= 0 && end > start);
+  const instantReply = vm.runInNewContext(html.slice(start, end).replace(/\\n$/, "") + "\\ninstantReply", {
+    Date,
+    Intl
+  });
+  assert.match(instantReply("Good morning"), /Good morning, Sir/);
+  assert.match(instantReply("hello"), /Good day, Sir/);
+  assert.match(instantReply("what time is it"), /The time is/);
+  assert.equal(instantReply("Good morning, can you explain relativity?"), null);
+});
+
+test("YouTube Music commands use the native play bridge and honest search fallback", async () => {
+  const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+  assert.ok(html.includes("AndroidJarvis.playYoutubeMusic(songQuery)"));
+  assert.ok(html.includes("Playback request sent. Check YouTube Music for the result."));
+  assert.ok(html.includes("music.youtube.com/search?q="));
+  assert.ok(html.includes("'youtube music':'youtube music'"));
+});
