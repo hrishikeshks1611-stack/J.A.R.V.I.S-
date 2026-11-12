@@ -8,11 +8,16 @@ const originalToken = process.env.UPSTASH_REDIS_REST_TOKEN;
 
 function mockRedis(handler) {
   const calls = [];
+  calls.requests = [];
   globalThis.fetch = async (url, options) => {
     const commands = JSON.parse(options.body);
-    calls.push(commands[0]);
-    const result = await handler(commands[0], calls.length);
-    return new Response(JSON.stringify([{ result }]), { status: 200, headers: { "content-type": "application/json" } });
+    calls.requests.push(commands);
+    const results = [];
+    for (const command of commands) {
+      calls.push(command);
+      results.push({ result: await handler(command, calls.length) });
+    }
+    return new Response(JSON.stringify(results), { status: 200, headers: { "content-type": "application/json" } });
   };
   process.env.UPSTASH_REDIS_REST_URL = "https://redis.example.test";
   process.env.UPSTASH_REDIS_REST_TOKEN = "test-token";
@@ -86,6 +91,8 @@ test("getSession validates the bearer token and refreshes session TTLs", async (
   assert.equal(result.role, "owner");
   assert.equal(result.token, token);
   assert.equal(calls.length, 3);
+  assert.equal(calls.requests.length, 2, "GET plus one pipelined TTL refresh request");
+  assert.deepEqual(calls.requests[1].map(command => command[0]), ["EXPIRE", "EXPIRE"]);
 });
 
 test("getSession can validate a session without extending live Redis TTLs", async () => {
