@@ -26,12 +26,6 @@ jobs:
       - name: Check out proposed update
         uses: actions/checkout@v4
 
-      - name: Check out current production baseline
-        uses: actions/checkout@v4
-        with:
-          ref: main
-          path: baseline
-
       - name: Set up Java
         uses: actions/setup-java@v4
         with:
@@ -52,13 +46,17 @@ jobs:
         with:
           gradle-version: '8.9'
 
-      - name: Build current production phone APK
-        run: gradle --no-daemon -p baseline assemblePhoneDebug
+      - name: Download the exact Build 39 phone APK
+        run: |
+          curl --fail --location --retry 3 \
+            "https://github.com/hrishikeshks1611-stack/J.A.R.V.I.S-/releases/download/jarvis-tv-39/app-phone-debug.apk" \
+            --output build39-phone.apk
+          test -s build39-phone.apk
 
       - name: Build proposed phone update APK
         run: gradle --no-daemon assemblePhoneDebug
 
-      - name: Install production app, preserve test data, then apply update
+      - name: Install Build 39, preserve app data, then apply proposed update
         uses: ReactiveCircus/android-emulator-runner@v2
         with:
           api-level: 29
@@ -66,7 +64,7 @@ jobs:
           disable-animations: true
           script: |
             set -euo pipefail
-            BASE_APK="baseline/app/build/outputs/apk/phone/debug/app-phone-debug.apk"
+            BASE_APK="build39-phone.apk"
             UPDATE_APK="app/build/outputs/apk/phone/debug/app-phone-debug.apk"
             test -s "$BASE_APK"
             test -s "$UPDATE_APK"
@@ -77,7 +75,7 @@ jobs:
             adb shell dumpsys package com.hrishikesh.jarvis | grep -q 'versionCode=501'
             RESULT="$(adb shell run-as com.hrishikesh.jarvis cat files/jarvis-update-preservation-check | tr -d '\r')"
             test "$RESULT" = "preserved"
-            echo "PASS: production package updated in place, versionCode 501 installed, app-private sentinel data preserved."
+            echo "PASS: exact Build 39 app updated in place, versionCode 501 installed, app-private data sentinel preserved."
 
       - name: Compile phone and TV variants
         run: gradle --no-daemon assemblePhoneDebug assembleTvDebug
