@@ -79,8 +79,12 @@ jobs:
             adb logcat -c
             gradle --no-daemon connectedPhoneDebugAndroidTest
             echo "Waiting for offline model and microphone recognizer readiness"
-            timeout 240s bash -c 'until adb logcat -d -s WakeWordService:I | grep -q "offline speech service ready"; do sleep 2; done'
-            adb logcat -d -s WakeWordService:I | grep -F "offline speech service ready"
+            if ! timeout 300s bash -c 'until adb logcat -d -s WakeWordService | grep -q "offline speech service ready"; do sleep 2; done'; then
+              echo "Wake-word service did not become ready. Full service log follows:"
+              adb logcat -d -s WakeWordService:V
+              exit 1
+            fi
+            adb logcat -d -s WakeWordService:V
             echo "PASS: offline dictation service became ready after the in-place update."
 
   android-build:
@@ -117,6 +121,10 @@ jobs:
             adb logcat -c
             gradle --no-daemon connectedPhoneDebugAndroidTest
             echo "Waiting for offline model and microphone recognizer readiness"
-            timeout 240s bash -c 'until adb logcat -d -s WakeWordService:I | grep -q "offline speech service ready"; do sleep 2; done'
-            adb logcat -d -s WakeWordService:I | grep -F "offline speech service ready"
+            if ! timeout 300s bash -c 'until adb logcat -d -s WakeWordService | grep -q "offline speech service ready"; do sleep 2; done'; then
+              echo "Wake-word service did not become ready. Full service log follows:"
+              adb logcat -d -s WakeWordService:V
+              exit 1
+            fi
+            adb logcat -d -s WakeWordService:V
             echo "PASS: native offline dictation service started on Android 10."
