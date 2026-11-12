@@ -240,3 +240,18 @@ test("live app answers exact greetings locally and routes YouTube Music commands
   assert.ok(html.includes("AndroidJarvis.playYoutubeMusic(songQuery)"));
   assert.ok(html.includes("music.youtube.com/search?q="));
 });
+
+test("Algieba voice starts after a short pre-buffer while the audio stream is still arriving", async () => {
+  const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+  const start = html.indexOf("async function playPcmStream");
+  const end = html.indexOf("let speechQuotaCooldownUntil", start);
+  assert.ok(start >= 0 && end > start);
+  const player = html.slice(start, end);
+  assert.ok(player.includes("const START_BUFFER_BYTES=12000"));
+  assert.ok(player.includes("const deliverChunk=(chunk)=>"));
+  assert.ok(player.includes("if(initialBytes<START_BUFFER_BYTES)return"));
+  assert.ok(player.includes("initialChunks.length=0"));
+  assert.match(player, /parts\.push\(chunk\.slice\(\)\);deliverChunk\(chunk\)/);
+  assert.ok(player.includes("Playback begins after a short pre-buffer"));
+  assert.ok(!player.includes("Buffer the complete PCM response before playback"));
+});
