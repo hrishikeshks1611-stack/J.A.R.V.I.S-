@@ -63,6 +63,9 @@ test("YouTube Music voice commands use the native playback bridge or search fall
   assert.ok(html.includes("const hasNativeMusicBridge=window.AndroidJarvis&&typeof window.AndroidJarvis.playYoutubeMusic==='function'"));
   assert.ok(html.includes("else window.location.href='https://music.youtube.com/'"));
   assert.ok(html.includes("music.youtube.com/search?q="));
+  assert.ok(html.includes("JARVIS_API+'/music-search'"));
+  assert.ok(html.includes("music.youtube.com/watch?v='+encodeURIComponent(track.videoId)"));
+  assert.ok(html.includes("Finding the exact song in YouTube Music"));
 });
 
 test("native app launch results are sent to shared conversation history", async () => {
