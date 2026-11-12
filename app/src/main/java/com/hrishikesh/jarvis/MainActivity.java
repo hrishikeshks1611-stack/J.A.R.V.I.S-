@@ -1,6 +1,8 @@
 package com.hrishikesh.jarvis;
 
 import android.app.Activity;
+import android.content.BroadcastReceiver;
+import android.content.IntentFilter;
 import android.Manifest;
 import android.content.pm.PackageManager;
 import android.content.ContentValues;
@@ -15,11 +17,11 @@ import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Build;
 import android.os.Environment;
 import android.content.SharedPreferences;
 import org.json.JSONArray;
 import org.json.JSONObject;
-import android.speech.RecognizerIntent;
 import android.speech.tts.TextToSpeech;
 import android.speech.tts.Voice;
 import android.speech.tts.UtteranceProgressListener;
@@ -39,7 +41,7 @@ import java.util.Locale;
 import java.util.Map;
 
 public class MainActivity extends Activity {
-    private static final int REQUEST_SPEECH = 4102;
+    private static final int REQUEST_AUDIO_INPUT = 4102;
     private static final int REQUEST_FILE = 4103;
     private static final int REQUEST_CAMERA = 4104;
     private static final int REQUEST_LOCATION = 4105;
@@ -53,6 +55,7 @@ public class MainActivity extends Activity {
     private SharedPreferences voicePrefs;
     private String pendingSpeech = null;
     private final Map<String, String[]> appPackages = new HashMap<>();
+    private BroadcastReceiver wakeWordReceiver;
 
     @Override public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -60,6 +63,27 @@ public class MainActivity extends Activity {
         getWindow().setNavigationBarColor(android.graphics.Color.rgb(5, 11, 24));
         registerApps();
         initializeOfflineSpeech();
+        wakeWordReceiver = new BroadcastReceiver() {
+            @Override public void onReceive(android.content.Context context, Intent intent) {
+                String action = intent == null ? null : intent.getAction();
+                if (WakeWordService.ACTION_WAKE.equals(action)) {
+                    if (ttsReady && textToSpeech != null) textToSpeech.speak("Yes, Sir?", TextToSpeech.QUEUE_FLUSH, null, "JARVIS_WAKE");
+                    if (webView != null) webView.evaluateJavascript("window.jarvisNative && window.jarvisNative.onWakeWordDetected && window.jarvisNative.onWakeWordDetected()", null);
+                } else if (WakeWordService.ACTION_PARTIAL.equals(action)) {
+                    String partial = intent.getStringExtra(WakeWordService.EXTRA_COMMAND);
+                    if (partial != null && webView != null) webView.evaluateJavascript("window.jarvisNative && window.jarvisNative.onSpeechPartial && window.jarvisNative.onSpeechPartial(" + JSONObject.quote(partial) + ")", null);
+                } else if (WakeWordService.ACTION_COMMAND.equals(action)) {
+                    String command = intent.getStringExtra(WakeWordService.EXTRA_COMMAND);
+                    if (command != null && webView != null) webView.evaluateJavascript("window.jarvisNative && window.jarvisNative.onSpeechResult(" + JSONObject.quote(command) + ")", null);
+                }
+            }
+        };
+        IntentFilter wakeFilter = new IntentFilter();
+        wakeFilter.addAction(WakeWordService.ACTION_WAKE);
+        wakeFilter.addAction(WakeWordService.ACTION_COMMAND);
+        wakeFilter.addAction(WakeWordService.ACTION_PARTIAL);
+        if (Build.VERSION.SDK_INT >= 33) registerReceiver(wakeWordReceiver, wakeFilter, android.content.Context.RECEIVER_NOT_EXPORTED);
+        else registerReceiver(wakeWordReceiver, wakeFilter);
         webView = new WebView(this);
         webView.setFocusable(true);
         webView.setFocusableInTouchMode(true);
@@ -555,17 +579,31 @@ public class MainActivity extends Activity {
             runOnUiThread(() -> { if (textToSpeech != null) textToSpeech.stop(); });
         }
 
+        @JavascriptInterface public void openWakeWordSettings() {
+            runOnUiThread(() -> startActivity(new Intent(MainActivity.this, WakeWordActivity.class)));
+        }
+
         @JavascriptInterface public void startVoiceRecognition() {
             runOnUiThread(() -> {
-                Intent intent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
-                intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
-                intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, "en-GB");
-                intent.putExtra(RecognizerIntent.EXTRA_PROMPT, "Speak to J.A.R.V.I.S.");
-                try { startActivityForResult(intent, REQUEST_SPEECH); }
-                catch (ActivityNotFoundException e) {
-                    Toast.makeText(MainActivity.this, "Speech recognition is unavailable on this device.", Toast.LENGTH_LONG).show();
+                if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+                    requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, REQUEST_AUDIO_INPUT);
+                    return;
                 }
+                startOfflineDictation();
             });
+        }
+    }
+
+    private void startOfflineDictation() {
+        try {
+            Intent intent = new Intent(this, WakeWordService.class).setAction(WakeWordService.ACTION_DICTATION);
+            if (Build.VERSION.SDK_INT >= 26) startForegroundService(intent);
+            else startService(intent);
+            if (webView != null) webView.evaluateJavascript(
+                    "if(typeof status==='function')status('Listening · private offline voice input','listening')", null);
+            Toast.makeText(this, "JARVIS microphone ready. Speak your command.", Toast.LENGTH_SHORT).show();
+        } catch (RuntimeException error) {
+            Toast.makeText(this, "JARVIS could not start its private microphone. Please try again.", Toast.LENGTH_LONG).show();
         }
     }
 
@@ -576,6 +614,11 @@ public class MainActivity extends Activity {
 
     @Override public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == REQUEST_AUDIO_INPUT) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) startOfflineDictation();
+            else Toast.makeText(this, "Microphone permission is needed for private JARVIS voice input.", Toast.LENGTH_LONG).show();
+            return;
+        }
         if (requestCode == REQUEST_LOCATION && pendingGeoCallback != null) {
             boolean precise = checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED;
             GeolocationPermissions.Callback callback = pendingGeoCallback;
@@ -608,13 +651,6 @@ public class MainActivity extends Activity {
             }
             pendingCameraUri = null;
             return;
-        }
-        if (requestCode == REQUEST_SPEECH && resultCode == RESULT_OK && data != null) {
-            ArrayList<String> results = data.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS);
-            if (results != null && !results.isEmpty()) {
-                String spoken = org.json.JSONObject.quote(results.get(0));
-                webView.evaluateJavascript("window.jarvisNative && window.jarvisNative.onSpeechResult(" + spoken + ")", null);
-            }
         }
     }
 
@@ -689,6 +725,7 @@ public class MainActivity extends Activity {
     }
 
     @Override protected void onDestroy() {
+        if (wakeWordReceiver != null) { try { unregisterReceiver(wakeWordReceiver); } catch (Exception ignored) { } wakeWordReceiver = null; }
         if (textToSpeech != null) { textToSpeech.stop(); textToSpeech.shutdown(); }
         if (webView != null) webView.destroy();
         super.onDestroy();
