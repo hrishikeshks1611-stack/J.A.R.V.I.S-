@@ -195,7 +195,7 @@ async function restoreSharedHistory(){
  messages.innerHTML='';
  lastSharedHistorySignature=JSON.stringify(history);
  history.forEach(item=>add(item.text,item.role==='model'?'jarvis':'user'));
- if(!history.length)add('Good evening, Sir. J.A.R.V.I.S. is online. How may I assist?','jarvis');
+ if(!history.length)add(timeGreeting()+'. J.A.R.V.I.S. is online. How may I assist?','jarvis');
 }
 function storeSession(data){
  sessionToken=data.token;sessionRole=data.role;sessionDeviceId=data.deviceId;
