@@ -850,8 +850,15 @@ function startBrowserWakeListener(){
      browserWakeCommandCapture=false;
      scheduleBrowserWakeRestart(3500);
     }else{
-     speak('Yes, Sir?');
-     captureBrowserWakeCommand();
+     const promptStarted=Date.now();
+     Promise.resolve(speak('Yes, Sir?')).finally(()=>{
+      const waitForPrompt=()=>{
+       if(!browserWakeEnabled)return;
+       if(currentAudio&&!currentAudio.paused&&!currentAudio.ended&&Date.now()-promptStarted<8000){setTimeout(waitForPrompt,250);return;}
+       captureBrowserWakeCommand();
+      };
+      setTimeout(waitForPrompt,500);
+     });
     }
     break;
    }
