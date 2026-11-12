@@ -164,6 +164,23 @@ test("full backup UI exports and restores shared conversation plus memories with
   assert.ok(html.includes("sessionRole!=='owner'"));
 });
 
+test("device migration backups validate and restore bounded custom routines", async () => {
+  const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+  assert.ok(html.includes("format:'jarvis-device-migration'"));
+  assert.ok(html.includes("device:{customRoutines:readCustomRoutines()}"));
+  assert.ok(html.includes("backup:cloudBackup,confirm:true"));
+  assert.ok(html.includes("localStorage.setItem(CUSTOM_ROUTINE_KEY,JSON.stringify(localRoutines))"));
+  const start = html.indexOf("function normalizeMigrationRoutines(");
+  const end = html.indexOf("\n$('exportBackup')", start);
+  assert.ok(start >= 0 && end > start);
+  const normalize = new Function(html.slice(start, end) + "; return normalizeMigrationRoutines;")();
+  assert.deepEqual(normalize([{id:"r1",name:"Focus",mode:"focus"}]), [{id:"r1",name:"Focus",mode:"focus"}]);
+  assert.deepEqual(normalize([]), []);
+  assert.throws(() => normalize(Array.from({length:9},(_,i)=>({name:"Routine "+i,mode:"focus"}))), /invalid number/i);
+  assert.throws(() => normalize([{name:"",mode:"focus"}]), /invalid custom routine/i);
+  assert.throws(() => normalize([{name:"Sleep",mode:"unsafe"}]), /invalid custom routine/i);
+});
+
 test("animated 3D reactor remains the default and respects reduced-motion preferences", async () => {
   const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
   assert.ok(html.includes("@keyframes reactorBreath"));
