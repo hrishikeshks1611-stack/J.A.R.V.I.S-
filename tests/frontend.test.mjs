@@ -131,8 +131,12 @@ test("offline fallback recognises natural-language commands", async () => {
   const start = html.indexOf("function offlineReply");
   const end = html.indexOf("// Cache exact Algieba recordings", start);
   assert.ok(start >= 0 && end > start);
-  const reply = new Function("deviceLocation", html.slice(start, end) + "; return offlineReply;")(null);
-  assert.match(reply("hello", "witty"), /Good day, Sir/);
+  const greetingStart = html.indexOf("function timeGreeting");
+  const greetingEnd = html.indexOf("const initialWelcome", greetingStart);
+  assert.ok(greetingStart >= 0 && greetingEnd > greetingStart);
+  const greetingSource = html.slice(greetingStart, greetingEnd);
+  const reply = new Function("deviceLocation", greetingSource + html.slice(start, end) + "; return offlineReply;")(null);
+  assert.match(reply("hello", "witty"), /(Good morning|Good afternoon|Good evening|Hello), Sir/);
   assert.match(reply("what time is it", "professional"), /time on this device/i);
   assert.match(reply("what is today's date", "professional"), /Today is/);
   assert.match(reply("where am I", "professional"), /do not have your location/i);
@@ -227,4 +231,18 @@ test("JARVIS Android launcher icon uses the upgraded cyan ARC reactor design", a
   assert.match(icon, /#36CAFF/);
   assert.match(icon, /#A6F4FF/);
   assert.match(icon, /android:pathData="M54,36l17,10v20/);
+});
+
+test("time-aware greetings use morning, afternoon, evening and overnight windows", async () => {
+  const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+  const start = html.indexOf("function timeGreeting");
+  const end = html.indexOf("const initialWelcome", start);
+  const greeting = new Function(html.slice(start, end) + "; return timeGreeting;")();
+  assert.equal(greeting(new Date(2026, 10, 12, 6, 0)), "Good morning, Sir");
+  assert.equal(greeting(new Date(2026, 10, 12, 11, 59)), "Good morning, Sir");
+  assert.equal(greeting(new Date(2026, 10, 12, 12, 0)), "Good afternoon, Sir");
+  assert.equal(greeting(new Date(2026, 10, 12, 16, 59)), "Good afternoon, Sir");
+  assert.equal(greeting(new Date(2026, 10, 12, 17, 0)), "Good evening, Sir");
+  assert.equal(greeting(new Date(2026, 10, 12, 22, 0)), "Hello, Sir");
+  assert.equal(greeting(new Date(2026, 10, 12, 3, 0)), "Hello, Sir");
 });
