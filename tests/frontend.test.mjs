@@ -209,9 +209,13 @@ test("simple greetings and utility replies are immediate and narrowly matched", 
   const start = html.indexOf("function instantReply");
   const end = html.indexOf("$('form').onsubmit", start);
   assert.ok(start >= 0 && end > start);
-  const instantReply = vm.runInNewContext(html.slice(start, end) + "\ninstantReply", { Date, Intl });
-  assert.match(instantReply("Good morning"), /Good morning, Sir/);
-  assert.match(instantReply("hello"), /Good day, Sir/);
+  const greetingStart = html.indexOf("function timeGreeting");
+  const greetingEnd = html.indexOf("const initialWelcome", greetingStart);
+  assert.ok(greetingStart >= 0 && greetingEnd > greetingStart);
+  const source = html.slice(greetingStart, greetingEnd) + html.slice(start, end) + "\ninstantReply";
+  const instantReply = vm.runInNewContext(source, { Date, Intl });
+  assert.match(instantReply("Good morning"), /(Good morning|Good afternoon|Good evening|Hello), Sir/);
+  assert.match(instantReply("hello"), /(Good morning|Good afternoon|Good evening|Hello), Sir/);
   assert.match(instantReply("what time is it"), /The time is/);
   assert.equal(instantReply("Good morning, can you explain relativity?"), null);
 });
