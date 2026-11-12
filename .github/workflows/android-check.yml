@@ -2,14 +2,14 @@ name: JARVIS Android compile checks
 
 on:
   push:
-    branches: [ jarvis-5.0-development, jarvis-6.0-development ]
+    branches: [ jarvis-5.0-development, jarvis-6.0-development, jarvis-rebirth-6.0 ]
     paths:
       - 'app/**'
       - '*.gradle'
       - 'settings.gradle'
       - '.github/workflows/android-check.yml'
   pull_request:
-    branches: [ main, jarvis-6.0-development ]
+    branches: [ main, jarvis-6.0-development, jarvis-rebirth-6.0 ]
     paths:
       - 'app/**'
       - '*.gradle'
