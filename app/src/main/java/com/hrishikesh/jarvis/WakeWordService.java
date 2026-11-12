@@ -312,6 +312,22 @@ public class WakeWordService extends Service implements RecognitionListener {
         handleRecognizedPhrase(hypothesis);
     }
 
+    /**
+     * Extracts the words spoken after the wake name. A null result means no
+     * wake word was present; an empty result means the wake phrase was spoken
+     * by itself and JARVIS should wait for the follow-up command.
+     */
+    public static String extractWakeCommand(String recognizedText) {
+        if (recognizedText == null) return null;
+        String text = recognizedText.toLowerCase(Locale.ROOT)
+                .replaceAll("[^a-z0-9 ]", " ").replaceAll("\\s+", " ").trim();
+        java.util.regex.Matcher matcher = java.util.regex.Pattern
+                .compile("\\bjarvis\\b").matcher(text);
+        int wake = -1;
+        while (matcher.find()) wake = matcher.start();
+        return wake < 0 ? null : text.substring(wake + "jarvis".length()).trim();
+    }
+
     private void handleRecognizedPhrase(String hypothesis) {
         String text = transcript(hypothesis).toLowerCase(Locale.ROOT)
                 .replaceAll("[^a-z0-9 ]", " ").replaceAll("\\s+", " ").trim();
@@ -340,16 +356,10 @@ public class WakeWordService extends Service implements RecognitionListener {
             return;
         }
 
-        // Match "jarvis" as a complete spoken token, never as a substring
-        // inside another word. Vosk is general speech recognition, not a
-        // dedicated keyword model, so this reduces (but cannot eliminate)
-        // false activations.
-        java.util.regex.Matcher wakeMatcher = java.util.regex.Pattern
-                .compile("\\bjarvis\\b").matcher(text);
-        int wake = -1;
-        while (wakeMatcher.find()) wake = wakeMatcher.start();
-        if (wake >= 0) {
-            String command = text.substring(wake + "jarvis".length()).trim();
+        // Match JARVIS as a complete token, including after "Hey",
+        // "Hello", or "Wake up". Keep any words after the name as a command.
+        String command = extractWakeCommand(text);
+        if (command != null) {
             if (command.isEmpty()) {
                 awaitingCommand = true;
                 commandTimeoutHandler.removeCallbacks(commandTimeout);
