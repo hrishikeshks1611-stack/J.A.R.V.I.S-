@@ -29,3 +29,15 @@ test("APK workflow cannot publish debug-signed builds as downloadable releases",
   assert.doesNotMatch(workflow, /gh release create/);
   assert.match(workflow, /debug-verification/);
 });
+
+
+test("native bridge requests YouTube Music playback without claiming confirmation", async () => {
+  const source = await readFile(new URL("../app/src/main/java/com/hrishikesh/jarvis/MainActivity.java", import.meta.url), "utf8");
+  const manifest = await readFile(new URL("../app/src/main/AndroidManifest.xml", import.meta.url), "utf8");
+  assert.ok(source.includes("public String playYoutubeMusic(String query)"));
+  assert.ok(source.includes("MediaStore.INTENT_ACTION_MEDIA_PLAY_FROM_SEARCH"));
+  assert.ok(source.includes('play.setPackage("com.google.android.apps.youtube.music")'));
+  assert.ok(source.includes("music.youtube.com/search?q="));
+  assert.ok(source.includes("Playback is not confirmed until the app starts the track."));
+  assert.ok(manifest.includes('com.google.android.apps.youtube.music'));
+});
