@@ -11,17 +11,21 @@ public class WakePhraseParserTest {
         assertTrue(WakePhraseParser.containsWakeWord("JARVIS, are you there?"));
     }
 
-    @Test public void extractsCommandsAfterWakeName() {
+    @Test public void extractsCommandsAfterWakePhrase() {
         assertEquals("", WakePhraseParser.extractWakeCommand("Hey JARVIS"));
         assertEquals("", WakePhraseParser.extractWakeCommand("Hello, JARVIS!"));
         assertEquals("", WakePhraseParser.extractWakeCommand("Wake up, JARVIS"));
-        assertEquals("are you there", WakePhraseParser.extractWakeCommand("JARVIS, are you there?"));
+        assertEquals("", WakePhraseParser.extractWakeCommand("JARVIS, are you there?"));
         assertEquals("open the lights", WakePhraseParser.extractWakeCommand("Hey JARVIS, open the lights"));
+        assertEquals("play music", WakePhraseParser.extractWakeCommand("Wake up, JARVIS! Play music."));
     }
 
-    @Test public void rejectsEmbeddedWakeNameAndNullInput() {
+    @Test public void rejectsEmbeddedOrUnrequestedWakeWordAndNullInput() {
         assertFalse(WakePhraseParser.containsWakeWord("jarvisian system"));
+        assertFalse(WakePhraseParser.containsWakeWord("I was talking to Jarvis yesterday"));
+        assertFalse(WakePhraseParser.containsWakeWord("please wake up Jarvis"));
         assertNull(WakePhraseParser.extractWakeCommand("jarvisian system"));
+        assertNull(WakePhraseParser.extractWakeCommand("I was talking to Jarvis yesterday"));
         assertFalse(WakePhraseParser.containsWakeWord(null));
         assertNull(WakePhraseParser.extractWakeCommand(null));
     }
