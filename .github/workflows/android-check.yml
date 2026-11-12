@@ -63,7 +63,18 @@ jobs:
           arch: x86_64
           disable-animations: true
           script: |
-            bash -euo pipefail -c 'test -s "$GITHUB_WORKSPACE/build39-phone.apk" && test -s "$GITHUB_WORKSPACE/app/build/outputs/apk/phone/debug/app-phone-debug.apk" && adb install "$GITHUB_WORKSPACE/build39-phone.apk" && adb shell run-as com.hrishikesh.jarvis sh -c "mkdir -p files && printf preserved > files/jarvis-update-preservation-check" && adb install -r "$GITHUB_WORKSPACE/app/build/outputs/apk/phone/debug/app-phone-debug.apk" && adb shell pm path com.hrishikesh.jarvis && adb shell dumpsys package com.hrishikesh.jarvis | grep -q "versionCode=501" && test "$(adb shell run-as com.hrishikesh.jarvis cat files/jarvis-update-preservation-check | tr -d "\r")" = "preserved" && echo "PASS: exact Build 39 app updated in place, versionCode 501 installed, app-private data sentinel preserved."'
+            bash -euo pipefail -c 'test -s "$GITHUB_WORKSPACE/build39-phone.apk"
+            test -s "$GITHUB_WORKSPACE/app/build/outputs/apk/phone/debug/app-phone-debug.apk"
+            adb install "$GITHUB_WORKSPACE/build39-phone.apk"
+            adb shell run-as com.hrishikesh.jarvis mkdir -p files
+            adb shell run-as com.hrishikesh.jarvis touch files/jarvis-update-preservation-check
+            adb shell run-as com.hrishikesh.jarvis test -f files/jarvis-update-preservation-check
+            adb install -r "$GITHUB_WORKSPACE/app/build/outputs/apk/phone/debug/app-phone-debug.apk"
+            adb shell pm path com.hrishikesh.jarvis
+            adb shell dumpsys package com.hrishikesh.jarvis | grep -q versionCode=501
+            adb shell run-as com.hrishikesh.jarvis test -f files/jarvis-update-preservation-check
+            echo "PASS: Build 39 updated in place; versionCode 501 installed; app-private sentinel survived."'
+
 
       - name: Compile phone and TV variants
         run: gradle --no-daemon assemblePhoneDebug assembleTvDebug
