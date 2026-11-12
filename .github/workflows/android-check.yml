@@ -2,7 +2,7 @@ name: JARVIS Android update compatibility checks
 
 on:
   push:
-    branches: [ jarvis-5.0-development, jarvis-5-to-10-continuation, jarvis-wakeword-reliability-fix ]
+    branches: [ jarvis-5.0-development, jarvis-5-to-10-continuation, jarvis-wakeword-reliability-fix, jarvis-crystal-clear-mic ]
     paths:
       - 'app/**'
       - '*.gradle'
@@ -53,11 +53,11 @@ jobs:
             set -euo pipefail
             adb logcat -c
             gradle --no-daemon connectedPhoneDebugAndroidTest
-            echo "Waiting for offline model and microphone recognizer readiness"
-            if ! timeout 300s bash -c 'until adb logcat -d -s WakeWordService | grep -q "offline speech service ready"; do sleep 2; done'; then
+            echo "Waiting for the real Android AudioRecord capture loop to start"
+            if ! timeout 300s bash -c 'until adb logcat -d -s WakeWordService | grep -q "Audio capture active:"; do sleep 2; done'; then
               echo "Wake-word service did not become ready. Full service log follows:"
               adb logcat -d -s WakeWordService:V
               exit 1
             fi
             adb logcat -d -s WakeWordService:V
-            echo "PASS: native offline dictation service started on Android 10."
+            echo "PASS: Android 10 initialized and started the JARVIS microphone capture loop."
