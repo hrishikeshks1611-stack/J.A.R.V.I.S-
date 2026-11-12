@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import vm from "node:vm";
 import { readFile } from "node:fs/promises";
 
 test("JARVIS web app inline script parses", async () => {
@@ -54,13 +55,12 @@ test("voice photo command opens the permission-controlled camera flow", async ()
   assert.ok(html.includes('capture="environment"'));
 });
 
-test("YouTube Music voice commands open the app or fall back to the existing WebView external-link bridge", async () => {
+test("YouTube Music voice commands use the native playback bridge or search fallback", async () => {
   const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
-  assert.ok(html.includes("const openYoutubeMusicOnly ="));
-  assert.ok(html.includes("window.location.href='https://music.youtube.com/'"));
-  assert.ok(html.includes("const musicCommand = message.match("));
-  assert.ok(html.includes("window.AndroidJarvis.openYoutubeMusicSearch(songQuery)"));
-  assert.ok(html.includes("'https://music.youtube.com/search?q='+encodeURIComponent(songQuery)"));
+  assert.ok(html.includes("const openYoutubeMusicOnly="));
+  assert.ok(html.includes("AndroidJarvis.playYoutubeMusic(songQuery)"));
+  assert.ok(html.includes("window.AndroidJarvis.openApp('youtube music')"));
+  assert.ok(html.includes("music.youtube.com/search?q="));
 });
 
 test("native app launch results are sent to shared conversation history", async () => {
@@ -232,7 +232,7 @@ test("live app answers exact greetings locally and routes YouTube Music commands
   const start = html.indexOf("function instantReply");
   const end = html.indexOf("$('form').onsubmit", start);
   assert.ok(start >= 0 && end > start);
-  const instantReply = vm.runInNewContext(html.slice(start, end) + "\\ninstantReply", { Date, Intl });
+  const instantReply = vm.runInNewContext(html.slice(start, end) + "\ninstantReply", { Date, Intl });
   assert.match(instantReply("Good morning"), /Good morning, Sir/);
   assert.equal(instantReply("Good morning, explain this to me"), null);
   assert.ok(html.includes("AndroidJarvis.playYoutubeMusic(songQuery)"));
