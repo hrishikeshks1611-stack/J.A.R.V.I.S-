@@ -80,7 +80,7 @@ public class MainActivity extends Activity {
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
             webView.getSettings().setSafeBrowsingEnabled(true);
         }
-        webView.setThirdPartyCookiesEnabled(false);
+        android.webkit.CookieManager.getInstance().setAcceptThirdPartyCookies(webView, false);
         webView.getSettings().setGeolocationEnabled(true);
         webView.addJavascriptInterface(new JarvisBridge(), "AndroidJarvis");
         webView.setWebChromeClient(new WebChromeClient() {
