@@ -22,6 +22,7 @@ permissions:
 jobs:
   android-build:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - name: Check out proposed update
         uses: actions/checkout@v4
@@ -52,6 +53,6 @@ jobs:
           script: |
             set -euo pipefail
             adb logcat -c
-            timeout 240s gradle --no-daemon connectedPhoneDebugAndroidTest
+            timeout 180s gradle --no-daemon --stacktrace connectedPhoneDebugAndroidTest
             adb logcat -d -s WakeWordService:V
             echo "PASS: Android 10 microphone PCM capture test and wake-phrase logic tests completed."
