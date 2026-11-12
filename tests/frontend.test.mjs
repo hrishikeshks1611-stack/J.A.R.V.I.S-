@@ -65,7 +65,9 @@ test("YouTube Music voice commands use the native playback bridge or search fall
   assert.ok(html.includes("music.youtube.com/search?q="));
   assert.ok(html.includes("JARVIS_API+'/music-search'"));
   assert.ok(html.includes("music.youtube.com/watch?v='+encodeURIComponent(track.videoId)"));
-  assert.ok(html.includes("Finding the exact song in YouTube Music"));
+  assert.ok(html.includes("Finding your music, Sir…"));
+  assert.ok(html.includes("const acknowledgement='Certainly, Sir.'"));
+  assert.ok(html.includes("await acknowledgementFinished"));
 });
 
 test("native app launch results are sent to shared conversation history", async () => {
