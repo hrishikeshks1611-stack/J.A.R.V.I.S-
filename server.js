@@ -9,9 +9,10 @@ import memory from "./api/memory.js";
 import backup from "./api/backup.js";
 import createFile from "./api/create-file.js";
 import downloadFile from "./api/download-file.js";
+import musicSearch from "./api/music-search.js";
 
 const root = path.dirname(fileURLToPath(import.meta.url));
-const routes = new Map([["/api/chat",chat],["/api/pair",pair],["/api/speech",speech],["/api/memory",memory],["/api/backup",backup],["/api/create-file",createFile]]);
+const routes = new Map([["/api/chat",chat],["/api/pair",pair],["/api/speech",speech],["/api/memory",memory],["/api/backup",backup],["/api/create-file",createFile],["/api/music-search",musicSearch]]);
 const mime = new Map([[".html","text/html; charset=utf-8"],[".js","text/javascript; charset=utf-8"],[".css","text/css; charset=utf-8"],[".json","application/json; charset=utf-8"],[".webmanifest","application/manifest+json"],[".svg","image/svg+xml"],[".png","image/png"],[".jpg","image/jpeg"],[".jpeg","image/jpeg"],[".ico","image/x-icon"]]);
 
 function adapt(res) {
@@ -40,7 +41,7 @@ async function staticFile(req,res,pathname) {
 }
 const server=createServer(async(req,res)=>{
   const url=new URL(req.url||"/","http://localhost");
-  if(req.method==="GET"&&url.pathname==="/healthz"){res.writeHead(200,{"Content-Type":"application/json","Cache-Control":"no-store"});res.end(JSON.stringify({ok:true,service:"jarvis-staging",version:"6.0.0"}));return;}
+  if(req.method==="GET"&&url.pathname==="/healthz"){res.writeHead(200,{"Content-Type":"application/json","Cache-Control":"no-store"});res.end(JSON.stringify({ok:true,service:"jarvis-staging",version:"6.0.0",features:{fileCreation:Boolean(process.env.JARVIS||process.env.GEMINI_API_KEY),fileDelivery:"secure-download",fileHistoryPersistence:false,sharedConversationPersistenceConfigured:Boolean(process.env.UPSTASH_REDIS_REST_URL&&process.env.UPSTASH_REDIS_REST_TOKEN)}}));return;}
   const downloadMatch = /^\/api\/download-file\/([a-f0-9]{64})$/.exec(url.pathname);
   if (downloadMatch) { downloadFile(req, res, downloadMatch[1]); return; }
   const handler=routes.get(url.pathname);

@@ -54,24 +54,21 @@ test("chat agent executes an allow-listed tool and returns a confirmation-gated 
       }), { status: 200 });
     }
 
-    const command = JSON.parse(options.body)[0];
-    redisCalls.push(command);
-    let result = null;
-    if (command[0] === "GET" && command[1] === "jarvis:v1:session:" + hashToken(token)) {
-      result = JSON.stringify({ deviceId: "phone-test", deviceName: "Test phone", role: "owner" });
-    } else if (command[0] === "GET") {
-      result = null;
-    } else if (command[0] === "EXPIRE") {
-      result = 1;
-    } else if (command[0] === "EVAL") {
-      result = JSON.stringify([
+    const commands = JSON.parse(options.body);
+    const results = commands.map(command => {
+      redisCalls.push(command);
+      if (command[0] === "GET" && command[1] === "jarvis:v1:session:" + hashToken(token)) {
+        return { result: JSON.stringify({ deviceId: "phone-test", deviceName: "Test phone", role: "owner" }) };
+      }
+      if (command[0] === "GET") return { result: null };
+      if (command[0] === "EXPIRE") return { result: 1 };
+      if (command[0] === "EVAL") return { result: JSON.stringify([
         { role: "user", text: command[3], createdAt: 1 },
         { role: "model", text: command[4], createdAt: 1 }
-      ]);
-    } else {
+      ]) };
       throw new Error("Unexpected Redis command: " + command[0]);
-    }
-    return new Response(JSON.stringify([{ result }]), { status: 200 });
+    });
+    return new Response(JSON.stringify(results), { status: 200 });
   };
 
   const res = response();

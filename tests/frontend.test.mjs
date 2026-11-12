@@ -36,6 +36,8 @@ test("YouTube Music song commands use native play-from-search and disclose fallb
   const java = await readFile(new URL("../app/src/main/java/com/hrishikesh/jarvis/MainActivity.java", import.meta.url), "utf8");
   const manifest = await readFile(new URL("../app/src/main/AndroidManifest.xml", import.meta.url), "utf8");
   assert.ok(html.includes("const musicCommand = message.match("));
+  assert.ok(html.includes("id=\"wakeWordButton\""));
+  assert.ok(html.includes("onWakeWordDetected"));
   assert.ok(html.includes("window.AndroidJarvis.playYoutubeMusic(songQuery)"));
   assert.ok(html.includes("startsWith('PLAY_REQUESTED:')"));
   assert.ok(html.includes("playback is not confirmed."));
@@ -195,4 +197,17 @@ test("YouTube Music play commands use native playback request and disclose fallb
   assert.ok(html.includes("playback is not confirmed."));
   assert.ok(html.includes("Native YouTube Music control is unavailable in this app build"));
   assert.ok(html.includes("'https://music.youtube.com/search?q='+encodeURIComponent(songQuery)"));
+});
+
+
+test("simple greetings and utility replies are immediate and narrowly matched", async () => {
+  const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+  const start = html.indexOf("function instantReply");
+  const end = html.indexOf("$('form').onsubmit", start);
+  assert.ok(start >= 0 && end > start);
+  const instantReply = vm.runInNewContext(html.slice(start, end) + "\ninstantReply", { Date, Intl });
+  assert.match(instantReply("Good morning"), /Good morning, Sir/);
+  assert.match(instantReply("hello"), /Good day, Sir/);
+  assert.match(instantReply("what time is it"), /The time is/);
+  assert.equal(instantReply("Good morning, can you explain relativity?"), null);
 });

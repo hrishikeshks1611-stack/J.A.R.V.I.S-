@@ -19,21 +19,25 @@ test("local app actions are appended to the shared conversation", async () => {
   process.env.UPSTASH_REDIS_REST_TOKEN = "test-token";
   const calls = [];
   globalThis.fetch = async (url, options) => {
-    const command = JSON.parse(options.body)[0];
-    calls.push(command);
-    let result;
-    if (command[0] === "GET") result = JSON.stringify({ deviceId: "phone-1", deviceName: "Phone", role: "device" });
-    else if (command[0] === "EXPIRE") result = 1;
-    else if (command[0] === "EVAL") {
-      assert.ok(command[1].includes("redis.call('SET'"));
-      assert.equal(command[4], "Open YouTube");
-      assert.equal(command[5], "Opening YouTube, Sir.");
-      result = JSON.stringify([
-        { role: "user", text: "Open YouTube", createdAt: 1 },
-        { role: "model", text: "Opening YouTube, Sir.", createdAt: 1 }
-      ]);
-    } else throw new Error("Unexpected Redis command: " + command[0]);
-    return new Response(JSON.stringify([{ result }]), { status: 200 });
+    const commands = JSON.parse(options.body);
+    const results = [];
+    for (const command of commands) {
+      calls.push(command);
+      let result;
+      if (command[0] === "GET") result = JSON.stringify({ deviceId: "phone-1", deviceName: "Phone", role: "device" });
+      else if (command[0] === "EXPIRE") result = 1;
+      else if (command[0] === "EVAL") {
+        assert.ok(command[1].includes("redis.call('SET'"));
+        assert.equal(command[4], "Open YouTube");
+        assert.equal(command[5], "Opening YouTube, Sir.");
+        result = JSON.stringify([
+          { role: "user", text: "Open YouTube", createdAt: 1 },
+          { role: "model", text: "Opening YouTube, Sir.", createdAt: 1 }
+        ]);
+      } else throw new Error("Unexpected Redis command: " + command[0]);
+      results.push({ result });
+    }
+    return new Response(JSON.stringify(results), { status: 200 });
   };
   const res = {
     setHeader() {},

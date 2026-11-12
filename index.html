@@ -272,7 +272,7 @@ $('createPairCode').onclick=async()=>{
  else openSyncPanel();
 })();
 function status(s,cls=''){ $('status').textContent='● '+s.toUpperCase();core.className='core '+cls}
-function add(text,who,attachment,downloadFile,toolCalls,pendingActions){const d=document.createElement('div');d.className='msg '+who;const body=document.createElement('div');body.textContent=text;d.appendChild(body);if(attachment&&attachment.mimeType&&attachment.mimeType.startsWith('image/')){const img=document.createElement('img');img.alt=attachment.name||'Attached image';img.src='data:'+attachment.mimeType+';base64,'+attachment.data;d.appendChild(img)}if(downloadFile&&(downloadFile.downloadUrl||downloadFile.data)){const row=document.createElement('div');row.className='attachment-chip';const label=document.createElement('span');label.textContent='📎 '+downloadFile.filename+' · '+Math.max(1,Math.round(downloadFile.size/1024))+' KB';row.appendChild(label);const link=document.createElement('a');link.textContent='Download';if(downloadFile.downloadUrl){link.href=downloadFile.downloadUrl}else{link.href=URL.createObjectURL(new Blob([Uint8Array.from(atob(downloadFile.data),c=>c.charCodeAt(0))],{type:downloadFile.mimeType||'application/octet-stream'}));link.download=downloadFile.filename;link.onclick=()=>setTimeout(()=>URL.revokeObjectURL(link.href),60000)}link.style.cssText='color:#8cecff;font-weight:700;text-decoration:underline;margin-left:auto';row.appendChild(link);d.appendChild(row)}if(Array.isArray(toolCalls)&&toolCalls.length){const report=document.createElement('div');report.style.cssText='margin-top:9px;padding:8px 10px;border:1px solid #24506e;border-radius:9px;background:#071426;color:#9bcce5;font-size:11px';const heading=document.createElement('strong');heading.textContent='TOOLS EXECUTED';heading.style.cssText='display:block;color:#75dfff;letter-spacing:.1em;margin-bottom:4px';report.appendChild(heading);const detail=document.createElement('span');const labels={calculate:'Calculator',get_device_status:'Device status',search_saved_memories:'Saved memory search',search_conversation:'Conversation search'};detail.textContent=toolCalls.map(item=>(labels[item.tool]||item.tool)+' · '+(item.status==='success'?'completed':item.status==='confirmation_required'?'awaiting your approval':item.status==='blocked'?'blocked':'failed')).join('  |  ');report.appendChild(detail);d.appendChild(report)}if(Array.isArray(pendingActions)&&pendingActions.length){const actionPanel=document.createElement('div');actionPanel.style.cssText='display:flex;flex-direction:column;gap:7px;margin-top:9px';pendingActions.forEach(action=>{const button=document.createElement('button');button.type='button';button.className='control';button.style.cssText='align-self:flex-start;border-color:#d7ad55;color:#ffe1a0';if(action.type==='alarm'){button.textContent='Review alarm in Clock · '+String(action.hour).padStart(2,'0')+':'+String(action.minute).padStart(2,'0');button.onclick=()=>{if(!window.AndroidJarvis||typeof window.AndroidJarvis.setAlarm!=='function'){button.textContent='Open this request on your Android JARVIS app';return;}const result=window.AndroidJarvis.setAlarm(action.hour,action.minute,String(action.label||'JARVIS alarm'));button.textContent='Clock opened · confirm the alarm there';const note=document.createElement('div');note.style.cssText='color:#9bcce5;font-size:11px';note.textContent=String(result||'Please review and confirm in Clock.');actionPanel.appendChild(note);button.disabled=true;};}else if(action.type==='calendar'){button.textContent='Review calendar event · '+String(action.title||'Event');button.onclick=()=>{if(!window.AndroidJarvis||typeof window.AndroidJarvis.createCalendarEvent!=='function'){button.textContent='Open this request on your Android JARVIS app';return;}const result=window.AndroidJarvis.createCalendarEvent(String(action.title||'JARVIS event'),Number(action.beginMillis),Number(action.endMillis),String(action.description||''));button.textContent='Calendar editor opened · save there to confirm';const note=document.createElement('div');note.style.cssText='color:#9bcce5;font-size:11px';note.textContent=String(result||'Please review and save in your calendar app.');actionPanel.appendChild(note);button.disabled=true;};}else{return;}actionPanel.appendChild(button);});d.appendChild(actionPanel);}if(who==='jarvis'){const copy=document.createElement('button');copy.className='copy-btn';copy.type='button';copy.textContent='▢ Copy';copy.onclick=async()=>{try{await navigator.clipboard.writeText(text)}catch(e){const t=document.createElement('textarea');t.value=text;document.body.appendChild(t);t.select();document.execCommand('copy');t.remove()}copy.textContent='✓ Copied';setTimeout(()=>copy.textContent='▢ Copy',1500)};d.appendChild(copy)}messages.appendChild(d);messages.scrollTop=messages.scrollHeight;return d}
+function add(text,who,attachment,downloadFile){const d=document.createElement('div');d.className='msg '+who;const body=document.createElement('div');body.textContent=text;d.appendChild(body);if(attachment&&attachment.mimeType&&attachment.mimeType.startsWith('image/')){const img=document.createElement('img');img.alt=attachment.name||'Attached image';img.src='data:'+attachment.mimeType+';base64,'+attachment.data;d.appendChild(img)}if(downloadFile&&(downloadFile.downloadUrl||downloadFile.data)){const row=document.createElement('div');row.className='attachment-chip';const label=document.createElement('span');label.textContent='📎 '+downloadFile.filename+' · '+Math.max(1,Math.round(downloadFile.size/1024))+' KB';row.appendChild(label);const link=document.createElement('a');link.textContent='Download';if(downloadFile.downloadUrl){link.href=downloadFile.downloadUrl}else{link.href=URL.createObjectURL(new Blob([Uint8Array.from(atob(downloadFile.data),c=>c.charCodeAt(0))],{type:downloadFile.mimeType||'application/octet-stream'}));link.download=downloadFile.filename;link.onclick=()=>setTimeout(()=>URL.revokeObjectURL(link.href),60000)}link.style.cssText='color:#8cecff;font-weight:700;text-decoration:underline;margin-left:auto';row.appendChild(link);d.appendChild(row)}if(who==='jarvis'){const copy=document.createElement('button');copy.className='copy-btn';copy.type='button';copy.textContent='▢ Copy';copy.onclick=async()=>{try{await navigator.clipboard.writeText(text)}catch(e){const t=document.createElement('textarea');t.value=text;document.body.appendChild(t);t.select();document.execCommand('copy');t.remove()}copy.textContent='✓ Copied';setTimeout(()=>copy.textContent='▢ Copy',1500)};d.appendChild(copy)}messages.appendChild(d);messages.scrollTop=messages.scrollHeight;return d}
 
 function setAttachment(file){if(!file)return;const allowed=['application/pdf','text/plain','text/csv','application/json','text/markdown'];if(!(file.type.startsWith('image/')||allowed.includes(file.type))){$('hint').textContent='Please choose an image, PDF, TXT, CSV, JSON or Markdown file, Sir.';return;}if(file.size>3*1024*1024){$('hint').textContent='That file is larger than the 3 MB limit, Sir.';return;}const reader=new FileReader();reader.onload=()=>{const data=String(reader.result).split(',')[1]||'';pendingAttachment={name:file.name||'Camera photo',mimeType:file.type||'image/jpeg',data};renderAttachment()};reader.onerror=()=>{$('hint').textContent='I could not read that file, Sir.'};reader.readAsDataURL(file)}
 function renderAttachment(){const chip=$('attachmentChip');chip.innerHTML='';if(!pendingAttachment){chip.hidden=true;return}chip.hidden=false;const label=document.createElement('span');label.textContent='📎 '+pendingAttachment.name;chip.appendChild(label);const remove=document.createElement('button');remove.type='button';remove.textContent='×';remove.setAttribute('aria-label','Remove attachment');remove.onclick=()=>{pendingAttachment=null;renderAttachment()};chip.appendChild(remove)}
@@ -498,33 +498,59 @@ async function speak(text){
 $('testVoice').onclick=()=>{speak('Good evening, Sir. I am JARVIS. How may I assist you today?');$('hint').textContent='Testing the British voice…';};
 $('voiceToggle').onclick=()=>{voiceOn=!voiceOn;$('voiceToggle').textContent='Voice: '+(voiceOn?'On':'Off');if(!voiceOn){if(currentAudio){currentAudio.pause();currentAudio=null;}}};
 $('clear').onclick=async()=>{if(!sessionToken){openSyncPanel();return;}try{await pairApi({action:'clear'});history=[];messages.innerHTML='';add('Conversation cleared across all your devices, Sir. What shall we discuss?','jarvis')}catch(e){$('hint').textContent=e.message}};
+function instantReply(text){
+ const q=String(text||'').trim().toLowerCase().replace(/[.!?]+$/,'').trim();
+ if(/^(?:hey(?: jarvis)?|hi(?: jarvis)?|hello(?: jarvis)?|good morning|good afternoon|good evening|good night)(?: jarvis)?$/.test(q))return 'Good '+(q.includes('morning')?'morning':q.includes('afternoon')?'afternoon':q.includes('evening')?'evening':q.includes('night')?'night':'day')+', Sir. I am here and ready.';
+ if(/^(?:thanks|thank you|thank you jarvis|thanks jarvis)$/.test(q))return 'Always a pleasure, Sir.';
+ if(/^(?:what time is it|tell me the time|current time)$/.test(q))return 'The time is '+new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})+', Sir.';
+ if(/^(?:what is the date|what is today'?s date|what day is it|today'?s date)$/.test(q))return 'Today is '+new Date().toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long',year:'numeric'})+', Sir.';
+ return null;
+}
 $('form').onsubmit=async e=>{e.preventDefault();if(!sessionToken){openSyncPanel();$('syncStatus').textContent='Pair this device before sending messages.';return;}const message=$('prompt').value.trim();if(!message&&!pendingAttachment)return;$('prompt').value='';const attachment=pendingAttachment;pendingAttachment=null;renderAttachment();add(message||'Please examine this attachment, Sir.', 'user',attachment);history.push({role:'user',text:message||'Please examine the attached file.'});const fileRequest=detectFileRequest(message);if(fileRequest){await createOfficeFile(message,fileRequest.format,attachment);return;}
-const musicCommand = message.match(/^\s*(?:jarvis[, ]+)?(?:please\s+)?(?:play|open|search(?:\s+for)?)\s+(.+?)(?:\s+(?:on|in)\s+youtube\s+music)?[.!?]*\s*$/i);
-const explicitMusicCommand = /\byoutube\s+music\b/i.test(message) && musicCommand;
-if (musicCommand && (explicitMusicCommand || /^\s*(?:jarvis[, ]+)?(?:please\s+)?play\s+/i.test(message))) {
+const instant=attachment?null:instantReply(message);
+if(instant){
+ add(instant,'jarvis');history.push({role:'model',text:instant});history=history.slice(-20);
+ pairApi({action:'append-local',message,reply:instant}).catch(()=>{});
+ $('hint').textContent='Ready when you are.';status('System ready');speak(instant);return;
+}
+const openYoutubeMusicOnly=/^\s*(?:jarvis[, ]+)?(?:please\s+)?(?:open|launch|start)\s+youtube\s+music(?:\s+app)?[.!?]*\s*$/i.test(message);
+const musicCommand = message.match(/^\s*(?:jarvis[, ]+)?(?:please\s+)?(?:play|search(?:\s+for)?)\s+(.+?)(?:\s+(?:on|in)\s+youtube\s+music)?[.!?]*\s*$/i);
+const explicitMusicCommand=/\byoutube\s+music\b/i.test(message)&&musicCommand;
+if(openYoutubeMusicOnly){
+ const reply=window.AndroidJarvis&&typeof window.AndroidJarvis.openApp==='function'
+  ?window.AndroidJarvis.openApp('youtube music'):'Opening YouTube Music.';
+ add(reply,'jarvis');history.push({role:'model',text:reply});history=history.slice(-20);
+ pairApi({action:'append-local',message,reply}).catch(()=>{});
+ $('hint').textContent='Opening YouTube Music, Sir.';status('System ready');speak(reply);
+ if(!window.AndroidJarvis)window.location.href='https://music.youtube.com/';
+ return;
+}
+if(musicCommand&&(explicitMusicCommand||/^\s*(?:jarvis[, ]+)?(?:please\s+)?play\s+/i.test(message))){
  const songQuery=musicCommand[1].trim().replace(/\s+(?:on|in)\s+youtube\s+music$/i,'').trim();
  if(songQuery){
-  let reply='';
-  let appOpenedUnconfirmed=false;
-  let searchFallbackOpened=false;
-  if(window.AndroidJarvis && typeof window.AndroidJarvis.playYoutubeMusic==='function'){
-   const nativeReply=window.AndroidJarvis.playYoutubeMusic(songQuery);
+  const reply='Requesting playback of '+songQuery+' in YouTube Music, Sir.';
+  add(reply,'jarvis');history.push({role:'model',text:reply});history=history.slice(-20);
+  pairApi({action:'append-local',message,reply}).catch(()=>{});
+  if(window.AndroidJarvis&&typeof window.AndroidJarvis.playYoutubeMusic==='function'){
+   const nativeReply=window.AndroidJarvis.playYoutubeMusic(songQuery)||'';
+   let spokenReply=reply;
    if(typeof nativeReply==='string'&&(nativeReply.startsWith('APP_OPENED_UNCONFIRMED:')||nativeReply.startsWith('PLAY_REQUESTED:'))){
-    reply='I opened YouTube Music with a song request for '+songQuery+', Sir, but playback is not confirmed. If it shows search results, please select the track.';
-    appOpenedUnconfirmed=true;
+    spokenReply='I opened YouTube Music with a song request for '+songQuery+', Sir, but playback is not confirmed. If it shows search results, please select the track.';
+    $('hint').textContent='YouTube Music opened; playback is unverified.';
    }else if(typeof nativeReply==='string'&&nativeReply.startsWith('SEARCH_FALLBACK:')){
-    reply='YouTube Music did not accept the direct play command, Sir. I could only open search results for '+songQuery+'. Please select a track to start playback.';
-    searchFallbackOpened=true;
-   }else{
-    reply=(nativeReply&&nativeReply.startsWith('ERROR:')?nativeReply.slice(6):'I could not send the playback request, Sir.');
+    spokenReply='YouTube Music did not accept the direct play command, Sir. I could only open search results for '+songQuery+'. Please select a track to start playback.';
+    $('hint').textContent='Search opened; playback was not confirmed.';
+   }else if(typeof nativeReply==='string'&&nativeReply.startsWith('ERROR:')){
+    spokenReply=nativeReply.slice(6);
+    $('hint').textContent='YouTube Music playback request failed.';
    }
+   status('YouTube Music requested');speak(spokenReply);
   }else{
-   reply='Native YouTube Music control is unavailable in this app build, Sir. I can only open search results.';
+   const fallback='Native YouTube Music control is unavailable in this app build, Sir. I can only open search results.';
+   $('hint').textContent='Opening YouTube Music search; direct playback needs the updated Android bridge.';
+   status('YouTube Music search');speak(fallback);
+   window.location.href='https://music.youtube.com/search?q='+encodeURIComponent(songQuery);
   }
-  add(reply,'jarvis');history.push({role:'model',text:reply});history=history.slice(-20);pairApi({action:'append-local',message,reply}).catch(()=>{});
-  $('hint').textContent=appOpenedUnconfirmed?'YouTube Music opened; playback is unverified.':(searchFallbackOpened?'Search opened; playback was not confirmed.':'YouTube Music playback request failed.');
-  status('System ready');speak(reply);
-  if(!appOpenedUnconfirmed&&!searchFallbackOpened)window.location.href='https://music.youtube.com/search?q='+encodeURIComponent(songQuery);
   return;
  }
 }
@@ -562,7 +588,7 @@ function handleCalendarOrAlarmCommand(text){
 const scheduledReply=handleCalendarOrAlarmCommand(message);
 if(scheduledReply){add(scheduledReply,'jarvis');history.push({role:'model',text:scheduledReply});history=history.slice(-20);pairApi({action:'append-local',message,reply:scheduledReply}).catch(()=>{});$('hint').textContent='Ready when you are.';status('System ready');speak(scheduledReply);return;}
 if(appCommand && window.AndroidJarvis){const appName=appAliases[appCommand[1].toLowerCase().trim()];if(appName){const reply=window.AndroidJarvis.openApp(appName);add(reply,'jarvis');history.push({role:'model',text:reply});history=history.slice(-20);pairApi({action:'append-local',message,reply}).catch(()=>{});$('hint').textContent='Ready when you are.';status('System ready');speak(reply);return;}}
-status('Thinking','thinking');$('hint').textContent='Processing your request…';chatBusy=true;try{const r=await fetch(JARVIS_API+'/chat',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+sessionToken},body:JSON.stringify({message:message||'Please examine the attached file and describe its contents.',history,mode:$('mode').value,attachment,deviceContext:getDeviceContext()})});const raw=await r.text();let data={};try{data=JSON.parse(raw)}catch{}if(!r.ok){const error=new Error(data.error||('AI service returned HTTP '+r.status));error.status=r.status;throw error;}const reply=data.reply||'I have no response, Sir.';chatBusy=false;add(reply,'jarvis',null,null,data.toolCalls,data.pendingActions);history.push({role:'model',text:reply});history=history.slice(-20);$('hint').textContent=data.toolCalls&&data.toolCalls.length?'Task completed. Tool execution report attached, Sir.':'Ready when you are.';speak(reply);if(!voiceOn)status('System ready');}catch(err){
+status('Thinking','thinking');$('hint').textContent='Processing your request…';chatBusy=true;try{const r=await fetch(JARVIS_API+'/chat',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+sessionToken},body:JSON.stringify({message:message||'Please examine the attached file and describe its contents.',history,mode:$('mode').value,attachment,deviceContext:getDeviceContext()})});const raw=await r.text();let data={};try{data=JSON.parse(raw)}catch{}if(!r.ok){const error=new Error(data.error||('AI service returned HTTP '+r.status));error.status=r.status;throw error;}const reply=data.reply||'I have no response, Sir.';chatBusy=false;add(reply,'jarvis');history.push({role:'model',text:reply});history=history.slice(-20);$('hint').textContent='Ready when you are.';speak(reply);if(!voiceOn)status('System ready');}catch(err){
  chatBusy=false;
  let fallback;
  if(err.status===401){
