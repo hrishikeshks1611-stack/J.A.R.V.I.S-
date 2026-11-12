@@ -54,13 +54,18 @@ test("voice photo command opens the permission-controlled camera flow", async ()
   assert.ok(html.includes('capture="environment"'));
 });
 
-test("YouTube Music voice commands open the app or fall back to the existing WebView external-link bridge", async () => {
+test("YouTube Music play commands use the native play-from-search bridge and honest fallback", async () => {
   const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
-  assert.ok(html.includes("const openYoutubeMusicOnly ="));
-  assert.ok(html.includes("window.location.href='https://music.youtube.com/'"));
+  const native = await readFile(new URL("../app/src/main/java/com/hrishikesh/jarvis/MainActivity.java", import.meta.url), "utf8");
+  const manifest = await readFile(new URL("../app/src/main/AndroidManifest.xml", import.meta.url), "utf8");
   assert.ok(html.includes("const musicCommand = message.match("));
-  assert.ok(html.includes("window.AndroidJarvis.openYoutubeMusicSearch(songQuery)"));
-  assert.ok(html.includes("'https://music.youtube.com/search?q='+encodeURIComponent(songQuery)"));
+  assert.ok(html.includes("window.AndroidJarvis.playYoutubeMusic(songQuery)"));
+  assert.ok(html.includes("Direct playback requires the JARVIS Android app"));
+  assert.ok(native.includes("MediaStore.INTENT_ACTION_MEDIA_PLAY_FROM_SEARCH"));
+  assert.ok(native.includes('play.setPackage("com.google.android.apps.youtube.music")'));
+  assert.ok(native.includes("android.app.SearchManager.QUERY"));
+  assert.ok(native.includes("will not claim playback until the app confirms it"));
+  assert.ok(manifest.includes('com.google.android.apps.youtube.music'));
 });
 
 test("native app launch results are sent to shared conversation history", async () => {
