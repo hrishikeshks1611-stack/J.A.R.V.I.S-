@@ -277,7 +277,7 @@ function add(text,who,attachment,downloadFile){const d=document.createElement('d
 function setAttachment(file){if(!file)return;const allowed=['application/pdf','text/plain','text/csv','application/json','text/markdown'];if(!(file.type.startsWith('image/')||allowed.includes(file.type))){$('hint').textContent='Please choose an image, PDF, TXT, CSV, JSON or Markdown file, Sir.';return;}if(file.size>3*1024*1024){$('hint').textContent='That file is larger than the 3 MB limit, Sir.';return;}const reader=new FileReader();reader.onload=()=>{const data=String(reader.result).split(',')[1]||'';pendingAttachment={name:file.name||'Camera photo',mimeType:file.type||'image/jpeg',data};renderAttachment()};reader.onerror=()=>{$('hint').textContent='I could not read that file, Sir.'};reader.readAsDataURL(file)}
 function renderAttachment(){const chip=$('attachmentChip');chip.innerHTML='';if(!pendingAttachment){chip.hidden=true;return}chip.hidden=false;const label=document.createElement('span');label.textContent='📎 '+pendingAttachment.name;chip.appendChild(label);const remove=document.createElement('button');remove.type='button';remove.textContent='×';remove.setAttribute('aria-label','Remove attachment');remove.onclick=()=>{pendingAttachment=null;renderAttachment()};chip.appendChild(remove)}
 $('attach').onclick=()=>{if(window.AndroidJarvis&&window.AndroidJarvis.chooseFile){window.AndroidJarvis.chooseFile()}else{$('fileInput').click()}};
-$('camera').onclick=()=>{if(window.AndroidJarvis&&window.AndroidJarvis.takePhoto){window.AndroidJarvis.takePhoto()}else{$('cameraInput').click()}};
+$('camera').onclick=()=>{if(window.AndroidJarvis&&typeof window.AndroidJarvis.capturePhoto==='function'){window.AndroidJarvis.capturePhoto(false)}else if(window.AndroidJarvis&&window.AndroidJarvis.takePhoto){window.AndroidJarvis.takePhoto()}else{$('cameraInput').click()}};
 $('fileInput').onchange=e=>{if(e.target.files[0])setAttachment(e.target.files[0]);e.target.value=''};
 $('cameraInput').onchange=e=>{if(e.target.files[0])setAttachment(e.target.files[0]);e.target.value=''};
 function detectFileRequest(text){
@@ -556,6 +556,26 @@ if(musicCommand&&(explicitMusicCommand||/^\s*(?:jarvis[, ]+)?(?:please\s+)?play\
 }
 const appCommand=message.match(/^\s*(?:jarvis[, ]+)?(?:please\s+)?(?:open|launch|start)\s+([a-z0-9 +.-]+?)(?:\s+app)?[.!?]*\s*$/i);
 const appAliases={'whatsapp':'whatsapp','you tube':'youtube','youtube':'youtube','youtube music':'youtube music','chrome':'chrome','gmail':'gmail','google maps':'maps','maps':'maps','spotify':'spotify','instagram':'instagram','facebook':'facebook','telegram':'telegram','camera':'camera','play store':'play store','messages':'messages','message':'messages','phone':'phone','settings':'settings','phone settings':'settings','twitter':'twitter','x':'x','reddit':'reddit','photos':'photos','google photos':'photos','calendar':'calendar','google calendar':'calendar','keep':'keep','google keep':'keep','contacts':'contacts','drive':'drive','google drive':'drive','files':'files','file manager':'files','amazon':'amazon','flipkart':'flipkart','browser':'browser','calculator':'calculator','gallery':'gallery','swiggy':'swiggy','zomato':'zomato'};
+function handleNativeCameraCommand(text){
+ if(!window.AndroidJarvis)return null;
+ const command=String(text||'').trim().toLowerCase();
+ if(/\\b(selfie|take a self-?portrait)\\b/.test(command)){
+  if(typeof window.AndroidJarvis.capturePhoto!=='function')return 'Front-camera capture is not available in this app build, Sir.';
+  window.AndroidJarvis.capturePhoto(true);return 'Opening the front camera for your selfie, Sir.';
+ }
+ if(/\\b(show|open|view)\\b.*\\b(last|latest|most recent)\\b.*\\b(photo|picture|image)\\b/.test(command)){
+  if(typeof window.AndroidJarvis.showLastPhoto!=='function')return 'Showing the latest saved photo is not available in this app build, Sir.';
+  window.AndroidJarvis.showLastPhoto();return 'Opening your latest saved photo, Sir.';
+ }
+ if(/\\b(open|launch)\\s+(the\\s+)?camera\\b/.test(command)){
+  if(typeof window.AndroidJarvis.openCamera==='function'){window.AndroidJarvis.openCamera();return 'Opening the camera, Sir.';}
+ }
+ if(/\\b(take|capture)\\s+(a\\s+)?(photo|picture)\\b/.test(command)){
+  if(typeof window.AndroidJarvis.capturePhoto==='function'){window.AndroidJarvis.capturePhoto(false);return 'Opening the rear camera to take a photo, Sir.';}
+  if(typeof window.AndroidJarvis.takePhoto==='function'){window.AndroidJarvis.takePhoto();return 'Opening the camera to take a photo, Sir.';}
+ }
+ return null;
+}
 function handleCalendarOrAlarmCommand(text){
  if(!window.AndroidJarvis)return null;
  const reminder=text.match(/^\s*(?:jarvis[, ]+)?(?:please\s+)?remind me to (.+?) at (\d{1,2})(?::(\d{2}))?\s*(am|pm)\s*[.!?]*\s*$/i);
@@ -585,6 +605,8 @@ function handleCalendarOrAlarmCommand(text){
  }
  return null;
 }
+const cameraReply=handleNativeCameraCommand(message);
+if(cameraReply){add(cameraReply,'jarvis');history.push({role:'model',text:cameraReply});history=history.slice(-20);pairApi({action:'append-local',message,reply:cameraReply}).catch(()=>{});$('hint').textContent='Ready when you are.';status('System ready');speak(cameraReply);return;}
 const scheduledReply=handleCalendarOrAlarmCommand(message);
 if(scheduledReply){add(scheduledReply,'jarvis');history.push({role:'model',text:scheduledReply});history=history.slice(-20);pairApi({action:'append-local',message,reply:scheduledReply}).catch(()=>{});$('hint').textContent='Ready when you are.';status('System ready');speak(scheduledReply);return;}
 if(appCommand && window.AndroidJarvis){const appName=appAliases[appCommand[1].toLowerCase().trim()];if(appName){const reply=window.AndroidJarvis.openApp(appName);add(reply,'jarvis');history.push({role:'model',text:reply});history=history.slice(-20);pairApi({action:'append-local',message,reply}).catch(()=>{});$('hint').textContent='Ready when you are.';status('System ready');speak(reply);return;}}
