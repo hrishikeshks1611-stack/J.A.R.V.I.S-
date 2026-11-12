@@ -196,8 +196,20 @@ public class WakeWordService extends Service implements RecognitionListener {
         }
         if (!new File(staging, "am").isDirectory() || !new File(staging, "conf").isDirectory())
             throw new IllegalStateException("The downloaded speech model is incomplete");
-        deleteTree(destination);
-        if (!staging.renameTo(destination)) throw new IllegalStateException("Could not install offline model");
+
+        // Replace the model transactionally. Never delete a previously working
+        // model until the new extraction has been validated and moved into place.
+        File backup = new File(getFilesDir(), "vosk-model-backup");
+        deleteTree(backup);
+        boolean hadPreviousModel = destination.exists();
+        if (hadPreviousModel && !destination.renameTo(backup))
+            throw new IllegalStateException("Could not preserve the existing offline model");
+        if (!staging.renameTo(destination)) {
+            if (hadPreviousModel && !backup.renameTo(destination))
+                throw new IllegalStateException("Model install failed and previous model restore also failed");
+            throw new IllegalStateException("Could not install offline model; previous model was restored");
+        }
+        deleteTree(backup);
     }
 
     private void deleteTree(File file) {
