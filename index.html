@@ -510,8 +510,9 @@ async function playPcmStream(response,cacheKey){
   if(!speechAudioContext)speechAudioContext=new AudioCtx({sampleRate:24000});
   const ctx=speechAudioContext;
   if(ctx.state==='suspended')await ctx.resume();
-  const sources=new Set(),parts=[];
-  let nextStart=ctx.currentTime+0.06,carry=null,stopped=false,streamDone=false;
+  const sources=new Set(),parts=[],initialChunks=[];
+  const START_BUFFER_BYTES=12000; // 250 ms at 24 kHz, 16-bit mono.
+  let initialBytes=0,started=false,nextStart=ctx.currentTime+0.06,carry=null,stopped=false,streamDone=false;
   const controller={
     pause(){stopped=true;sources.forEach(source=>{try{source.stop()}catch(e){}});sources.clear();}
   };
@@ -531,26 +532,43 @@ async function playPcmStream(response,cacheKey){
     sources.add(source);
     source.onended=()=>{sources.delete(source);if(streamDone&&!sources.size&&!stopped&&currentAudio===controller){currentAudio=null;status('System ready');}};
     source.start(startAt);
-    if(!sources.size||startAt<=ctx.currentTime+0.1)status('Speaking','speaking');
+    status('Speaking','speaking');
+  };
+  const deliverChunk=(chunk)=>{
+    if(!chunk.length||stopped)return;
+    if(!started){
+      initialChunks.push(chunk.slice());initialBytes+=chunk.length;
+      if(initialBytes<START_BUFFER_BYTES)return;
+      started=true;
+      for(const buffered of initialChunks)queuePcm(buffered);
+      initialChunks.length=0;
+      return;
+    }
+    queuePcm(chunk);
   };
   const reader=response.body?.getReader?.();
   if(reader){
     while(true){const {value,done}=await reader.read();if(done)break;if(stopped)break;
       const chunk=value instanceof Uint8Array?value:new Uint8Array(value);
-      if(chunk.length){parts.push(chunk.slice());}
+      if(chunk.length){parts.push(chunk.slice());deliverChunk(chunk);}
     }
   }else{
-    const chunk=new Uint8Array(await response.arrayBuffer());if(chunk.length){parts.push(chunk);}
+    const chunk=new Uint8Array(await response.arrayBuffer());
+    if(chunk.length){parts.push(chunk);deliverChunk(chunk);}
   }
   if(stopped)return;
   streamDone=true;
+  if(!started&&initialChunks.length){
+    started=true;
+    for(const buffered of initialChunks)queuePcm(buffered);
+    initialChunks.length=0;
+  }
   if(carry)throw new Error('The speech stream ended unexpectedly.');
   const total=parts.reduce((sum,p)=>sum+p.length,0),joined=new Uint8Array(total);
   let offset=0;for(const part of parts){joined.set(part,offset);offset+=part.length;}
   if(!total)throw new Error('Gemini returned an empty speech stream.');
-  // Buffer the complete PCM response before playback so network chunk timing cannot create tiny gaps or broken syllables.
-  queuePcm(joined);
-  // Save in the background: never delay playback for cache writes.
+  // Playback begins after a short pre-buffer; the remainder is queued as it streams in.
+  // Save the complete original PCM response in the background for exact-voice replay.
   saveCachedSpeech(cacheKey,pcmToWav(joined)).catch(()=>{});
   if(!sources.size&&currentAudio===controller){currentAudio=null;status('System ready');}
 }
