@@ -4,11 +4,12 @@ name: Build JARVIS Android and TV APK verification artifacts
 on:
   workflow_dispatch:
   push:
-    branches: [ main, jarvis-intelligence-tools ]
+    branches: [ main, jarvis-intelligence-tools, jarvis-rebirth-6.0 ]
     paths:
       - 'app/**'
       - '*.gradle'
       - 'settings.gradle'
+      - 'gradle.properties'
       - '.github/workflows/android-apk.yml'
 permissions:
   contents: read
