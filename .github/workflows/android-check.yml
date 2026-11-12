@@ -2,7 +2,7 @@ name: JARVIS Android update compatibility checks
 
 on:
   push:
-    branches: [ jarvis-5.0-development, jarvis-5-to-10-continuation ]
+    branches: [ jarvis-5.0-development, jarvis-5-to-10-continuation, jarvis-wakeword-reliability-fix ]
     paths:
       - 'app/**'
       - '*.gradle'
