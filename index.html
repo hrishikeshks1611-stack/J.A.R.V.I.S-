@@ -814,8 +814,133 @@ status('Thinking','thinking');$('hint').textContent='Processing your request…'
  if(sessionToken)pairApi({action:'append-local',message,reply:fallback}).catch(()=>{});
  speak(fallback);
 }};
-window.jarvisNative={onWakeWordDetected:()=>{$('hint').textContent='I am listening for your command, Sir.';status('Wake word detected','listening');speak('Yes, Sir?')},onSpeechPartial:(transcript)=>{$('prompt').value=transcript;status('Listening · '+transcript,'listening');},onSpeechResult:(transcript)=>{$('prompt').value=transcript;$('form').requestSubmit();},onAttachment:(raw)=>{try{const a=typeof raw==='string'?JSON.parse(raw):raw;pendingAttachment=a;renderAttachment();$('hint').textContent='Attachment ready, Sir. Add a question or send it as it is.'}catch(e){$('hint').textContent='I could not load that attachment, Sir.'}}};
-$('wakeWordButton').onclick=()=>{if(window.AndroidJarvis&&window.AndroidJarvis.openWakeWordSettings){window.AndroidJarvis.openWakeWordSettings();}else{add('Offline wake-word listening is available in the Android app only, Sir.','jarvis');}};
+let browserWakeEnabled=false,browserWakeRecognition=null,browserWakeCommandCapture=false,browserWakeRestartTimer=null;
+const BrowserSpeechRecognition=window.SpeechRecognition||window.webkitSpeechRecognition;
+function scheduleBrowserWakeRestart(delay){
+ clearTimeout(browserWakeRestartTimer);
+ browserWakeRestartTimer=setTimeout(()=>{
+  if(!browserWakeEnabled||document.visibilityState==='hidden'||browserWakeCommandCapture)return;
+  if(chatBusy){scheduleBrowserWakeRestart(1500);return;}
+  startBrowserWakeListener();
+ },delay||900);
+}
+function parseBrowserWakePhrase(transcript){
+ const match=String(transcript||'').trim().match(/^(?:hey\s+jarvis|hello\s+jarvis|wake\s+up\s+jarvis|jarvis\s*,?\s*are\s+you\s+there)[,.\s!?]*(.*)$/i);
+ return match?{detected:true,command:(match[1]||'').trim()}:null;
+}
+function startBrowserWakeListener(){
+ if(!browserWakeEnabled||!BrowserSpeechRecognition||document.visibilityState==='hidden'||browserWakeCommandCapture)return;
+ try{
+  const recognition=new BrowserSpeechRecognition();
+  browserWakeRecognition=recognition;
+  recognition.lang='en-GB';recognition.continuous=true;recognition.interimResults=false;recognition.maxAlternatives=1;
+  recognition.onresult=event=>{
+   for(let i=event.resultIndex;i<event.results.length;i++){
+    if(!event.results[i].isFinal)continue;
+    const detected=parseBrowserWakePhrase(event.results[i][0].transcript);
+    if(!detected)continue;
+    browserWakeCommandCapture=true;
+    try{recognition.stop()}catch{}
+    browserWakeRecognition=null;
+    $('hint').textContent='Wake phrase recognised, Sir.';
+    status('Wake phrase detected','listening');
+    if(detected.command){
+     $('prompt').value=detected.command;
+     $('form').requestSubmit();
+     browserWakeCommandCapture=false;
+     scheduleBrowserWakeRestart(3500);
+    }else{
+     speak('Yes, Sir?');
+     captureBrowserWakeCommand();
+    }
+    break;
+   }
+  };
+  recognition.onerror=event=>{
+   if(event.error==='not-allowed'||event.error==='service-not-allowed'){
+    browserWakeEnabled=false;browserWakeCommandCapture=false;$('wakeWordButton').textContent='Wake-word microphone';
+    $('hint').textContent='Microphone permission was denied. Allow microphone access for JARVIS in Android settings, Sir.';
+    status('Microphone permission needed');
+   }else if(event.error!=='no-speech'&&event.error!=='aborted'){
+    $('hint').textContent='Wake-word listening paused: '+event.error+'. You can retry the wake-word button, Sir.';
+   }
+  };
+  recognition.onend=()=>{
+   if(browserWakeRecognition===recognition)browserWakeRecognition=null;
+   if(browserWakeEnabled&&!browserWakeCommandCapture)scheduleBrowserWakeRestart(1000);
+  };
+  recognition.start();
+  $('wakeWordButton').textContent='Wake-word mic: On';
+  $('hint').textContent='Listening for Hey JARVIS, Hello JARVIS, Wake up JARVIS, or JARVIS, are you there? Keep JARVIS open, Sir.';
+  status('Wake-word listening','listening');
+ }catch(error){
+  browserWakeRecognition=null;
+  $('hint').textContent='This browser could not start continuous wake-word listening. Use the microphone button instead, Sir.';
+  status('Wake-word unavailable');
+ }
+}
+function captureBrowserWakeCommand(){
+ if(!browserWakeEnabled)return;
+ if(window.AndroidJarvis&&typeof window.AndroidJarvis.startVoiceRecognition==='function'){
+  try{window.AndroidJarvis.startVoiceRecognition();return}catch{}
+ }
+ if(!BrowserSpeechRecognition){
+  browserWakeCommandCapture=false;
+  $('hint').textContent='The wake phrase was heard, but this browser cannot capture the follow-up command. Tap the microphone, Sir.';
+  scheduleBrowserWakeRestart(2500);return;
+ }
+ try{
+  const commandRecognition=new BrowserSpeechRecognition();
+  commandRecognition.lang='en-GB';commandRecognition.continuous=false;commandRecognition.interimResults=false;commandRecognition.maxAlternatives=1;
+  commandRecognition.onresult=event=>{
+   const transcript=event.results?.[0]?.[0]?.transcript||'';
+   if(transcript.trim()){$('prompt').value=transcript;$('form').requestSubmit();}
+  };
+  commandRecognition.onerror=()=>{$('hint').textContent='I did not catch that command, Sir.';};
+  commandRecognition.onend=()=>{browserWakeCommandCapture=false;scheduleBrowserWakeRestart(1800);};
+  commandRecognition.start();
+  $('hint').textContent='Yes, Sir? I am listening for your command.';
+  status('Listening for command','listening');
+ }catch(error){
+  browserWakeCommandCapture=false;
+  $('hint').textContent='Command capture could not start. Tap the microphone, Sir.';
+  scheduleBrowserWakeRestart(1800);
+ }
+}
+function stopBrowserWake(){
+ browserWakeEnabled=false;browserWakeCommandCapture=false;clearTimeout(browserWakeRestartTimer);
+ if(browserWakeRecognition){try{browserWakeRecognition.stop()}catch{}browserWakeRecognition=null;}
+ $('wakeWordButton').textContent='Wake-word microphone';
+ $('hint').textContent='Wake-word listening is off, Sir.';
+ status('System ready');
+}
+window.jarvisNative={
+ onWakeWordDetected:()=>{$('hint').textContent='I am listening for your command, Sir.';status('Wake word detected','listening');speak('Yes, Sir?')},
+ onSpeechPartial:(transcript)=>{$('prompt').value=transcript;status('Listening · '+transcript,'listening');},
+ onSpeechResult:(transcript)=>{
+  $('prompt').value=transcript;$('form').requestSubmit();
+  if(browserWakeCommandCapture){browserWakeCommandCapture=false;scheduleBrowserWakeRestart(3500);}
+ },
+ onAttachment:(raw)=>{try{const a=typeof raw==='string'?JSON.parse(raw):raw;pendingAttachment=a;renderAttachment();$('hint').textContent='Attachment ready, Sir. Add a question or send it as it is.'}catch(e){$('hint').textContent='I could not load that attachment, Sir.'}}
+};
+$('wakeWordButton').onclick=()=>{
+ if(window.AndroidJarvis&&typeof window.AndroidJarvis.openWakeWordSettings==='function'){
+  window.AndroidJarvis.openWakeWordSettings();return;
+ }
+ if(browserWakeEnabled){stopBrowserWake();return;}
+ if(!BrowserSpeechRecognition){
+  add('This browser does not support continuous wake-word recognition. The microphone button remains available, Sir.','jarvis');
+  $('hint').textContent='Continuous wake-word recognition is not supported by this browser.';
+  return;
+ }
+ browserWakeEnabled=true;startBrowserWakeListener();
+};
+document.addEventListener('visibilitychange',()=>{
+ if(!browserWakeEnabled)return;
+ if(document.visibilityState==='hidden'){
+  if(browserWakeRecognition){try{browserWakeRecognition.stop()}catch{}browserWakeRecognition=null;}
+ }else if(!browserWakeCommandCapture)scheduleBrowserWakeRestart(500);
+});
 $('mic').onclick=()=>{if(window.AndroidJarvis){window.AndroidJarvis.startVoiceRecognition();return;}const SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(!SR){add('Voice recognition is not supported by this browser, Sir.','jarvis');return}const rec=new SR();rec.lang='en-GB';rec.interimResults=false;rec.onstart=()=>status('Listening','listening');rec.onresult=e=>{$('prompt').value=e.results[0][0].transcript;$('form').requestSubmit()};rec.onerror=()=>status('System ready');rec.onend=()=>{if(!$('prompt').value)status('System ready')};rec.start()};
 
 // Mission Control: truthful, local diagnostics and explicitly local routines.
