@@ -26,5 +26,12 @@ android {
             versionNameSuffix '-tv'
             buildConfigField 'boolean', 'JARVIS_TV', 'true'
         }
+        // Side-by-side test channel: never replaces the installed Build 39 app.
+        phonePreview {
+            dimension 'device'
+            applicationIdSuffix '.preview'
+            versionNameSuffix '-preview'
+            buildConfigField 'boolean', 'JARVIS_TV', 'false'
+        }
     }
 }
