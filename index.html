@@ -701,14 +701,29 @@ if(musicCommand&&(explicitMusicCommand||/^\s*(?:jarvis[, ]+)?(?:please\s+)?play\
  }
 }
 const appCommand=message.match(/^\s*(?:jarvis[, ]+)?(?:please\s+)?(?:open|launch|start)\s+([a-z0-9 +.-]+?)(?:\s+app)?[.!?]*\s*$/i);
-const takePhotoCommand=/^\s*(?:(?:hey\s+)?jarvis[, ]+)?(?:please\s+)?(?:take|capture)(?:\s+(?:a|some))?\s+photos?(?:[, ]+jarvis)?[.!?]*\s*$/i.test(message);
-if(takePhotoCommand){
- const reply='Certainly, Sir. Opening the camera now. Please use the camera shutter to take the photo.';
+const cameraCommandText=message.replace(/^\s*(?:hey\s+)?jarvis[, ]*/i,'').trim().replace(/[.!?]+$/,'').toLowerCase();
+const cameraAction=/^(?:please\s+)?(?:open|launch|start)(?:\s+the)?\s+camera$/.test(cameraCommandText)?'open':
+ /^(?:please\s+)?(?:take|capture)(?:\s+(?:a|the))?\s+selfie$/.test(cameraCommandText)?'selfie':
+ /^(?:please\s+)?(?:take|capture)(?:\s+(?:a|the))?\s+photos?$/.test(cameraCommandText)?'photo':
+ /^(?:please\s+)?(?:show|open|view)(?:\s+me)?(?:\s+the)?\s+(?:last\s+)?photo$/.test(cameraCommandText)?'show':null;
+if(cameraAction){
+ const replies={open:'Certainly, Sir. Opening the camera.',photo:'Certainly, Sir. Taking a photo now.',selfie:'Certainly, Sir. Switching to the front camera for your selfie.',show:'Certainly, Sir. Opening your latest JARVIS photo.'};
+ const reply=replies[cameraAction];
  add(reply,'jarvis');history.push({role:'model',text:reply});history=history.slice(-20);
  pairApi({action:'append-local',message,reply}).catch(()=>{});
- $('hint').textContent='Camera requested. Capture only when you are ready.';
- status('Camera active');
- try{$('camera').click();}catch(error){$('hint').textContent='Please tap the camera button to grant camera access.';status('System ready');}
+ $('hint').textContent=cameraAction==='show'?'Opening your latest saved photo…':'Camera requested. You can cancel before capture.';
+ status(cameraAction==='show'?'Opening photo':'Camera active');
+ try{
+  if(window.AndroidJarvis){
+   if(cameraAction==='open'&&typeof window.AndroidJarvis.openCamera==='function')window.AndroidJarvis.openCamera();
+   else if(cameraAction==='photo'&&typeof window.AndroidJarvis.capturePhoto==='function')window.AndroidJarvis.capturePhoto(false);
+   else if(cameraAction==='selfie'&&typeof window.AndroidJarvis.capturePhoto==='function')window.AndroidJarvis.capturePhoto(true);
+   else if(cameraAction==='show'&&typeof window.AndroidJarvis.showLastPhoto==='function')window.AndroidJarvis.showLastPhoto();
+   else if(cameraAction==='photo'||cameraAction==='selfie')$('camera').click();
+  }else if(cameraAction==='photo'||cameraAction==='selfie')$('camera').click();
+  else if(cameraAction==='open')$('cameraInput').click();
+  else $('hint').textContent='Your latest photo is available in your device gallery.';
+ }catch(error){$('hint').textContent='The camera action could not be started. Please try again, Sir.';status('System ready');}
  speak(reply);
  return;
 }
