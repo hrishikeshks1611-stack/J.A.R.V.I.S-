@@ -7,7 +7,7 @@ import java.util.regex.Pattern;
 /** Pure-Java wake phrase parsing, independent of Android audio hardware. */
 public final class WakePhraseParser {
     private static final Pattern WAKE_PREFIX = Pattern.compile(
-            "^(?:(?:hey|hello) jarvis|wake up jarvis|jarvis(?: are you there)?)(?:\\\\b|$)");
+            "^(?:(?:hey|hello) jarvis|wake up jarvis|jarvis(?: are you there)?)(?:\\b|$)");
 
     private WakePhraseParser() { }
 
@@ -15,7 +15,7 @@ public final class WakePhraseParser {
         if (input == null) return "";
         return input.toLowerCase(Locale.ROOT)
                 .replaceAll("[^a-z0-9 ]", " ")
-                .replaceAll("\\\\s+", " ")
+                .replaceAll("\\s+", " ")
                 .trim();
     }
 
