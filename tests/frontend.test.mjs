@@ -40,7 +40,7 @@ test("one-time owner recovery is available on an unpaired phone", async () => {
 
 test("service worker cache version is bumped and script parses", async () => {
   const source = await readFile(new URL("../sw.js", import.meta.url), "utf8");
-  assert.ok(source.includes('const CACHE="jarvis-shell-v26"'));
+  assert.ok(source.includes('const CACHE="jarvis-shell-v27"'));
   assert.doesNotThrow(() => new Function(source));
 });
 
@@ -158,7 +158,7 @@ test("full backup UI exports and restores shared conversation plus memories with
   assert.ok(html.includes("id=\"restoreBackup\""));
   assert.ok(html.includes("JARVIS_AUX_API+'/backup'"));
   assert.ok(html.includes("backupApi({action:'export'})"));
-  assert.ok(html.includes("backupApi({action:'restore',backup,confirm:true})"));
+  assert.ok(html.includes("backupApi({action:'restore',backup:cloudBackup,confirm:true})"));
   assert.ok(html.includes("Restore this backup? It will replace the shared conversation and saved memories"));
   assert.ok(html.includes("await restoreSharedHistory();await renderMemories();"));
   assert.ok(html.includes("sessionRole!=='owner'"));
