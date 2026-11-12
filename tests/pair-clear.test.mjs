@@ -22,7 +22,8 @@ function mockRedis(token, writes) {
   process.env.UPSTASH_REDIS_REST_URL = "https://redis.example.test";
   process.env.UPSTASH_REDIS_REST_TOKEN = "test-token";
   globalThis.fetch = async (url, options = {}) => {
-    const command = JSON.parse(options.body)[0];
+    const redisCommands = JSON.parse(options.body);
+    const command = redisCommands[0];
     commands.push(command);
     let result = "OK";
     if (command[0] === "GET" && command[1] === "jarvis:v1:session:" + hashToken(token)) {
@@ -32,7 +33,7 @@ function mockRedis(token, writes) {
     } else if (command[0] === "SET" && command[1] === "jarvis:v1:conversation:main") {
       writes.push(command);
     }
-    return new Response(JSON.stringify([{ result }]), {
+    return new Response(JSON.stringify(redisCommands.map(() => ({ result }))), {
       status: 200,
       headers: { "content-type": "application/json" }
     });
