@@ -29,6 +29,9 @@ import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.webkit.WebSettings;
+import android.webkit.SslErrorHandler;
+import android.net.http.SslError;
 import android.widget.Toast;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
@@ -69,6 +72,15 @@ public class MainActivity extends Activity {
         webView.getSettings().setMediaPlaybackRequiresUserGesture(false);
         webView.getSettings().setAllowFileAccess(false);
         webView.getSettings().setAllowContentAccess(false);
+        webView.getSettings().setAllowFileAccessFromFileURLs(false);
+        webView.getSettings().setAllowUniversalAccessFromFileURLs(false);
+        webView.getSettings().setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
+        webView.getSettings().setJavaScriptCanOpenWindowsAutomatically(false);
+        webView.getSettings().setSupportMultipleWindows(false);
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            webView.getSettings().setSafeBrowsingEnabled(true);
+        }
+        android.webkit.CookieManager.getInstance().setAcceptThirdPartyCookies(webView, false);
         webView.getSettings().setGeolocationEnabled(true);
         webView.addJavascriptInterface(new JarvisBridge(), "AndroidJarvis");
         webView.setWebChromeClient(new WebChromeClient() {
@@ -103,11 +115,20 @@ public class MainActivity extends Activity {
             }
             @Override public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 Uri uri = request.getUrl();
-                String host = uri.getHost() == null ? "" : uri.getHost();
-                if ("hrishikeshks1611-stack.github.io".equals(host)) return false;
+                String scheme = uri.getScheme() == null ? "" : uri.getScheme().toLowerCase(Locale.ROOT);
+                String host = uri.getHost() == null ? "" : uri.getHost().toLowerCase(Locale.ROOT);
+                if ("https".equals(scheme) && "hrishikeshks1611-stack.github.io".equals(host)) return false;
+                // Never hand javascript:, file:, content:, intent: or other unsafe schemes
+                // to another app. Only ordinary web links may leave the trusted WebView origin.
+                if (!"https".equals(scheme) && !"http".equals(scheme)) return true;
                 try { startActivity(new Intent(Intent.ACTION_VIEW, uri)); }
                 catch (ActivityNotFoundException ignored) { }
                 return true;
+            }
+
+            @Override public void onReceivedSslError(WebView view, SslErrorHandler handler, SslError error) {
+                // Fail closed: never let a page bypass certificate validation.
+                handler.cancel();
             }
         });
         setContentView(webView);
