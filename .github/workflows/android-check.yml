@@ -2,7 +2,7 @@ name: JARVIS Android microphone and wake-word checks
 
 on:
   push:
-    branches: [ jarvis-5.0-development, jarvis-5-to-10-continuation ]
+    branches: [ jarvis-mic-wakeword-clean, jarvis-5.0-development, jarvis-5-to-10-continuation ]
     paths:
       - 'app/**'
       - '*.gradle'
@@ -14,6 +14,7 @@ on:
       - 'app/**'
       - '*.gradle'
       - 'settings.gradle'
+      - '.github/workflows/android-check.yml'
 
 permissions:
   contents: read
@@ -21,7 +22,7 @@ permissions:
 jobs:
   android-build:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
       - name: Check out repository
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.2.2
@@ -43,15 +44,20 @@ jobs:
           gradle-version: '8.9'
       - name: Compile phone and TV variants
         run: gradle --no-daemon assemblePhoneDebug assembleTvDebug
-      - name: Verify microphone capture and wake-word logic on Android 10
+      - name: Verify microphone capture and wake-word logic on Android 15
         uses: ReactiveCircus/android-emulator-runner@v2
         with:
-          api-level: 29
+          api-level: 35
+          target: google_apis
           arch: x86_64
+          profile: pixel_2
+          emulator-options: -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect -no-snapshot -wipe-data
           disable-animations: true
           script: |
             set -euo pipefail
+            adb wait-for-device
+            adb shell getprop sys.boot_completed | grep -q 1
             adb logcat -c
-            timeout 180s gradle --no-daemon --stacktrace connectedPhoneDebugAndroidTest
+            timeout 240s gradle --no-daemon --stacktrace connectedPhoneDebugAndroidTest
             adb logcat -d -s WakeWordService:V
-            echo "PASS: Android 10 microphone PCM capture and wake-phrase tests completed."
+            echo "PASS: Android microphone PCM capture and wake-phrase tests completed."
