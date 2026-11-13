@@ -21,6 +21,8 @@ import android.os.HandlerThread;
 import android.view.Gravity;
 import android.view.Surface;
 import android.view.TextureView;
+import android.util.Size;
+import android.hardware.camera2.params.StreamConfigurationMap;
 import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
@@ -45,6 +47,8 @@ public final class CameraActivity extends Activity {
     private String cameraId;
     private boolean useFrontCamera;
     private CaptureRequest.Builder previewRequest;
+    private Size previewSize;
+    private Size jpegSize;
 
     @Override protected void onCreate(Bundle state) {
         super.onCreate(state);
@@ -73,6 +77,7 @@ public final class CameraActivity extends Activity {
         controls.addView(close, new LinearLayout.LayoutParams(0, -2, 1f));
         root.addView(controls, new LinearLayout.LayoutParams(-1, -2));
         setContentView(root);
+        startThread();
         preview.setSurfaceTextureListener(surfaceListener);
     }
 
@@ -130,6 +135,12 @@ public final class CameraActivity extends Activity {
             CameraManager manager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
             cameraId = chooseCamera(manager, useFrontCamera);
             if (cameraId == null) { setStatus("NO COMPATIBLE CAMERA FOUND"); return; }
+            CameraCharacteristics characteristics = manager.getCameraCharacteristics(cameraId);
+            StreamConfigurationMap map = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
+            if (map == null) { setStatus("CAMERA OUTPUTS NOT SUPPORTED"); return; }
+            previewSize = chooseSize(map.getOutputSizes(SurfaceTexture.class), 1280, 720);
+            jpegSize = chooseSize(map.getOutputSizes(android.graphics.ImageFormat.JPEG), 1920, 1080);
+            if (previewSize == null || jpegSize == null) { setStatus("CAMERA RESOLUTION UNAVAILABLE"); return; }
             manager.openCamera(cameraId, new CameraDevice.StateCallback() {
                 @Override public void onOpened(CameraDevice device) {
                     camera = device;
@@ -159,9 +170,9 @@ public final class CameraActivity extends Activity {
         try {
             SurfaceTexture texture = preview.getSurfaceTexture();
             if (texture == null || camera == null) return;
-            texture.setDefaultBufferSize(1280, 720);
+            texture.setDefaultBufferSize(previewSize.getWidth(), previewSize.getHeight());
             Surface previewSurface = new Surface(texture);
-            imageReader = ImageReader.newInstance(1280, 720, android.graphics.ImageFormat.JPEG, 2);
+            imageReader = ImageReader.newInstance(jpegSize.getWidth(), jpegSize.getHeight(), android.graphics.ImageFormat.JPEG, 2);
             imageReader.setOnImageAvailableListener(reader -> {
                 Image image = reader.acquireNextImage();
                 if (image == null) return;
@@ -184,6 +195,19 @@ public final class CameraActivity extends Activity {
                 @Override public void onConfigureFailed(CameraCaptureSession failed) { setStatus("CAMERA PREVIEW FAILED"); }
             }, handler);
         } catch (Exception e) { setStatus("CAMERA PREVIEW ERROR"); }
+    }
+
+    private Size chooseSize(Size[] choices, int targetWidth, int targetHeight) {
+        if (choices == null || choices.length == 0) return null;
+        Size best = choices[0];
+        long bestScore = Long.MAX_VALUE;
+        for (Size candidate : choices) {
+            long score = Math.abs(candidate.getWidth() - targetWidth) * 2L
+                    + Math.abs(candidate.getHeight() - targetHeight) * 2L;
+            if (candidate.getWidth() > 2560 || candidate.getHeight() > 1440) score += 100000;
+            if (score < bestScore) { bestScore = score; best = candidate; }
+        }
+        return best;
     }
 
     private void capturePhoto() {
