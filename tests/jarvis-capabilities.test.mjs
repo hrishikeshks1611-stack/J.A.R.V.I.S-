@@ -3,6 +3,8 @@ import assert from "node:assert/strict";
 import {
   ACTION_STATES,
   JARVIS_CAPABILITIES,
+  buildJarvisCapabilitiesReply,
+  isJarvisCapabilitiesQuestion,
   createJarvisAction,
   getJarvisCapability,
   isJarvisCapabilityAvailable,
@@ -56,4 +58,23 @@ test("action lifecycle rejects unsafe skips and requires failure reasons", () =>
   assert.throws(() => transitionJarvisAction(action, "failed"), /failure reason/);
   assert.throws(() => transitionJarvisAction(action, "nonsense"), /Invalid JARVIS action transition/);
   assert.deepEqual(ACTION_STATES, ["proposed", "awaiting_approval", "handed_off", "executed", "verified", "failed", "cancelled"]);
+});
+
+
+test("capability catalogue answers capability questions from verified build metadata", () => {
+  assert.equal(isJarvisCapabilitiesQuestion("What all can he do?"), true);
+  assert.equal(isJarvisCapabilitiesQuestion("What can you do?"), true);
+  assert.equal(isJarvisCapabilitiesQuestion("Can you explain photosynthesis?"), false);
+  assert.equal(getJarvisCapability("contact_calling").status, "implemented");
+  assert.equal(isJarvisCapabilityAvailable("contact_calling", "android"), true);
+  assert.equal(isJarvisCapabilityAvailable("contact_calling", "pwa"), false);
+  const android = buildJarvisCapabilitiesReply("Android phone/tablet");
+  assert.match(android, /initiate a phone call/i);
+  assert.match(android, /structured study plan/i);
+  assert.match(android, /PDF, DOCX, XLSX, PPTX, CSV, TXT and Markdown/i);
+  assert.match(android, /wake-word detection is experimental/i);
+  assert.match(android, /cannot verify those from this server response/i);
+  const browser = buildJarvisCapabilitiesReply("Browser / desktop");
+  assert.doesNotMatch(browser, /initiate a phone call/i);
+  assert.doesNotMatch(browser, /take a photo or selfie/i);
 });
