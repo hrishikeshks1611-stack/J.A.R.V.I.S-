@@ -68,7 +68,11 @@ public class MainActivityLaunchTest {
                     container.getChildAt(0) instanceof WebView);
 
             WebView webView = (WebView) container.getChildAt(0);
-            assertEquals("https://hrishikeshks1611-stack.github.io/J.A.R.V.I.S-/", webView.getUrl());
+            AtomicReference<String> loadedUrl = new AtomicReference<>();
+            InstrumentationRegistry.getInstrumentation().runOnMainSync(() ->
+                    loadedUrl.set(webView.getUrl())
+            );
+            assertEquals("https://hrishikeshks1611-stack.github.io/J.A.R.V.I.S-/", loadedUrl.get());
 
             boolean interfaceReady = false;
             for (int attempt = 0; attempt < 20 && !interfaceReady; attempt++) {
