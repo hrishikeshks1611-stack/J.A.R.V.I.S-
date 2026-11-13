@@ -9,7 +9,7 @@ Application ID: `com.hrishikesh.jarvis.fresh`. This is a clean-room app identity
 - On Android 12+ the listener prefers Android's on-device speech recognizer when one is available; otherwise it uses the installed Android recognition provider and requests offline recognition.
 - Command continuation after a wake phrase for app launch, camera, music search, and media controls.
 - Native Camera2 preview with supported output-size selection, front/rear switching, and JPEG capture saved in the app's private Pictures folder.
-- UK English TTS preference; Algieba is selected only when exposed by the installed TTS engine.
+- Strict Alfred voice gate: only an explicitly identified male en-GB Algieba/UK male voice is permitted; otherwise all spoken output is muted (no engine-default or female fallback).
 - Active media-session play/pause/next/previous commands after the owner enables JARVIS in Android Notification Access settings.
 - Fresh local conversation history encrypted with AES-GCM; the AES key is held by Android Keystore.
 - UI to review and clear local memory.
@@ -34,3 +34,9 @@ Application ID: `com.hrishikesh.jarvis.fresh`. This is a clean-room app identity
 
 ## Data policy
 The encrypted conversation database starts empty on a fresh install. Android app backup is disabled.
+
+
+## Voice guarantee and current limits
+- JARVIS will not intentionally fall back to a female or unclassified TTS voice. If the phone's installed TTS engine does not expose a qualifying UK male voice, JARVIS remains silent and reports that the Alfred voice is unavailable. The exact Alfred timbre and phrasing cannot be guaranteed by Android TTS alone.
+- Office engine, Education engine, and document-attachment ingestion are not present in this source branch; they are not included in this APK.
+- Launcher icon and splash use a circular multi-ring ARC reactor design, with no triangular centrepiece.
