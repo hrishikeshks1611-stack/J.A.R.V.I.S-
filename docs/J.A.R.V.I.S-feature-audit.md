@@ -5,7 +5,7 @@ This inventory follows the actual J.A.R.V.I.S 7.0 source carried into this clean
 ## Preserved intelligence and assistant features
 
 - **J.A.R.V.I.S identity:** Android launcher label is exactly `J.A.R.V.I.S`. Alfred is a personality mode, never the app name.
-- **Alfred:** refined British butler personality mode, with the configured Algieba British voice path. If voice generation is unavailable, the client is designed to fail silent rather than switch to an unverified voice.
+- **Alfred:** selectable refined British butler personality mode inside J.A.R.V.I.S, with the configured Algieba British voice path. If voice generation is unavailable, the client is designed to fail silent rather than switch to an unverified voice.
 - **Fast local responses:** simple greetings, local time/date, assistant identity, common website opening, web-search links, and thanks are handled locally. General knowledge and complex questions still need the online AI service.
 - **Tutor / Education:** detects learning and exam requests; supports step-by-step teaching, worked examples, quizzes, exam-style answers, grading/explanations, study plans and revision planning.
 - **Medical:** cautious health education and first-aid guidance; detects common emergency red flags and immediately directs the user to India's 112 or Kerala's 108 ambulance service. It does not diagnose, prescribe, or call emergency services.
@@ -16,7 +16,7 @@ This inventory follows the actual J.A.R.V.I.S 7.0 source carried into this clean
 
 ## Android and device features with source implementations
 
-- **ARC reactor:** the launcher resource is the blue circular reactor with an inverted triangle. The main HUD has an animated reactor core. The current published HTML animation is layered CSS, not a true 3D-rendered model; the Android build must preserve the prominent moving reactor and should not describe it as true 3D until that work is completed.
+- **ARC reactor:** the launcher resource is the blue circular reactor with an inverted triangle. The main HUD has an animated reactor core. The Android build bundles the exact HTML UI from the branch and renders it locally with the approved HTTPS base origin for API calls and storage.
 - **Microphone and voice input:** native microphone capture and speech recognition bridge methods are present.
 - **Wake word:** Vosk offline foreground service and phrase parser are present. Supported phrases in the current parser: “Hey JARVIS,” “Hello JARVIS,” “Wake up JARVIS,” and “JARVIS, are you there?” The capability catalogue marks persistent offline wake-word as experimental/prototype; real-device reliability and background behavior remain unverified.
 - **Music:** exact YouTube Music track search and native direct-track handoff are present. Android media-session play control is partial: a sent command is not proof that audio actually started.
