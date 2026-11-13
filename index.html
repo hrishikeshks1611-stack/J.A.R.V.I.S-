@@ -910,7 +910,44 @@ function handleCalendarOrAlarmCommand(text){
  }
  return null;
 }
-const scheduledReply=handleCalendarOrAlarmCommand(message);
+const contactCommandText=message.replace(/^\s*(?:hey\s+)?jarvis[, ]*/i,'').trim().replace(/[.!?]+$/,'');
+ const importContactsCommand=/^(?:please\s+)?(?:import|load)\s+(?:my\s+)?contacts$|^(?:please\s+)?import\s+(?:a\s+)?contacts?\s+file$/i.test(contactCommandText);
+ if(importContactsCommand){
+  const reply='Certainly, Sir. Please choose your exported contacts .vcf file. I will import the names and numbers locally on this device.';
+  add(reply,'jarvis');history.push({role:'model',text:reply});history=history.slice(-20);
+  if(window.AndroidJarvis&&typeof window.AndroidJarvis.chooseFile==='function')window.AndroidJarvis.chooseFile();
+  else $('attach').click();
+  $('hint').textContent='Choose your .vcf contacts export. Other file types will remain ordinary attachments.';
+  status('Waiting for contacts file');speak(reply);return;
+ }
+ const rememberContact=contactCommandText.match(/^remember\s+contact\s+(.+?)\s+(?:as|number)\s+([+\d() .-]+)$/i);
+ if(rememberContact){
+  const name=rememberContact[1].trim(),number=cleanContactNumber(rememberContact[2]);
+  if(!number){const reply='That phone number does not look valid, Sir. Please include the country code if needed.';add(reply,'jarvis');history.push({role:'model',text:reply});history=history.slice(-20);speak(reply);return;}
+  const items=readJarvisContacts(),index=items.findIndex(x=>String(x.name||'').toLowerCase()===name.toLowerCase());
+  if(index>=0)items[index]={name,number};else items.push({name,number});
+  writeJarvisContacts(items);
+  const reply='Saved '+name+' in this device’s JARVIS contact list, Sir.';
+  add(reply,'jarvis');history.push({role:'model',text:reply});history=history.slice(-20);pairApi({action:'append-local',message,reply}).catch(()=>{});speak(reply);return;
+ }
+ const callContact=contactCommandText.match(/^(?:please\s+)?(?:call|phone|ring)\s+(.+)$/i);
+ if(callContact){
+  const target=callContact[1].trim();
+  const result=resolveJarvisContact(target);
+  let reply='';
+  if(result.missing)reply='I cannot find '+target+' in my JARVIS contact list, Sir. Say “import contacts” to load your contacts VCF, or “remember contact '+target+' as [number]”.';
+  else if(result.ambiguous)reply='I found more than one matching contact: '+result.names.join(', ')+'. Please use the full contact name, Sir.';
+  else{
+   reply='Certainly, Sir. Opening the dialler for '+result.contact.name+'. Please review and confirm the call.';
+   add(reply,'jarvis');history.push({role:'model',text:reply});history=history.slice(-20);pairApi({action:'append-local',message,reply}).catch(()=>{});
+   $('hint').textContent='Opening Android dialler. No call is placed automatically.';
+   speak(reply);
+   setTimeout(()=>{window.location.href='tel:'+result.contact.number;},450);
+   return;
+  }
+  add(reply,'jarvis');history.push({role:'model',text:reply});history=history.slice(-20);speak(reply);return;
+ }
+ const scheduledReply=handleCalendarOrAlarmCommand(message);
 if(scheduledReply){add(scheduledReply,'jarvis');history.push({role:'model',text:scheduledReply});history=history.slice(-20);pairApi({action:'append-local',message,reply:scheduledReply}).catch(()=>{});$('hint').textContent='Ready when you are.';status('System ready');speak(scheduledReply);return;}
 if(appCommand && window.AndroidJarvis){const requestedApp=appCommand[1].trim();const appName=appAliases[requestedApp.toLowerCase()]||requestedApp;{const reply=window.AndroidJarvis.openApp(appName);add(reply,'jarvis');history.push({role:'model',text:reply});history=history.slice(-20);pairApi({action:'append-local',message,reply}).catch(()=>{});$('hint').textContent='Ready when you are.';status('System ready');speak(reply);return;}}
 if(!sessionToken){openSyncPanel();$('syncStatus').textContent='Pair this device to use online AI features. Local device commands remain available, Sir.';return;}
@@ -1042,6 +1079,60 @@ function stopBrowserWake(){
  $('hint').textContent='Wake-word listening is off, Sir.';
  status('System ready');
 }
+function readJarvisContacts(){
+ try{const v=JSON.parse(localStorage.getItem('jarvisContactsV1')||'[]');return Array.isArray(v)?v:[]}catch{return []}
+}
+function writeJarvisContacts(items){localStorage.setItem('jarvisContactsV1',JSON.stringify(items));}
+function cleanContactNumber(value){
+ const raw=String(value||'').trim();
+ const number=raw.replace(/[^0-9+]/g,'');
+ const digits=number.replace(/\D/g,'');
+ return digits.length>=7&&digits.length<=15&&(!number.slice(1).includes('+'))?number:'';
+}
+function importJarvisVcards(file){
+ try{
+  const bytes=Uint8Array.from(atob(file.data||''),c=>c.charCodeAt(0));
+  const source=new TextDecoder('utf-8').decode(bytes).replace(/\r\n[ \t]/g,'').replace(/\n[ \t]/g,'');
+  const cards=source.split(/BEGIN:VCARD/i).slice(1);
+  const imported=[];
+  for(const card of cards){
+   const block=card.split(/END:VCARD/i)[0]||'';
+   const lines=block.split(/\r?\n/);
+   let name='',fallback='',numbers=[];
+   for(const line of lines){
+    const m=line.match(/^(?:item\d+\.)?(FN|N|TEL)(?:;([^:]*))?:(.*)$/i);
+    if(!m)continue;
+    const key=m[1].toUpperCase(),meta=(m[2]||'').toUpperCase(),value=m[3].replace(/\\n/gi,' ').replace(/\\([,;\\])/g,'$1').trim();
+    if(key==='FN')name=value;
+    else if(key==='N')fallback=value.split(';').filter(Boolean).reverse().join(' ').trim();
+    else {const number=cleanContactNumber(value);if(number)numbers.push({number,priority:/CELL|MOBILE/.test(meta)?0:/WORK/.test(meta)?2:1});}
+   }
+   const number=numbers.sort((a,b)=>a.priority-b.priority)[0]?.number;
+   name=(name||fallback).trim();
+   if(name&&number)imported.push({name,number});
+  }
+  if(!imported.length)throw new Error('No usable names and phone numbers were found in that VCF file.');
+  const existing=readJarvisContacts();
+  for(const item of imported){
+   const key=item.name.toLocaleLowerCase();
+   const index=existing.findIndex(x=>String(x.name||'').toLocaleLowerCase()===key);
+   if(index>=0)existing[index]=item;else existing.push(item);
+  }
+  writeJarvisContacts(existing);
+  return imported.length;
+ }catch(error){throw new Error(error.message||'Could not import that contacts file.');}
+}
+function resolveJarvisContact(query){
+ const q=String(query||'').trim().toLocaleLowerCase();
+ const all=readJarvisContacts();
+ const exact=all.filter(x=>String(x.name||'').trim().toLocaleLowerCase()===q);
+ if(exact.length===1)return {contact:exact[0]};
+ if(exact.length>1)return {ambiguous:true,names:exact.map(x=>x.name)};
+ const partial=all.filter(x=>String(x.name||'').toLocaleLowerCase().includes(q)||q.includes(String(x.name||'').toLocaleLowerCase()));
+ if(partial.length===1)return {contact:partial[0]};
+ if(partial.length>1)return {ambiguous:true,names:partial.map(x=>x.name)};
+ return {missing:true};
+}
 window.jarvisNative={
  onWakeWordDetected:()=>{$('hint').textContent='I am listening for your command, Sir.';status('Wake word detected','listening');speak('Yes, Sir?')},
  onSpeechPartial:(transcript)=>{$('prompt').value=transcript;status('Listening · '+transcript,'listening');},
@@ -1051,7 +1142,7 @@ window.jarvisNative={
   $('prompt').value=command;$('form').requestSubmit();
   if(browserWakeCommandCapture){browserWakeCommandCapture=false;scheduleBrowserWakeRestart(3500);}
  },
- onAttachment:(raw)=>{try{const a=typeof raw==='string'?JSON.parse(raw):raw;pendingAttachment=a;renderAttachment();$('hint').textContent='Attachment ready, Sir. Add a question or send it as it is.'}catch(e){$('hint').textContent='I could not load that attachment, Sir.'}}
+ onAttachment:(raw)=>{try{const a=typeof raw==='string'?JSON.parse(raw):raw;if(/\.vcf$/i.test(a.name||'')||/vcard/i.test(a.mimeType||'')){const count=importJarvisVcards(a);const reply='Imported '+count+' contacts into this JARVIS device, Sir. You can now say “call Amma” or “call [contact name]”.';add(reply,'jarvis');history.push({role:'model',text:reply});history=history.slice(-20);pairApi({action:'append-local',message:'Import contacts from VCF',reply}).catch(()=>{});$('hint').textContent='Contacts imported locally. No contacts permission was requested.';speak(reply);return;}pendingAttachment=a;renderAttachment();$('hint').textContent='Attachment ready, Sir. Add a question or send it as it is.'}catch(e){$('hint').textContent='Contact import failed: '+e.message}}
 };
 $('wakeWordButton').hidden=true;
 $('wakeWordButton').onclick=()=>{
