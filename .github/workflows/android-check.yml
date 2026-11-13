@@ -55,3 +55,34 @@ jobs:
           retention-days: 14
       - name: Run deterministic offline wake-phrase unit tests
         run: gradle --no-daemon testPhoneDebugUnitTest
+      - name: Install APK and exercise rear/front CameraX capture on Android 15 emulator
+        uses: ReactiveCircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_2
+          emulator-options: -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect -no-snapshot -wipe-data -camera-back emulated -camera-front emulated
+          disable-animations: true
+          script: |
+            set -euo pipefail
+            adb wait-for-device
+            adb shell getprop sys.boot_completed | grep -q 1
+            adb install app/build/outputs/apk/phone/debug/app-phone-debug.apk
+            adb shell pm grant com.hrishikesh.jarvis android.permission.CAMERA
+            adb shell pm path com.hrishikesh.jarvis
+            adb shell am start -n com.hrishikesh.jarvis/.CameraCaptureActivity --ez camera_selfie false
+            for i in $(seq 1 25); do
+              count=$(adb shell ls /sdcard/Pictures/JARVIS 2>/dev/null | grep -c '^JARVIS_' || true)
+              if [ "$count" -ge 1 ]; then break; fi
+              sleep 1
+            done
+            test "$count" -ge 1
+            adb shell am start -n com.hrishikesh.jarvis/.CameraCaptureActivity --ez camera_selfie true
+            for i in $(seq 1 25); do
+              count=$(adb shell ls /sdcard/Pictures/JARVIS 2>/dev/null | grep -c '^JARVIS_' || true)
+              if [ "$count" -ge 2 ]; then break; fi
+              sleep 1
+            done
+            test "$count" -ge 2
+            echo "PASS: APK installed; rear photo and front selfie were saved."
