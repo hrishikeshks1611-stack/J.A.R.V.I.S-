@@ -68,14 +68,6 @@ jobs:
           echo "Verified exact J.A.R.V.I.S launcher label and packaged ARC reactor icon."
           echo "Verified independent phone package: com.hrishikesh.jarvis.eight.release"
           echo "Verified independent TV package: com.hrishikesh.jarvis.eight.release.tv"
-      - name: Install and launch on Android 10 emulator
-        uses: reactivecircus/android-emulator-runner@v2
-        with:
-          api-level: 29
-          target: default
-          arch: x86_64
-          disable-animations: true
-          script: gradle --no-daemon connectedPhoneDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.hrishikesh.jarvis.MainActivityLaunchTest
       - name: Upload phone build artifact for QA
         uses: actions/upload-artifact@v4
         with:
@@ -90,3 +82,13 @@ jobs:
           path: app/build/outputs/apk/tv/debug/app-tv-debug.apk
           if-no-files-found: error
           retention-days: 30
+      - name: Install and launch on Android 10 emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 29
+          target: default
+          arch: x86_64
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -no-boot-anim -no-audio
+          emulator-boot-timeout: 900
+          disable-animations: true
+          script: gradle --no-daemon connectedPhoneDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.hrishikesh.jarvis.MainActivityLaunchTest
