@@ -273,7 +273,7 @@ jobs:
           fi
 
           mark "Requesting clean wake-word service stop."
-          adb_bounded 10 shell am start -n com.hrishikesh.jarvis.rebirth/com.hrishikesh.jarvis.WakeWordTestActivity -a com.hrishikesh.jarvis.rebirth.TEST_STOP_WAKE
+          adb_bounded 10 shell am start -n com.hrishikesh.jarvis.rebirth/com.hrishikesh.jarvis.WakeWordTestActivity -a com.hrishikesh.jarvis.TEST_STOP_WAKE
           mark "Stop request dispatched; verifying service termination independently."
           sleep 3
           if adb_bounded 20 shell dumpsys activity services com.hrishikesh.jarvis.rebirth | grep -q WakeWordService; then
