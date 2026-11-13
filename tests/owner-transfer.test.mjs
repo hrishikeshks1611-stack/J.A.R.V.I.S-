@@ -1,4 +1,5 @@
 import test from "node:test";
+import { createHash } from "node:crypto";
 import assert from "node:assert/strict";
 import handler from "../api/pair.js";
 
@@ -27,6 +28,8 @@ test("owner transfer is authorised and performed by one atomic Redis script", as
     let result;
     if (command[0] === "GET" && command[1].includes(":session:")) {
       result = JSON.stringify({ deviceId: "owner-device", deviceName: "Phone", role: "owner" });
+    } else if (command[0] === "GET" && command[1] === "jarvis:v1:owner:token-hash") {
+      result = createHash("sha256").update(token).digest("hex");
     } else if (command[0] === "EXPIRE") {
       result = 1;
     } else if (command[0] === "GET" && command[1] === "jarvis:v1:device:laptop-device") {
@@ -63,4 +66,38 @@ test("owner transfer is authorised and performed by one atomic Redis script", as
   assert.equal(res.body.transferred, true);
   assert.equal(res.body.ownerDeviceId, "laptop-device");
   assert.ok(calls.some(command => command[0] === "EVAL"));
+});
+
+
+test("verify resolves owner from the authoritative owner token even when session role is stale", async () => {
+  process.env.UPSTASH_REDIS_REST_URL = "https://redis.example.test";
+  process.env.UPSTASH_REDIS_REST_TOKEN = "test-token";
+  const token = "stale-role-owner-token";
+  const ownerHash = createHash("sha256").update(token).digest("hex");
+  globalThis.fetch = async (_url, options) => {
+    const commands = JSON.parse(options.body);
+    const command = commands[0];
+    let result;
+    if (command[0] === "GET" && command[1] === "jarvis:v1:session:" + ownerHash) {
+      result = JSON.stringify({ deviceId: "physical-owner-phone", deviceName: "Android phone", role: "device" });
+    } else if (command[0] === "GET" && command[1] === "jarvis:v1:owner:token-hash") {
+      result = ownerHash;
+    } else if (command[0] === "EXPIRE") {
+      result = 1;
+    } else {
+      throw new Error("Unexpected Redis command: " + command.join(" "));
+    }
+    return new Response(JSON.stringify(commands.map(() => ({ result }))), { status: 200 });
+  };
+  const res = {
+    headers: {},
+    setHeader(name, value) { this.headers[name] = value; },
+    status(code) { this.statusCode = code; return this; },
+    json(value) { this.body = value; return this; },
+    end() { return this; }
+  };
+  await handler({ method: "POST", headers: { authorization: "Bearer " + token }, body: { action: "verify" } }, res);
+  assert.equal(res.statusCode, 200);
+  assert.equal(res.body.deviceId, "physical-owner-phone");
+  assert.equal(res.body.role, "owner");
 });
