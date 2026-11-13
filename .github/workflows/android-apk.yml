@@ -64,6 +64,7 @@ jobs:
           echo "$PHONE_BADGING" | grep -Fq "application-label:'J.A.R.V.I.S'"
           echo "$TV_BADGING" | grep -Fq "application-label:'J.A.R.V.I.S'"
           unzip -l "$PHONE_APK" | grep -Fq "res/drawable/ic_jarvis_launcher.xml"
+          unzip -l "$PHONE_APK" | grep -Fq "assets/jarvis.html"
           echo "Verified exact J.A.R.V.I.S launcher label and packaged ARC reactor icon."
           echo "Verified independent phone package: com.hrishikesh.jarvis.eight.release"
           echo "Verified independent TV package: com.hrishikesh.jarvis.eight.release.tv"
