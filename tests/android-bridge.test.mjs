@@ -116,5 +116,7 @@ test("cloud JARVIS speech is pinned to Google's documented male Algieba voice an
   const source = await readFile(new URL("../api/speech.js", import.meta.url), "utf8");
   assert.ok(source.includes('voiceName: "Algieba"'));
   assert.ok(source.includes('languageCode: "en-GB"'));
+  assert.ok(source.includes("distinctly masculine adult voice"));
+  assert.ok(source.includes("British personal butler"));
   assert.doesNotMatch(source, /speechSynthesis|SpeechSynthesisUtterance|voiceName:\s*["'](?:Achernar|Aoede|Autonoe|Callirrhoe|Despina|Erinome|Gacrux|Kore|Laomedeia|Leda|Pulcherrima|Sulafat|Vindemiatrix|Zephyr)["']/);
 });
