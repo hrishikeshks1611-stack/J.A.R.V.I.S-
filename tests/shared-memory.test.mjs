@@ -78,11 +78,8 @@ test("getSession validates the bearer token and refreshes session TTLs", async (
   const token = randomToken(32);
   const session = { deviceId: "device-123", deviceName: "Test phone", role: "owner" };
   const calls = mockRedis(async (command, index) => {
-    if (index === 1) {
-      assert.equal(command[0], "GET");
-      assert.equal(command[1], "jarvis:v1:session:" + hashToken(token));
-      return JSON.stringify(session);
-    }
+    if (command[0] === "GET" && command[1] === "jarvis:v1:session:" + hashToken(token)) return JSON.stringify(session);
+    if (command[0] === "GET" && command[1] === "jarvis:v1:owner:token-hash") return hashToken(token);
     assert.equal(command[0], "EXPIRE");
     return 1;
   });
@@ -90,9 +87,9 @@ test("getSession validates the bearer token and refreshes session TTLs", async (
   assert.equal(result.deviceId, session.deviceId);
   assert.equal(result.role, "owner");
   assert.equal(result.token, token);
-  assert.equal(calls.length, 3);
-  assert.equal(calls.requests.length, 2, "GET plus one pipelined TTL refresh request");
-  assert.deepEqual(calls.requests[1].map(command => command[0]), ["EXPIRE", "EXPIRE"]);
+  assert.equal(calls.length, 4);
+  assert.equal(calls.requests.length, 3, "session GET, authoritative owner lookup, and pipelined TTL refresh");
+  assert.deepEqual(calls.requests[2].map(command => command[0]), ["EXPIRE", "EXPIRE"]);
 });
 
 test("getSession can validate a session without extending live Redis TTLs", async () => {
@@ -100,12 +97,15 @@ test("getSession can validate a session without extending live Redis TTLs", asyn
   const session = { deviceId: "read-only-device", role: "owner" };
   const calls = mockRedis(async command => {
     assert.equal(command[0], "GET");
-    return JSON.stringify(session);
+    if (command[1] === "jarvis:v1:session:" + hashToken(token)) return JSON.stringify(session);
+    if (command[1] === "jarvis:v1:owner:token-hash") return "different-owner-hash";
+    throw new Error("Unexpected Redis key: " + command[1]);
   });
   const result = await getSession({ headers: { authorization: "Bearer " + token } }, { touch: false });
   assert.equal(result.deviceId, session.deviceId);
-  assert.equal(calls.length, 1);
-  assert.equal(calls[0][0], "GET");
+  assert.equal(result.role, "device");
+  assert.equal(calls.length, 2);
+  assert.deepEqual(calls.map(command => command[0]), ["GET", "GET"]);
 });
 
 test("getSession rejects missing bearer credentials without contacting Redis", async () => {
