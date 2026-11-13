@@ -66,7 +66,7 @@ test("Alfred voice fails silent and never falls back to Android default TTS", as
   const fallback = html.slice(start, end);
   assert.ok(fallback.includes("I will remain silent rather than use another voice"));
   assert.ok(!fallback.includes("speakOfflineFallback"));
-  assert.ok(html.includes("jarvis-alfred-male-british-v2"));
+  assert.ok(html.includes("jarvis-alfred-male-british-v3"));
 });
 
 
