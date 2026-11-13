@@ -711,32 +711,32 @@ function openYoutubeMusicTrack(track){
    const result=window.AndroidJarvis.playYoutubeMusic(videoId)||'';
    if(result.startsWith('ERROR:'))throw new Error(result.replace(/^ERROR:/,''));
    if(!result.startsWith('TRACK_OPEN_REQUESTED:'))throw new Error('Android did not accept the selected track request.');
-   // Opening a watch URL does not reliably start playback on every Android
-   // YouTube Music version. Ask its active media session to play once it appears.
+   // Send Play immediately, then poll briefly while Android brings up the
+   // YouTube Music media session for this exact track. No fixed 2.2-second wait.
    let attempts=0;
    const requestPlayback=()=>{
     attempts++;
     try{
      const control=window.AndroidJarvis.controlMusic('play')||'';
      if(control.startsWith('MEDIA_KEY_SENT:')){
-      $('hint').textContent='Play command sent to YouTube Music. Check that audio has started.';
-      status('Playback requested');
+      $('hint').textContent='Play command sent to YouTube Music for the selected track.';
+      status('Playback command sent');
       return;
      }
      if(/notification access/i.test(control)){
-      $('hint').textContent='Allow JARVIS media controls in Android Notification Access, then try Play again.';
+      $('hint').textContent='Enable JARVIS in Android Notification Access once, then try the track again.';
       status('Permission needed');
       return;
      }
-     if(attempts<6){setTimeout(requestPlayback,1000);return;}
-     $('hint').textContent='The track opened, but Android has not exposed a playable YouTube Music session.';
+     if(attempts<30){setTimeout(requestPlayback,200);return;}
+     $('hint').textContent='YouTube Music opened the track, but Android did not expose its playback session. Playback is not confirmed.';
      status('Playback not confirmed');
     }catch(error){
-     $('hint').textContent='The track opened, but playback control failed: '+error.message;
+     $('hint').textContent='The track opened, but Android playback control failed: '+error.message;
      status('Playback control failed');
     }
    };
-   setTimeout(requestPlayback,2200);
+   requestPlayback();
    return result;
   }
   window.location.href='https://music.youtube.com/watch?v='+encodeURIComponent(videoId);
