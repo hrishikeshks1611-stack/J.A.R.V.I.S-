@@ -23,11 +23,13 @@ test("Android release metadata identifies JARVIS 6.0 and advances installed vers
   assert.match(gradle, /versionName\s+'6\.0\.0'/);
 });
 
-test("APK workflow cannot publish debug-signed builds as downloadable releases", async () => {
+test("APK workflow uploads phone and TV CI artifacts without publishing GitHub releases", async () => {
   const workflow = await readFile(new URL("../.github/workflows/android-apk.yml", import.meta.url), "utf8");
   assert.match(workflow, /contents:\s*read/);
   assert.doesNotMatch(workflow, /gh release create/);
-  assert.match(workflow, /debug-verification/);
+  assert.match(workflow, /JARVIS-Rebirth-Android-phone/);
+  assert.match(workflow, /JARVIS-Rebirth-Android-TV/);
+  assert.match(workflow, /actions\/upload-artifact@v4/);
 });
 
 
