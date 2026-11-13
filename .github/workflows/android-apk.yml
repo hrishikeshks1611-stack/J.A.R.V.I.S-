@@ -47,7 +47,7 @@ jobs:
         run: |
           set -euo pipefail
           grep -q "applicationId 'com.hrishikesh.jarvis.fresh'" app/build.gradle
-          grep -q "versionName '1.1.1'" app/build.gradle
+          grep -q "versionName '1.1.2'" app/build.gradle
           grep -q "com.alphacephei:vosk-android" app/build.gradle
           grep -q "androidx.camera:camera-camera2" app/build.gradle
           grep -q "android:theme=\"@style/SplashTheme\"" app/src/main/AndroidManifest.xml
