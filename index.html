@@ -705,10 +705,14 @@ async function lookupYoutubeMusicTrack(query){
  return data.selected;
 }
 function openYoutubeMusicTrack(track){
+ const searchQuery=[track.title,track.artist].filter(Boolean).join(' ').trim();
+ if(!searchQuery)throw new Error('The selected YouTube Music result has no searchable title or artist.');
  if(window.AndroidJarvis&&typeof window.AndroidJarvis.playYoutubeMusic==='function'){
-  const result=window.AndroidJarvis.playYoutubeMusic(track.videoId)||'';
-  if(!result.startsWith('TRACK_OPENED_UNCONFIRMED:'))throw new Error(result.replace(/^ERROR:/,'')||'Android could not open the selected track.');
-  return result;
+  // Android 10's installed JARVIS bridge accepts a media-search query, not a YouTube video ID.
+  // Passing the ID here makes older installed builds open YouTube Music without selecting the song.
+  const result=window.AndroidJarvis.playYoutubeMusic(searchQuery)||'';
+  if(result.startsWith('ERROR:'))throw new Error(result.replace(/^ERROR:/,''));
+  return result||'TRACK_REQUEST_SENT_UNCONFIRMED';
  }
  window.location.href=track.url||('https://music.youtube.com/watch?v='+encodeURIComponent(track.videoId));
  return 'WEB_LINK_OPENED:'+track.videoId;
@@ -731,7 +735,7 @@ if(multiAppMusic && window.AndroidJarvis && typeof window.AndroidJarvis.openApp=
   const track=await lookupYoutubeMusicTrack(songQuery);
   openYoutubeMusicTrack(track);
   spokenReply=appReply+' Opening '+track.title+' by '+track.artist+' in YouTube Music, Sir.';
-  $('hint').textContent='Opened the selected track in YouTube Music.';
+  $('hint').textContent='Sent the selected song to YouTube Music; playback confirmation is pending.';
  }catch(error){
   spokenReply=appReply+' Sir, I could not open that song in YouTube Music: '+error.message;
   $('hint').textContent='YouTube Music track lookup or launch failed.';
@@ -782,21 +786,18 @@ if(musicCommand&&(explicitMusicCommand||/^\s*(?:jarvis[, ]+)?(?:please\s+)?play\
   })();
   try{
    const track=await lookupYoutubeMusicTrack(songQuery);
-   $('hint').textContent='Opening '+track.title+' in YouTube Music…';
+   $('hint').textContent='Sending '+track.title+' by '+track.artist+' to YouTube Music…';
    status('Launching track');
    await acknowledgementFinished;
    // The watch URL is handed to Android after the acknowledgement finishes,
    // avoiding navigation cutting off the Alfred/Algieba voice stream.
    openYoutubeMusicTrack(track);
   }catch(error){
-   $('hint').textContent='Opening YouTube Music search for '+songQuery+'…';
-   status('Opening music app');
+   $('hint').textContent='Could not select a song: '+error.message;
+   status('Music request failed');
    await acknowledgementFinished;
-   if(window.AndroidJarvis&&typeof window.AndroidJarvis.openApp==='function'){
-    window.AndroidJarvis.openApp('youtube music');
-   }else{
-    window.location.href='https://music.youtube.com/search?q='+encodeURIComponent(songQuery);
-   }
+   const failure='I could not find and send that song to YouTube Music, Sir: '+error.message;
+   add(failure,'jarvis');history.push({role:'model',text:failure});history=history.slice(-20);speak(failure);
   }
   return;
  }
