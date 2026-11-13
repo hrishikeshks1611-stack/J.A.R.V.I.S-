@@ -711,32 +711,32 @@ function openYoutubeMusicTrack(track){
    const result=window.AndroidJarvis.playYoutubeMusic(videoId)||'';
    if(result.startsWith('ERROR:'))throw new Error(result.replace(/^ERROR:/,''));
    if(!result.startsWith('TRACK_OPEN_REQUESTED:'))throw new Error('Android did not accept the selected track request.');
-   // Send Play immediately, then poll briefly while Android brings up the
-   // YouTube Music media session for this exact track. No fixed 2.2-second wait.
+   // Give YouTube Music time to receive the direct track URL and publish its
+   // media session before sending Play. Retry session discovery for up to 15s.
    let attempts=0;
    const requestPlayback=()=>{
     attempts++;
     try{
      const control=window.AndroidJarvis.controlMusic('play')||'';
      if(control.startsWith('MEDIA_KEY_SENT:')){
-      $('hint').textContent='Play command sent to YouTube Music for the selected track.';
+      $('hint').textContent='Play command sent to YouTube Music for '+(track.title||'the selected track')+'. Actual playback still depends on YouTube Music accepting the request.';
       status('Playback command sent');
       return;
      }
      if(/notification access/i.test(control)){
-      $('hint').textContent='Enable JARVIS in Android Notification Access once, then try the track again.';
+      $('hint').textContent='Enable JARVIS in Android Notification Access once, then repeat the song request.';
       status('Permission needed');
       return;
      }
-     if(attempts<30){setTimeout(requestPlayback,200);return;}
-     $('hint').textContent='YouTube Music opened the track, but Android did not expose its playback session. Playback is not confirmed.';
+     if(attempts<45){setTimeout(requestPlayback,300);return;}
+     $('hint').textContent='YouTube Music received the exact track link, but Android did not expose its playback session. Playback is not confirmed.';
      status('Playback not confirmed');
     }catch(error){
      $('hint').textContent='The track opened, but Android playback control failed: '+error.message;
      status('Playback control failed');
     }
    };
-   requestPlayback();
+   setTimeout(requestPlayback,1200);
    return result;
   }
   window.location.href='https://music.youtube.com/watch?v='+encodeURIComponent(videoId);
