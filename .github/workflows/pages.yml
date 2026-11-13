@@ -1,39 +1,22 @@
 name: Deploy JARVIS to GitHub Pages
+
+# JARVIS 7.0 is published as /7.0/ by the main-branch Pages workflow.
+# Do not deploy directly from this feature branch: the Pages environment is
+# restricted to the repository's main publishing branch.
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
+
 permissions:
   contents: read
   pages: write
-  deployments: write
   id-token: write
-concurrency:
-  group: pages
-  cancel-in-progress: true
+
 jobs:
   deploy:
+    if: github.ref == 'refs/heads/main'
     environment:
       name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Configure Pages
-        uses: actions/configure-pages@v5
-      - name: Close stale Pages deployments
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          ids=$(gh api "repos/${GITHUB_REPOSITORY}/deployments?environment=github-pages&per_page=100" --jq '.[].id')
-          for id in $ids; do
-            gh api --method POST "repos/${GITHUB_REPOSITORY}/deployments/${id}/statuses" -f state=inactive -f description="Superseded by the latest JARVIS Pages deployment" >/dev/null
-          done
-      - name: Upload site
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: .
-      - name: Deploy
-        id: deployment
-        uses: actions/deploy-pages@v4
+      - name: Deployment is handled by the main publishing workflow
+        run: echo "Use the main branch Pages workflow to publish both the shared root and JARVIS 7.0."

@@ -1,10 +1,8 @@
-name: Build JARVIS 6.0.1 Android phone and TV packages
-# JARVIS 6.0.1 keeps the installed .next package identity and remains distinct from legacy 5.0.2.
-# CI verification does not replace physical-device installation and migration tests.
+name: Build JARVIS 7.0 Android phone and TV packages
 on:
   workflow_dispatch:
   push:
-    branches: [ main, jarvis-master-brain, jarvis-6-mic-calling-repair, jarvis-6.0.1-repair ]
+    branches: [ jarvis-7.0-new-app ]
     paths:
       - 'app/**'
       - '*.gradle'
@@ -45,7 +43,7 @@ jobs:
         run: gradle --no-daemon testPhoneDebugUnitTest testTvDebugUnitTest
       - name: Build phone and Android TV APKs
         run: gradle --no-daemon assemblePhoneDebug assembleTvDebug
-      - name: Verify separate package identities and versions
+      - name: Verify new independent app identities
         shell: bash
         run: |
           set -euo pipefail
@@ -56,27 +54,26 @@ jobs:
           test -s "$TV_APK"
           PHONE_BADGING="$("$AAPT" dump badging "$PHONE_APK")"
           TV_BADGING="$("$AAPT" dump badging "$TV_APK")"
-          echo "$PHONE_BADGING" | grep -Fq "package: name='com.hrishikesh.jarvis.next' versionCode='601' versionName='6.0.1'"
-          echo "$TV_BADGING" | grep -Fq "package: name='com.hrishikesh.jarvis.next.tv' versionCode='601' versionName='6.0.1-tv'"
-          if echo "$PHONE_BADGING" | grep -Fq "package: name='com.hrishikesh.jarvis'"; then
-            echo "ERROR: phone APK would overwrite legacy JARVIS"
+          echo "$PHONE_BADGING" | grep -Fq "package: name='com.hrishikesh.jarvis.seven.release' versionCode='701' versionName='7.0'"
+          echo "$TV_BADGING" | grep -Fq "package: name='com.hrishikesh.jarvis.seven.release.tv' versionCode='701' versionName='7.0-tv'"
+          if echo "$PHONE_BADGING" | grep -Eq "package: name='com.hrishikesh.jarvis(\.next)?'"; then
+            echo "ERROR: JARVIS 7.0 package collides with an earlier JARVIS app"
             exit 1
           fi
           sha256sum "$PHONE_APK" "$TV_APK"
-          echo "Verified phone package: com.hrishikesh.jarvis.next"
-          echo "Verified TV package: com.hrishikesh.jarvis.next.tv"
-          echo "Both package IDs are distinct from legacy com.hrishikesh.jarvis."
-      - name: Upload verified phone build artifact
+          echo "Verified independent phone package: com.hrishikesh.jarvis.seven.release"
+          echo "Verified independent TV package: com.hrishikesh.jarvis.seven.release.tv"
+      - name: Upload phone build artifact for QA
         uses: actions/upload-artifact@v4
         with:
-          name: JARVIS-6.0.1-Android-phone
+          name: JARVIS-7.0-Android-phone-QA
           path: app/build/outputs/apk/phone/debug/app-phone-debug.apk
           if-no-files-found: error
           retention-days: 30
-      - name: Upload verified Android TV build artifact
+      - name: Upload Android TV build artifact for QA
         uses: actions/upload-artifact@v4
         with:
-          name: JARVIS-6.0.1-Android-TV
+          name: JARVIS-7.0-Android-TV-QA
           path: app/build/outputs/apk/tv/debug/app-tv-debug.apk
           if-no-files-found: error
           retention-days: 30

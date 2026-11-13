@@ -24,20 +24,20 @@ test("native bridge exposes confirmation-based Clock and Calendar actions", asyn
   assert.ok(manifest.includes('com.android.alarm.permission.SET_ALARM'));
 });
 
-test("JARVIS 6.0.1 retains the JARVIS 6 package identity and increments its version", async () => {
+test("JARVIS 7.0 uses an independent package identity and version", async () => {
   const gradle = await readFile(new URL("../app/build.gradle", import.meta.url), "utf8");
-  assert.match(gradle, /applicationId\s+'com\.hrishikesh\.jarvis\.next'/);
-  assert.match(gradle, /versionCode\s+601/);
-  assert.match(gradle, /versionName\s+'6\.0\.1'/);
+  assert.match(gradle, /applicationId\s+'com\.hrishikesh\.jarvis\.seven\.release'/);
+  assert.match(gradle, /versionCode\s+701/);
+  assert.match(gradle, /versionName\s+'7\.0'/);
 });
 
 test("APK workflow verifies separate-install builds and never publishes debug APKs as releases", async () => {
   const workflow = await readFile(new URL("../.github/workflows/android-apk.yml", import.meta.url), "utf8");
   assert.match(workflow, /contents:\s*read/);
   assert.doesNotMatch(workflow, /gh release create|action-gh-release|Publish.*APK/);
-  assert.match(workflow, /JARVIS 6\.0\.1 Android phone and TV packages/);
-  assert.ok(workflow.includes("com.hrishikesh.jarvis.next"));
-  assert.ok(workflow.includes("com.hrishikesh.jarvis.next.tv"));
+  assert.match(workflow, /JARVIS 7\.0 Android phone and TV packages/);
+  assert.ok(workflow.includes("com.hrishikesh.jarvis.seven.release"));
+  assert.ok(workflow.includes("com.hrishikesh.jarvis.seven.release.tv"));
 });
 
 
@@ -112,7 +112,7 @@ test("Android camera bridge supports camera launch, automatic photo, selfie and 
   assert.match(html, /cameraAction==='show'/);
 });
 
-test("in-app updater validates package and version before Android PackageInstaller handoff", async () => {
+test("native installer remains guarded while the web-only interface exposes no APK updater", async () => {
   const source = await readFile(new URL("../app/src/main/java/com/hrishikesh/jarvis/MainActivity.java", import.meta.url), "utf8");
   const receiver = await readFile(new URL("../app/src/main/java/com/hrishikesh/jarvis/UpdateInstallReceiver.java", import.meta.url), "utf8");
   const manifest = await readFile(new URL("../app/src/main/AndroidManifest.xml", import.meta.url), "utf8");
@@ -127,8 +127,8 @@ test("in-app updater validates package and version before Android PackageInstall
   assert.match(receiver, /STATUS_SUCCESS/);
   assert.match(manifest, /REQUEST_INSTALL_PACKAGES/);
   assert.match(manifest, /UpdateInstallReceiver/);
-  assert.match(html, /checkJarvisUpdates/);
-  assert.match(html, /api\.github\.com\/repos\/hrishikeshks1611-stack/);
+  assert.doesNotMatch(html, /checkJarvisUpdates/);
+  assert.doesNotMatch(html, /id="updateButton"/);
 });
 
 
