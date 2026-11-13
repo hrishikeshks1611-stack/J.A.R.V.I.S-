@@ -19,7 +19,7 @@ permissions:
   contents: read
 jobs:
   build:
-    runs-on: macos-14
+    runs-on: ubuntu-latest
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -82,11 +82,19 @@ jobs:
           path: app/build/outputs/apk/tv/debug/app-tv-debug.apk
           if-no-files-found: error
           retention-days: 30
+      - name: Enable KVM when available
+        run: |
+          if [ -e /dev/kvm ]; then
+            sudo chmod 666 /dev/kvm
+            ls -l /dev/kvm
+          else
+            echo "KVM is unavailable on this runner; the emulator will use software rendering."
+          fi
       - name: Install and launch on Android 10 emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 29
-          target: default
+          target: google_apis
           arch: x86_64
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -no-boot-anim -no-audio
           emulator-boot-timeout: 900
