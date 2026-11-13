@@ -42,7 +42,7 @@ export default async function handler(req, res) {
   try {
     const prompt = [
       "Speak the supplied transcript exactly as written. Do not paraphrase, omit, add, or announce anything.",
-      "VOICE: Keep the selected Algieba voice identity. Do not imitate a different person or change vocal identity.",
+      "VOICE: Use Algieba, a male voice in Google’s published Gemini TTS voice catalogue. Preserve a distinctly masculine adult voice; never switch to a female voice or another speaker identity.",
       "ACCENT: Use clearly recognisable contemporary British English pronunciation, preferably educated Southern British / understated modern RP. This must sound British, not American.",
       "PRONUNCIATION: Use non-rhotic British pronunciation: do not pronounce an R at the end of a word or before a consonant. Use British vowel quality and British word stress. Avoid American R-colouring, American vowel shifts, and American intonation.",
       "DELIVERY: A polished, discreet, exceptionally articulate British personal butler: calm, measured, warm but reserved, quietly confident, precise diction, natural connected speech, controlled pacing, and understated dry wit where the words allow it.",
