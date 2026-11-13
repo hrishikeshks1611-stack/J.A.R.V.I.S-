@@ -43,7 +43,7 @@ test("device sync identifies this device and exposes the authenticated owner tra
 
 test("service worker cache version is bumped and script parses", async () => {
   const source = await readFile(new URL("../sw.js", import.meta.url), "utf8");
-  assert.ok(source.includes('const CACHE="jarvis-shell-v38"'));
+  assert.ok(source.includes('const CACHE="jarvis-shell-v39"'));
   assert.ok(source.includes('fetch(request, {cache:"no-store"})'));
   assert.doesNotThrow(() => new Function(source));
 });
@@ -358,4 +358,25 @@ test("Alfred speech endpoint pins Algieba and en-GB and requests non-rhotic Brit
   assert.ok(speech.includes('languageCode: "en-GB"'));
   assert.match(speech, /non-rhotic British pronunciation/i);
   assert.match(speech, /ACCENT CHECK WORDS/);
+});
+
+
+test("web-only interface does not expose a native APK updater", async () => {
+  const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+  assert.ok(!html.includes('id="updateButton"'));
+  assert.ok(!html.includes("async function checkJarvisUpdates"));
+});
+
+test("browser wake-word explicitly pauses in background and resumes in foreground", async () => {
+  const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+  assert.ok(html.includes("Wake-word listening pauses while this browser tab is in the background"));
+  assert.ok(html.includes("Wake-word mic: paused"));
+  assert.ok(html.includes("scheduleBrowserWakeRestart(500)"));
+});
+
+test("browser microphone reports permission and capture failures clearly", async () => {
+  const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+  assert.ok(html.includes("Microphone permission is blocked"));
+  assert.ok(html.includes("No working microphone was found"));
+  assert.ok(html.includes("rec.continuous=false"));
 });
