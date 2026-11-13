@@ -57,3 +57,21 @@ test("native CameraX capture supports rear photos, selfies, and latest-photo ret
   assert.ok(manifest.includes('.CameraCaptureActivity'));
   assert.ok(gradle.includes('androidx.camera:camera-view:1.4.2'));
 });
+
+test("Android 11+ launcher discovery exposes installed apps and opens unknown app names", async () => {
+  const source = await readFile(new URL("../app/src/main/java/com/hrishikesh/jarvis/MainActivity.java", import.meta.url), "utf8");
+  const manifest = await readFile(new URL("../app/src/main/AndroidManifest.xml", import.meta.url), "utf8");
+  assert.ok(source.includes("public String getInstalledApps()"));
+  assert.ok(source.includes("queryIntentActivities(launcher, 0)"));
+  assert.ok(source.includes("findLaunchableApp(name)"));
+  assert.ok(manifest.includes('android:name="android.intent.action.MAIN"'));
+  assert.ok(manifest.includes('android:name="android.intent.category.LAUNCHER"'));
+  assert.doesNotMatch(manifest, /QUERY_ALL_PACKAGES/);
+});
+
+test("CameraX capture activity is lifecycle-aware and requests camera permission", async () => {
+  const activity = await readFile(new URL("../app/src/main/java/com/hrishikesh/jarvis/CameraCaptureActivity.java", import.meta.url), "utf8");
+  assert.ok(activity.includes("extends ComponentActivity"));
+  assert.ok(activity.includes("bindToLifecycle(this"));
+  assert.ok(activity.includes("requestPermissions(new String[]{Manifest.permission.CAMERA}"));
+});
