@@ -51,7 +51,9 @@ jobs:
           grep -q "com.alphacephei:vosk-android" app/build.gradle
           grep -q "androidx.camera:camera-camera2" app/build.gradle
           grep -q "android:theme=\"@style/SplashTheme\"" app/src/main/AndroidManifest.xml
-          ! grep -q "BIND_NOTIFICATION_LISTENER_SERVICE\|NotificationListenerService" app/src/main/AndroidManifest.xml
+          grep -q "BIND_NOTIFICATION_LISTENER_SERVICE" app/src/main/AndroidManifest.xml
+          grep -q "JarvisNotificationListener" app/src/main/AndroidManifest.xml
+          grep -q "class JarvisNotificationListener extends NotificationListenerService" app/src/main/java/com/hrishikesh/jarvis/JarvisNotificationListener.java
           grep -q "INTENT_ACTION_MEDIA_PLAY_FROM_SEARCH" app/src/main/java/com/hrishikesh/jarvis/MainActivity.java
           grep -q "playYoutubeMusic" app/src/main/java/com/hrishikesh/jarvis/MainActivity.java
           grep -q "AudioManager" app/src/main/java/com/hrishikesh/jarvis/MainActivity.java
