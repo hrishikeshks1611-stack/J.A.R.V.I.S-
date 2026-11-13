@@ -311,14 +311,11 @@ public class MainActivity extends Activity {
                 String[] match = selected.values().iterator().next();
                 final String number = match[1];
                 final String name = match[0] == null ? requestedName : match[0];
-                runOnUiThread(() -> new android.app.AlertDialog.Builder(MainActivity.this)
-                        .setTitle("Call " + name + "?")
-                        .setMessage("JARVIS found this saved contact. Do you want to place the call?")
-                        .setPositiveButton("Call", (dialog, which) -> requestOrPlaceCall(name, number))
-                        .setNegativeButton("Cancel", (dialog, which) ->
-                                Toast.makeText(MainActivity.this, "Call cancelled, Sir.", Toast.LENGTH_SHORT).show())
-                        .show());
-                return "CONFIRMATION_SHOWN:Found " + name + ". Waiting for your confirmation.";
+                // The user explicitly requested this call. Resolve the saved contact,
+                // then launch the native call immediately; Android still controls the
+                // one-time CALL_PHONE permission prompt when required.
+                runOnUiThread(() -> requestOrPlaceCall(name, number));
+                return "CALL_STARTING:Calling " + name + ".";
             } catch (SecurityException error) {
                 return "ERROR:Contacts permission was not granted, Sir.";
             } finally {
@@ -643,7 +640,10 @@ public class MainActivity extends Activity {
             boolean granted = grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED;
             if (granted && contactName != null) {
                 String result = jarvisBridge == null ? "ERROR:Phone controls are unavailable." : jarvisBridge.resolveContactForCall(contactName);
-                if (!result.startsWith("CONFIRMATION_SHOWN:")) {
+                if (result.startsWith("CALL_STARTING:")) {
+                    if (webView != null) webView.evaluateJavascript(
+                            "if(typeof speak==='function')speak('Certainly, Sir.')", null);
+                } else {
                     Toast.makeText(this, result.replaceFirst("^[A-Z_]+:", ""), Toast.LENGTH_LONG).show();
                 }
             } else {
