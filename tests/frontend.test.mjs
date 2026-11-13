@@ -378,5 +378,8 @@ test("browser microphone reports permission and capture failures clearly", async
   const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
   assert.ok(html.includes("Microphone permission is blocked"));
   assert.ok(html.includes("No working microphone was found"));
-  assert.ok(html.includes("rec.continuous=false"));
+  assert.ok(html.includes("rec.continuous=true"));
+  assert.ok(html.includes("browserMicFinalTranscript"));
+  assert.ok(html.includes("browserMicSubmitTimer"));
+  assert.ok(html.includes("result.isFinal"));
 });
