@@ -45,6 +45,7 @@ test("Medical Assistant recognises health requests and prioritises acute red fla
 
 test("Mentalist Engine grounds people-reading in evidence and avoids false certainty", () => {
   assert.equal(isMentalistRequest("Analyse this body language"), true);
+  assert.equal(isMentalistRequest("Can you read my mind?"), true);
   assert.equal(isMentalistRequest("Help me understand people"), true);
   assert.equal(isMentalistRequest("What is the weather?"), false);
   const instruction = buildMentalistSystemInstruction();
