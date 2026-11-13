@@ -32,12 +32,14 @@ public final class WakeListeningService extends Service {
     private final Handler handler = new Handler(Looper.getMainLooper());
     private SpeechRecognizer recognizer;
     private TextToSpeech tts;
+    private ConversationStore memory;
     private boolean ready;
     private boolean listening;
     private boolean stopping;
 
     @Override public void onCreate() {
         super.onCreate();
+        memory = new ConversationStore(this);
         createChannel();
         startForeground(NOTIFICATION_ID, buildNotification("Listening for your wake phrase"));
         initialiseTts();
@@ -153,6 +155,7 @@ public final class WakeListeningService extends Service {
     }
 
     private void executeCommand(String spoken) {
+        if (memory != null) memory.add("user", spoken);
         CommandParser.Command command = CommandParser.parse(spoken);
         switch (command.action) {
             case OPEN_APP: launchApp(command.argument); break;
@@ -197,6 +200,7 @@ public final class WakeListeningService extends Service {
     }
 
     private void speak(String message) {
+        if (memory != null) memory.add("assistant", message);
         if (ready && tts != null) tts.speak(message, TextToSpeech.QUEUE_FLUSH, null, "jarvis-wake");
     }
 
@@ -205,6 +209,7 @@ public final class WakeListeningService extends Service {
         handler.removeCallbacksAndMessages(null);
         if (recognizer != null) { try { recognizer.cancel(); recognizer.destroy(); } catch (Exception ignored) { } recognizer = null; }
         if (tts != null) { try { tts.stop(); tts.shutdown(); } catch (Exception ignored) { } tts = null; }
+        if (memory != null) { memory.close(); memory = null; }
         stopForeground(true);
         super.onDestroy();
     }

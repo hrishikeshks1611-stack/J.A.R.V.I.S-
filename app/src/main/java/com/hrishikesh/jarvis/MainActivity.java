@@ -29,6 +29,7 @@ import java.util.Set;
 public final class MainActivity extends Activity {
     private static final int REQ_AUDIO = 41, REQ_CAMERA = 42, REQ_SPEECH = 43;
     private TextToSpeech tts;
+    private ConversationStore memory;
     private SpeechRecognizer recognizer;
     private TextView status, transcript;
     private boolean ttsReady = false;
@@ -39,6 +40,7 @@ public final class MainActivity extends Activity {
         setTheme(R.style.AppTheme);
         super.onCreate(state);
         try {
+            memory = new ConversationStore(this);
             buildInterface();
             initialiseSpeech();
             setStatus("CORE ONLINE • READY FOR COMMAND");
@@ -108,6 +110,14 @@ public final class MainActivity extends Activity {
         Button apps = makeButton("DISCOVER INSTALLED APPS");
         apps.setOnClickListener(v -> showApps());
         root.addView(apps, matchWrap());
+
+        Button viewMemory = makeButton("VIEW RECENT MEMORY");
+        viewMemory.setOnClickListener(v -> showMemory());
+        root.addView(viewMemory, matchWrap());
+
+        Button clearMemory = makeButton("CLEAR LOCAL MEMORY");
+        clearMemory.setOnClickListener(v -> confirmClearMemory());
+        root.addView(clearMemory, matchWrap());
 
         Button mediaAccess = makeButton("ENABLE MEDIA CONTROLS");
         mediaAccess.setOnClickListener(v -> {
@@ -225,6 +235,7 @@ public final class MainActivity extends Activity {
     }
 
     private void handleCommand(String raw) {
+        if (memory != null) memory.add("user", raw);
         CommandParser.Command command = CommandParser.parse(raw);
         switch (command.action) {
             case OPEN_CAMERA:
@@ -303,7 +314,33 @@ public final class MainActivity extends Activity {
         catch (Exception e) { setStatus("NO MUSIC HANDLER AVAILABLE"); }
     }
 
+    private void showMemory() {
+        if (memory == null) return;
+        StringBuilder output = new StringBuilder("ENCRYPTED LOCAL MEMORY\\n");
+        java.util.List<ConversationStore.Entry> entries = memory.recent(20);
+        if (entries.isEmpty()) output.append("No saved conversation yet.");
+        for (ConversationStore.Entry entry : entries) {
+            output.append(entry.role.equals("user") ? "YOU: " : "JARVIS: ")
+                    .append(entry.text).append("\\n");
+        }
+        transcript.setText(output.toString());
+        setStatus(entries.size() + " RECENT ENTRIES");
+    }
+
+    private void confirmClearMemory() {
+        new android.app.AlertDialog.Builder(this)
+                .setTitle("Clear JARVIS memory?")
+                .setMessage("This permanently clears the local conversation history on this device.")
+                .setNegativeButton("CANCEL", (dialog, which) -> dialog.dismiss())
+                .setPositiveButton("CLEAR", (dialog, which) -> {
+                    if (memory != null) memory.clear();
+                    transcript.setText("Local memory cleared.");
+                    setStatus("LOCAL MEMORY CLEARED");
+                }).show();
+    }
+
     private void speak(String text) {
+        if (memory != null) memory.add("assistant", text);
         if (ttsReady && tts != null) tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, "jarvis-" + System.currentTimeMillis());
     }
     private void setStatus(String value) { if (status != null) status.setText(value); }
@@ -330,6 +367,7 @@ public final class MainActivity extends Activity {
     @Override protected void onDestroy() {
         if (recognizer != null) { try { recognizer.destroy(); } catch (Exception ignored) { } recognizer = null; }
         if (tts != null) { try { tts.stop(); tts.shutdown(); } catch (Exception ignored) { } tts = null; }
+        if (memory != null) { memory.close(); memory = null; }
         super.onDestroy();
     }
 }
