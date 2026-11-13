@@ -17,11 +17,12 @@ android {
     compileSdk 35
     buildFeatures { buildConfig true }
     defaultConfig {
-        // JARVIS 7.0 is a new installable app, independent of every legacy JARVIS package.
-        applicationId 'com.hrishikesh.jarvis.seven'
+        // A fresh application ID avoids colliding with previously installed JARVIS packages.
+        // Keep the existing installation untouched; this is a separately installable 7.0 release.
+        applicationId 'com.hrishikesh.jarvis.seven.release'
         minSdk 23
         targetSdk 35
-        versionCode 700
+        versionCode 701
         versionName '7.0'
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
         buildConfigField 'boolean', 'JARVIS_TV', 'false'
