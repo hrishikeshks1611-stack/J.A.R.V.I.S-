@@ -43,7 +43,7 @@ test("device sync identifies this device and exposes the authenticated owner tra
 
 test("service worker cache version is bumped and script parses", async () => {
   const source = await readFile(new URL("../sw.js", import.meta.url), "utf8");
-  assert.ok(source.includes('const CACHE="jarvis-shell-v36"'));
+  assert.ok(source.includes('const CACHE="jarvis-shell-v37"'));
   assert.ok(source.includes('fetch(request, {cache:"no-store"})'));
   assert.doesNotThrow(() => new Function(source));
 });
@@ -55,7 +55,7 @@ test("owner recovery is available when the original owner device is gone", async
   assert.ok(html.includes('id="ownerRecoveryCode"'));
   assert.ok(html.includes("pairApi({action:'recover-owner',recoveryCode,deviceName:currentDeviceName()})"));
   assert.ok(html.includes("recoveryArea').hidden=!statusData.ownerClaimed"));
-  assert.ok(html.includes("This credential can be used once. Keep it private."));
+  assert.ok(html.includes("Verify first. The check does not consume your code or change device ownership."));
 });
 
 test("Alfred voice fails silent and never falls back to Android default TTS", async () => {
