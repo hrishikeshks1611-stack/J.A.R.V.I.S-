@@ -1,16 +1,19 @@
 name: Deploy JARVIS to GitHub Pages
+
 on:
   push:
     branches: [main]
   workflow_dispatch:
+
 permissions:
   contents: read
   pages: write
-  deployments: write
   id-token: write
+
 concurrency:
   group: pages
   cancel-in-progress: true
+
 jobs:
   deploy:
     environment:
@@ -18,22 +21,45 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout shared root site
         uses: actions/checkout@v4
+
+      - name: Checkout isolated JARVIS 7.0 frontend
+        uses: actions/checkout@v4
+        with:
+          ref: jarvis-7.0-new-app
+          path: jarvis-7.0-source
+
       - name: Configure Pages
         uses: actions/configure-pages@v5
-      - name: Close stale Pages deployments
-        env:
-          GH_TOKEN: ${{ github.token }}
+
+      - name: Assemble and validate both sites
+        shell: bash
         run: |
-          ids=$(gh api "repos/${GITHUB_REPOSITORY}/deployments?environment=github-pages&per_page=100" --jq '.[].id')
-          for id in $ids; do
-            gh api --method POST "repos/${GITHUB_REPOSITORY}/deployments/${id}/statuses" -f state=inactive -f description="Superseded by the latest JARVIS Pages deployment" >/dev/null
-          done
-      - name: Upload site
-        uses: actions/upload-pages-artifact@v3
+          set -euo pipefail
+          mkdir -p site/7.0
+          rsync -a --exclude='.git' --exclude='site' --exclude='jarvis-7.0-source' ./ site/
+          rsync -a --delete \
+            --exclude='.git' \
+            --exclude='.github' \
+            --exclude='app' \
+            --exclude='node_modules' \
+            jarvis-7.0-source/ site/7.0/
+          touch site/.nojekyll
+          touch site/7.0/.nojekyll
+          test -s site/index.html
+          test -s site/7.0/index.html
+          test -s site/7.0/manifest.webmanifest
+          test -s site/7.0/sw.js
+          grep -q 'id="wakeWordButton"' site/7.0/index.html
+          grep -q 'JARVIS' site/7.0/index.html
+          echo "Validated shared root and isolated JARVIS 7.0 frontend."
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v4
         with:
-          path: .
-      - name: Deploy
+          path: site
+
+      - name: Deploy Pages
         id: deployment
         uses: actions/deploy-pages@v4
