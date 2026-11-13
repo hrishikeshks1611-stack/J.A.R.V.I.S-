@@ -37,7 +37,7 @@ footer{text-align:center;color:#577c99;font-size:10px;letter-spacing:.12em;paddi
 <header><div class="brand">J.A.R.V.I.S.<small>PERSONAL INTELLIGENCE SYSTEM</small></div><div class="status" id="status">● SYSTEM READY</div></header>
 <main><div class="core-wrap"><div class="core" id="core"><div class="ring"></div><div class="ring two"></div><div class="reactor"><div class="reactor-cross"></div><div class="reactor-core"></div></div></div></div>
 <div class="greeting"><h1>AT YOUR SERVICE, SIR.</h1><p id="hint">Your personal assistant is standing by. Tap the microphone button when you want to speak.</p></div>
-<div class="controls"><select id="mode" aria-label="Personality mode"><option value="professional">Professional</option><option value="witty" selected>Witty</option><option value="philosophical">Philosophical</option></select><button class="control" id="testVoice">Test Alfred voice</button><button class="control" id="voiceToggle">Voice: On</button><button class="control" id="wakeWordButton" type="button">Wake-word microphone</button><button class="control" id="locationEnable">Enable precise location</button><button class="control" id="syncButton">Devices &amp; Sync</button><button class="control" id="memoryButton" type="button">Saved Memory</button><button class="control" id="missionButton" type="button">Mission Control</button><button class="control" id="castButton" type="button" aria-label="Open Android Cast settings">📺 Cast</button><button class="control" id="clear">Clear conversation</button></div>
+<div class="controls"><select id="mode" aria-label="Personality mode"><option value="professional">Professional</option><option value="witty" selected>Witty</option><option value="philosophical">Philosophical</option></select><button class="control" id="testVoice">Test Alfred voice</button><button class="control" id="voiceToggle">Voice: On</button><button class="control" id="wakeWordButton" type="button">Wake-word microphone</button><button class="control" id="locationEnable">Enable precise location</button><button class="control" id="syncButton">Devices &amp; Sync</button><button class="control" id="memoryButton" type="button">Saved Memory</button><button class="control" id="missionButton" type="button">Mission Control</button><button class="control" id="updateButton" type="button">Check for updates</button><button class="control" id="castButton" type="button" aria-label="Open Android Cast settings">📺 Cast</button><button class="control" id="clear">Clear conversation</button></div>
 <section class="chat"><div class="messages" id="messages" aria-live="polite"><div class="msg jarvis">Good evening, Sir. J.A.R.V.I.S. is online. How may I assist?</div></div><div id="attachmentChip" class="attachment-chip" hidden></div><form class="composer" id="form"><button class="mic" type="button" id="mic" aria-label="Speak">🎙</button><button class="attach-btn" type="button" id="attach" aria-label="Attach a file" title="Attach a file">＋</button><button class="attach-btn" type="button" id="camera" aria-label="Take a photo" title="Take a photo">▣</button><input id="prompt" autocomplete="off" placeholder="Ask me anything, Sir…" maxlength="12000"><button class="send" type="submit">SEND</button></form><input id="fileInput" type="file" accept="image/*,application/pdf,text/plain,text/csv,application/json,text/markdown" hidden><input id="cameraInput" type="file" accept="image/*" capture="environment" hidden></section>
 </main><footer>J.A.R.V.I.S. · PERSONAL AI · VOICE-FIRST INTERFACE</footer></div>
 <section class="sync-panel" id="syncPanel" hidden aria-modal="true" role="dialog" aria-labelledby="syncTitle">
@@ -1106,6 +1106,46 @@ $('saveCustomRoutine').onclick=()=>{
  catch{$('dailyBrief').textContent='I could not save that routine in this browser, Sir.';}
 };
 
+
+async function checkJarvisUpdates(){
+ const button=$('updateButton');
+ if(!window.AndroidJarvis||typeof window.AndroidJarvis.getInstalledVersionCode!=='function'||typeof window.AndroidJarvis.installJarvisUpdate!=='function'){
+  $('hint').textContent='The in-app updater requires the JARVIS Android app. Open this screen inside JARVIS, Sir.';
+  return;
+ }
+ button.disabled=true;button.textContent='Checking…';
+ try{
+  const installedCode=Number(window.AndroidJarvis.getInstalledVersionCode());
+  const response=await fetch('https://api.github.com/repos/hrishikeshks1611-stack/J.A.R.V.I.S-/releases/tags/jarvis-latest',{cache:'no-store',headers:{'Accept':'application/vnd.github+json'}});
+  if(response.status===404){$('hint').textContent='No JARVIS update has been published yet. Your installed app has not been changed, Sir.';return;}
+  if(!response.ok)throw new Error('GitHub update service returned HTTP '+response.status+'.');
+  const release=await response.json();
+  const body=String(release.body||'');
+  const readMeta=key=>{const match=body.match(new RegExp('(?:^|\\n)'+key+'=([^\\r\\n]+)','i'));return match?match[1].trim():'';};
+  const packageName=readMeta('JARVIS_PACKAGE');
+  const versionCode=Number(readMeta('JARVIS_VERSION_CODE'));
+  const versionName=readMeta('JARVIS_VERSION_NAME');
+  const asset=(release.assets||[]).find(item=>item.name==='app-phone-debug.apk'||item.name==='JARVIS-phone.apk');
+  if(packageName!=='com.hrishikesh.jarvis'||!Number.isSafeInteger(versionCode)||!asset||!/^https:\/\/github\.com\//i.test(asset.browser_download_url||'')){
+   throw new Error('The published update information is incomplete or does not identify the official JARVIS phone app.');
+  }
+  if(versionCode<=installedCode){
+   $('hint').textContent='J.A.R.V.I.S. is up to date (installed build '+installedCode+').';
+   return;
+  }
+  const accepted=confirm('J.A.R.V.I.S. '+versionName+' is available. Android will verify that it can update this installation. Your existing data is not cleared by this updater. Continue?');
+  if(!accepted){$('hint').textContent='Update postponed. Your current JARVIS installation is unchanged, Sir.';return;}
+  const result=window.AndroidJarvis.installJarvisUpdate(asset.browser_download_url,versionCode);
+  if(result==='ALLOW_INSTALL')$('hint').textContent='Allow JARVIS to request app installs in Android Settings, then return and tap Check for updates again, Sir.';
+  else if(result==='DOWNLOAD_STARTED')$('hint').textContent='Downloading the update. Android will verify compatibility and ask for confirmation before installing, Sir.';
+  else $('hint').textContent=String(result||'The update could not be started.');
+ }catch(error){
+  $('hint').textContent='Update check failed: '+(error.message||'Please try again later.')+' Your installed JARVIS app is unchanged.';
+ }finally{
+  button.disabled=false;button.textContent='Check for updates';
+ }
+}
+$('updateButton').onclick=checkJarvisUpdates;
 
 if('serviceWorker'in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('./sw.js').catch(()=>{});
 </script></body></html>
