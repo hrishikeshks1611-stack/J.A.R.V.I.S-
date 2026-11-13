@@ -55,8 +55,15 @@ public class WakeWordService extends Service implements RecognitionListener {
     private final Handler dictationTimeoutHandler = new Handler(Looper.getMainLooper());
     private final Runnable dictationTimeout = () -> {
         if (!dictationMode) return;
+        boolean wasReady = readyBroadcasted;
         dictationMode = false;
-        updateNotification("No speech detected · microphone stopped");
+        if (!wasReady) {
+            String detail = "Microphone startup timed out before audio capture became active.";
+            updateNotification("Microphone startup timed out");
+            broadcast(ACTION_ERROR, detail);
+        } else {
+            updateNotification("No speech detected · microphone stopped");
+        }
         if (!getSharedPreferences("jarvis_wake_word", MODE_PRIVATE).getBoolean("enabled", false)) stopSelf();
     };
     private final Runnable commandTimeout = () -> {
@@ -101,7 +108,9 @@ public class WakeWordService extends Service implements RecognitionListener {
         if (intent != null && ACTION_DICTATION.equals(intent.getAction())) {
             dictationMode = true;
             dictationTimeoutHandler.removeCallbacks(dictationTimeout);
+            dictationTimeoutHandler.postDelayed(dictationTimeout, 90000);
             if (audioRecord != null && recording) {
+                dictationTimeoutHandler.removeCallbacks(dictationTimeout);
                 dictationTimeoutHandler.postDelayed(dictationTimeout, 20000);
                 updateNotification("JARVIS voice input · speak now · audio stays on this phone");
                 if (readyBroadcasted) broadcast(ACTION_READY, null);
@@ -236,6 +245,8 @@ public class WakeWordService extends Service implements RecognitionListener {
                             readyBroadcasted = true;
                             active = true;
                             if (dictationMode) {
+                                dictationTimeoutHandler.removeCallbacks(dictationTimeout);
+                                dictationTimeoutHandler.postDelayed(dictationTimeout, 20000);
                                 updateNotification("JARVIS voice input · microphone active · speak now");
                             } else {
                                 updateNotification("Microphone ON · offline wake-word detection active");
@@ -256,8 +267,6 @@ public class WakeWordService extends Service implements RecognitionListener {
                     Log.e("WakeWordService", "Microphone capture failed", error);
                     active = false;
                     recording = false;
-                    String detail = error.getMessage() == null ? error.getClass().getSimpleName() : error.getMessage();
-                    broadcast(ACTION_ERROR, detail);
                     onError(error instanceof Exception ? (Exception) error
                             : new IllegalStateException("Native microphone processing failed", error));
                 }
