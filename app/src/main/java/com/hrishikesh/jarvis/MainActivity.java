@@ -147,7 +147,7 @@ public class MainActivity extends Activity {
                     String js = "(function(){document.documentElement.classList.add('jarvis-tv-mode');" +
                         "var s=document.createElement('style');s.textContent=" +
                         "'body{font-size:19px!important}.shell{max-width:1180px!important;padding:24px 34px!important}" +
-                        ".core-wrap{height:340px!important}.core{transform:scale(1.12)}" +
+                        ".core-wrap{height:340px!important}.core{transform:perspective(900px) rotateX(10deg) rotateY(-8deg) scale(1.12)}" +
                         ".controls{gap:14px!important;margin:24px 0!important}" +
                         ".control,select{font-size:16px!important;padding:14px 20px!important;min-height:54px}" +
                         ".composer{padding:10px!important;gap:10px!important}.composer input{font-size:19px!important}" +
