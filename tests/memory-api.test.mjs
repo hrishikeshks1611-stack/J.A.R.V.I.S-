@@ -66,5 +66,5 @@ test("clearing saved memories requires an explicit confirmation flag", async () 
   }, res);
   assert.equal(res.statusCode, 400);
   assert.match(res.body.error, /confirm/i);
-  assert.equal(calls, 2, "session lookup plus one pipelined TTL refresh request");
+  assert.equal(calls, 3, "session lookup, authoritative owner-hash lookup, and one pipelined TTL refresh request");
 });
