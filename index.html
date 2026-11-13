@@ -1006,7 +1006,7 @@ function startBrowserWakeListener(){
  try{
   const recognition=new BrowserSpeechRecognition();
   browserWakeRecognition=recognition;
-  recognition.lang='en-GB';recognition.continuous=true;recognition.interimResults=false;recognition.maxAlternatives=1;
+  recognition.lang='en-IN';recognition.continuous=true;recognition.interimResults=false;recognition.maxAlternatives=1;
   recognition.onresult=event=>{
    for(let i=event.resultIndex;i<event.results.length;i++){
     if(!event.results[i].isFinal)continue;
@@ -1071,7 +1071,7 @@ function captureBrowserWakeCommand(){
  }
  try{
   const commandRecognition=new BrowserSpeechRecognition();
-  commandRecognition.lang='en-GB';commandRecognition.continuous=false;commandRecognition.interimResults=false;commandRecognition.maxAlternatives=1;
+  commandRecognition.lang='en-IN';commandRecognition.continuous=false;commandRecognition.interimResults=false;commandRecognition.maxAlternatives=1;
   commandRecognition.onresult=event=>{
    const transcript=event.results?.[0]?.[0]?.transcript||'';
    if(transcript.trim()){$('prompt').value=transcript;$('form').requestSubmit();}
@@ -1199,7 +1199,7 @@ $('mic').onclick=()=>{
  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
  if(!SR){add('Voice recognition is not supported by this browser, Sir.','jarvis');$('hint').textContent='This browser does not provide speech recognition. You can still type your request.';return;}
  clearTimeout(browserMicSubmitTimer);browserMicFinalTranscript='';
- const rec=new SR();rec.lang='en-GB';rec.continuous=true;rec.interimResults=true;rec.maxAlternatives=1;
+ const rec=new SR();rec.lang='en-IN';rec.continuous=true;rec.interimResults=true;rec.maxAlternatives=1;
  rec.onstart=()=>{status('Listening','listening');$('hint').textContent='Listening, Sir. Speak naturally. I will wait for a pause before sending.';};
  rec.onresult=e=>{
   let interim='';
