@@ -306,6 +306,48 @@ public class MainActivity extends Activity {
             return "TRACK_OPENED_UNCONFIRMED:" + id;
         }
 
+        @JavascriptInterface public String controlMusic(String requestedAction) {
+            String action = requestedAction == null ? "" : requestedAction.trim().toLowerCase(Locale.ROOT);
+            if (!action.matches("play|pause|next|previous")) return "ERROR:Unsupported music control.";
+            try {
+                android.media.session.MediaSessionManager manager =
+                        (android.media.session.MediaSessionManager) getSystemService(MEDIA_SESSION_SERVICE);
+                if (manager == null) return "ERROR:Android media controls are unavailable on this device.";
+                java.util.List<android.media.session.MediaController> sessions =
+                        manager.getActiveSessions(new android.content.ComponentName(
+                                MainActivity.this, JarvisMediaNotificationListener.class));
+                android.media.session.MediaController target = null;
+                for (android.media.session.MediaController session : sessions) {
+                    if ("com.google.android.apps.youtube.music".equals(session.getPackageName())) {
+                        target = session;
+                        break;
+                    }
+                }
+                if (target == null) return "ERROR:YouTube Music has no active playback session. Start a song in YouTube Music, then try again, Sir.";
+                android.media.session.MediaController.TransportControls controls = target.getTransportControls();
+                switch (action) {
+                    case "play": controls.play(); break;
+                    case "pause": controls.pause(); break;
+                    case "next": controls.skipToNext(); break;
+                    case "previous": controls.skipToPrevious(); break;
+                }
+                return "MEDIA_KEY_SENT:" + action;
+            } catch (SecurityException permissionMissing) {
+                runOnUiThread(() -> {
+                    try {
+                        startActivity(new Intent(android.provider.Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS));
+                    } catch (ActivityNotFoundException ignored) {
+                        Toast.makeText(MainActivity.this,
+                                "Enable notification access for J.A.R.V.I.S. in Android Settings, Sir.",
+                                Toast.LENGTH_LONG).show();
+                    }
+                });
+                return "ERROR:Please enable notification access for J.A.R.V.I.S. in Android Settings, then repeat the command, Sir.";
+            } catch (Exception error) {
+                return "ERROR:Android could not send that YouTube Music control, Sir.";
+            }
+        }
+
         @JavascriptInterface public String openCastSettings() {
             runOnUiThread(() -> {
                 Intent cast = new Intent(android.provider.Settings.ACTION_CAST_SETTINGS);
