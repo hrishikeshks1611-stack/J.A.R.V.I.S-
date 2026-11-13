@@ -47,7 +47,7 @@ jobs:
         run: |
           set -euo pipefail
           grep -q "applicationId 'com.hrishikesh.jarvis.fresh'" app/build.gradle
-          grep -q "versionName '1.1.0'" app/build.gradle
+          grep -q "versionName '1.1.1'" app/build.gradle
           grep -q "com.alphacephei:vosk-android" app/build.gradle
           grep -q "androidx.camera:camera-camera2" app/build.gradle
           grep -q "android:theme=\"@style/SplashTheme\"" app/src/main/AndroidManifest.xml
@@ -58,6 +58,10 @@ jobs:
           grep -q "dispatchMediaKeyEvent" app/src/main/java/com/hrishikesh/jarvis/MainActivity.java
           grep -q "KEYCODE_MEDIA_PLAY" app/src/main/java/com/hrishikesh/jarvis/MainActivity.java
           grep -q "controlMusic" app/src/main/java/com/hrishikesh/jarvis/MainActivity.java
+          grep -q "playFromSearch" app/src/main/java/com/hrishikesh/jarvis/MainActivity.java
+          grep -q "findYoutubeMusicController" app/src/main/java/com/hrishikesh/jarvis/MainActivity.java
+          grep -q "getYoutubeMusicPlaybackStatus" app/src/main/java/com/hrishikesh/jarvis/MainActivity.java
+          test -s app/src/main/java/com/hrishikesh/jarvis/JarvisNotificationListener.java
           grep -q "const musicTransport" index.html
           grep -q "org.vosk.android.SpeechService" app/src/main/java/com/hrishikesh/jarvis/WakeWordService.java
           test -s app/src/main/res/drawable/ic_jarvis_launcher.xml
