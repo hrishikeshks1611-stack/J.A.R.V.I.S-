@@ -25,9 +25,13 @@ import android.widget.Toast;
 import java.util.ArrayList;
 import java.util.Locale;
 import java.util.Set;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.OutputStream;
+import java.io.IOException;
 
 public final class MainActivity extends Activity {
-    private static final int REQ_AUDIO = 41, REQ_CAMERA = 42, REQ_SPEECH = 43;
+    private static final int REQ_AUDIO = 41, REQ_CAMERA = 42, REQ_SPEECH = 43, REQ_SAVE_OFFICE = 44;\n    private File pendingOfficeFile;
     private TextToSpeech tts;
     private ConversationStore memory;
     private ArcReactorView reactorView;
@@ -121,7 +125,7 @@ public final class MainActivity extends Activity {
         music.setOnClickListener(v -> playMusic("Back in Black"));
         devicePanel.addView(music, matchWrap());
 
-        LinearLayout memoryPanel = addPanel(root, "PRIVATE MEMORY");
+        LinearLayout officePanel = addPanel(root, "OFFICE & EDUCATION STUDIO");\n        Button office = makeButton("CREATE WORD / POWERPOINT / EXCEL / PDF");\n        office.setOnClickListener(v -> showOfficeComposer());\n        officePanel.addView(office, matchWrap());\n\n        Button study = makeButton("BUILD STUDY REVISION PACK");\n        study.setOnClickListener(v -> showStudyComposer());\n        officePanel.addView(study, matchWrap());\n\n        LinearLayout memoryPanel = addPanel(root, "PRIVATE MEMORY");
         Button viewMemory = makeButton("VIEW RECENT MEMORY");
         viewMemory.setOnClickListener(v -> showMemory());
         memoryPanel.addView(viewMemory, matchWrap());
@@ -342,6 +346,115 @@ public final class MainActivity extends Activity {
         i.setData(android.net.Uri.parse("https://music.youtube.com/search?q=" + android.net.Uri.encode(query)));
         try { startActivity(i); setStatus("OPENING MUSIC SEARCH • " + query.toUpperCase(Locale.ROOT)); speak("Searching for " + query + ", Sir."); }
         catch (Exception e) { setStatus("NO MUSIC HANDLER AVAILABLE"); }
+    }
+
+
+    private void showOfficeComposer() {
+        LinearLayout form = new LinearLayout(this);
+        form.setOrientation(LinearLayout.VERTICAL);
+        form.setPadding(dp(12), dp(8), dp(12), 0);
+        android.widget.EditText titleInput = new android.widget.EditText(this);
+        titleInput.setHint("Document title");
+        android.widget.EditText bodyInput = new android.widget.EditText(this);
+        bodyInput.setHint("Enter document content");
+        bodyInput.setMinLines(5);
+        bodyInput.setGravity(Gravity.TOP);
+        form.addView(titleInput, matchWrap());
+        form.addView(bodyInput, matchWrap());
+        String[] formats = {"Word (.docx)", "PowerPoint (.pptx)", "Excel (.xlsx)", "PDF (.pdf)"};
+        new android.app.AlertDialog.Builder(this).setTitle("OFFICE DOCUMENT")
+            .setView(form).setItems(formats, (dialog, which) -> {
+                String title = titleInput.getText().toString().trim();
+                String body = bodyInput.getText().toString();
+                if (title.isEmpty()) title = "JARVIS_Document";
+                OfficeEngine.Format format = which == 0 ? OfficeEngine.Format.DOCX :
+                    which == 1 ? OfficeEngine.Format.PPTX : which == 2 ? OfficeEngine.Format.XLSX : OfficeEngine.Format.PDF;
+                try {
+                    pendingOfficeFile = OfficeEngine.create(getCacheDir(), format, title, body);
+                    String mime = which == 0 ? "application/vnd.openxmlformats-officedocument.wordprocessingml.document" :
+                        which == 1 ? "application/vnd.openxmlformats-officedocument.presentationml.presentation" :
+                        which == 2 ? "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" : "application/pdf";
+                    Intent save = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+                    save.addCategory(Intent.CATEGORY_OPENABLE);
+                    save.setType(mime);
+                    save.putExtra(Intent.EXTRA_TITLE, pendingOfficeFile.getName());
+                    startActivityForResult(save, REQ_SAVE_OFFICE);
+                    setStatus("DOCUMENT GENERATED • CHOOSE WHERE TO SAVE");
+                } catch (Exception e) {
+                    pendingOfficeFile = null;
+                    setStatus("OFFICE EXPORT FAILED: " + e.getClass().getSimpleName());
+                }
+            }).setNegativeButton("CANCEL", null).show();
+    }
+
+    private void showStudyComposer() {
+        LinearLayout form = new LinearLayout(this);
+        form.setOrientation(LinearLayout.VERTICAL);
+        form.setPadding(dp(12), dp(8), dp(12), 0);
+        android.widget.EditText topic = new android.widget.EditText(this);
+        topic.setHint("Subject / topic");
+        android.widget.EditText notes = new android.widget.EditText(this);
+        notes.setHint("Paste your notes or source material here");
+        notes.setMinLines(6);
+        notes.setGravity(Gravity.TOP);
+        form.addView(topic, matchWrap());
+        form.addView(notes, matchWrap());
+        new android.app.AlertDialog.Builder(this).setTitle("STUDY REVISION PACK")
+            .setView(form).setPositiveButton("GENERATE PDF", (d, w) -> {
+                String subject = topic.getText().toString().trim();
+                String source = notes.getText().toString().trim();
+                if (subject.isEmpty() || source.isEmpty()) {
+                    setStatus("ENTER A TOPIC AND SOURCE NOTES FIRST"); return;
+                }
+                String pack = buildRevisionPack(subject, source);
+                try {
+                    pendingOfficeFile = OfficeEngine.create(getCacheDir(), OfficeEngine.Format.PDF,
+                        subject + "_Revision_Pack", pack);
+                    Intent save = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+                    save.addCategory(Intent.CATEGORY_OPENABLE);
+                    save.setType("application/pdf");
+                    save.putExtra(Intent.EXTRA_TITLE, pendingOfficeFile.getName());
+                    startActivityForResult(save, REQ_SAVE_OFFICE);
+                    setStatus("REVISION PACK GENERATED • CHOOSE SAVE LOCATION");
+                } catch (Exception e) { setStatus("STUDY PACK FAILED"); }
+            }).setNegativeButton("CANCEL", null).show();
+    }
+
+    private String buildRevisionPack(String subject, String source) {
+        StringBuilder out = new StringBuilder("REVISION NOTES: ").append(subject).append("\n\n");
+        String[] lines = source.split("\\r?\\n");
+        int count = 0;
+        for (String line : lines) {
+            String clean = line.trim();
+            if (clean.isEmpty()) continue;
+            out.append("KEY POINT ").append(++count).append(": ").append(clean).append("\n");
+            if (count >= 30) break;
+        }
+        out.append("\nSELF-TEST\n");
+        for (int i = 0; i < Math.min(count, 15); i++) {
+            String clean = lines[i].trim();
+            if (!clean.isEmpty()) out.append(i + 1).append(". Explain in your own words: ").append(clean).append("\n");
+        }
+        out.append("\nNOTE: This is an offline revision organiser based on the material you supplied; verify facts against your textbook or teacher.");
+        return out.toString();
+    }
+
+    @Override protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQ_SAVE_OFFICE) {
+            if (resultCode == RESULT_OK && data != null && data.getData() != null && pendingOfficeFile != null) {
+                try (FileInputStream in = new FileInputStream(pendingOfficeFile);
+                     OutputStream out = getContentResolver().openOutputStream(data.getData(), "w")) {
+                    if (out == null) throw new IOException("Destination unavailable");
+                    byte[] buffer = new byte[8192]; int n;
+                    while ((n = in.read(buffer)) != -1) out.write(buffer, 0, n);
+                    out.flush();
+                    setStatus("DOCUMENT SAVED SUCCESSFULLY");
+                    speak("Your document has been saved, Sir.");
+                } catch (Exception e) { setStatus("SAVE FAILED: " + e.getClass().getSimpleName()); }
+            } else setStatus("DOCUMENT SAVE CANCELLED");
+            pendingOfficeFile = null;
+        }
     }
 
     private void showMemory() {
