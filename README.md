@@ -13,6 +13,7 @@ databases, or backups are imported.
 - Active media-session play/pause/next/previous commands, after the user enables JARVIS in Android Notification Access settings.
 - Fresh local conversation history encrypted with AES-GCM; the AES key is held in Android Keystore.
 - UI to review and clear local memory.
+- Voice commands support natural phrasing such as “open the camera”, “open WhatsApp”, “pause the music”, and track navigation.
 - Unit tests for command parsing and wake phrase matching.
 
 ## Runtime limits / owner setup
