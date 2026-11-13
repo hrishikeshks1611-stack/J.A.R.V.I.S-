@@ -30,6 +30,7 @@ import android.webkit.GeolocationPermissions;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebView;
+import android.webkit.WebSettings;
 import android.webkit.WebViewClient;
 import android.widget.Toast;
 import java.io.ByteArrayOutputStream;
@@ -83,6 +84,10 @@ public class MainActivity extends Activity {
         webView.setFocusable(true);
         webView.setFocusableInTouchMode(true);
         webView.setBackgroundColor(android.graphics.Color.rgb(5, 11, 24));
+        // Always fetch the current hosted JARVIS shell. Do not let an old WebView
+        // HTTP cache keep the app stuck on an obsolete Devices & Sync screen.
+        webView.clearCache(true);
+        webView.getSettings().setCacheMode(WebSettings.LOAD_NO_CACHE);
         webView.getSettings().setJavaScriptEnabled(true);
         webView.getSettings().setDomStorageEnabled(true);
         webView.getSettings().setMediaPlaybackRequiresUserGesture(false);
@@ -132,7 +137,7 @@ public class MainActivity extends Activity {
         setContentView(webView);
         webView.requestFocus();
         if (BuildConfig.JARVIS_TV) applyTvImmersiveMode();
-        webView.loadUrl("https://hrishikeshks1611-stack.github.io/J.A.R.V.I.S-/");
+        webView.loadUrl("https://hrishikeshks1611-stack.github.io/J.A.R.V.I.S-/?app_build=rebirth-homefix-20261113");
     }
 
 
