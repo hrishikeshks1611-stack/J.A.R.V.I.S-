@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import handler from "../api/backup.js";
+import { hashToken } from "../lib/jarvis-store.js";
 
 const originalFetch = globalThis.fetch;
 const originalUrl = process.env.UPSTASH_REDIS_REST_URL;
@@ -42,6 +43,7 @@ function setupRedis(handlerForCommand) {
 }
 
 function sessionCommand(command) {
+  if (command[0] === "GET" && command[1] === "jarvis:v1:owner:token-hash") return hashToken("paired-token");
   if (command[0] === "GET" && command[1].startsWith("jarvis:v1:session:")) {
     return JSON.stringify({ deviceId: "phone-1", deviceName: "Phone", role: "owner" });
   }
@@ -70,7 +72,7 @@ test("backup export requires a paired device and returns conversation plus memor
   assert.equal(res.body.backup.version, 1);
   assert.deepEqual(res.body.backup.conversation, conversation);
   assert.deepEqual(res.body.backup.memories, memories);
-  assert.equal(calls.length, 4, "GET session, pipelined TTL refresh, conversation, and memories");
+  assert.equal(calls.length, 5, "GET session, GET authoritative owner hash, pipelined TTL refresh, conversation, and memories");
 });
 
 test("backup restore requires explicit confirmation and uses one atomic Redis script", async () => {
@@ -111,6 +113,7 @@ test("backup restore requires explicit confirmation and uses one atomic Redis sc
 
 test("only the owner device can restore a full backup", async () => {
   setupRedis(async command => {
+    if (command[0] === "GET" && command[1] === "jarvis:v1:owner:token-hash") return "not-the-paired-token-hash";
     if (command[0] === "GET" && command[1].startsWith("jarvis:v1:session:")) {
       return JSON.stringify({ deviceId: "laptop-1", deviceName: "Laptop", role: "device" });
     }
