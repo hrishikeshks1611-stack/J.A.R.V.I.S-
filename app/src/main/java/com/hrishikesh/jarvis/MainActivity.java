@@ -32,6 +32,7 @@ public final class MainActivity extends Activity {
     private SpeechRecognizer recognizer;
     private TextView status, transcript;
     private boolean ttsReady = false;
+    private boolean wakeListeningRequested = false;
     private final int cyan = Color.rgb(75, 210, 255);
 
     @Override protected void onCreate(Bundle state) {
@@ -91,6 +92,14 @@ public final class MainActivity extends Activity {
         Button listen = makeButton("TALK TO JARVIS");
         listen.setOnClickListener(v -> startListening());
         root.addView(listen, matchWrap());
+
+        Button wake = makeButton("START BACKGROUND WAKE LISTENING");
+        wake.setOnClickListener(v -> startWakeListening());
+        root.addView(wake, matchWrap());
+
+        Button stopWake = makeButton("STOP WAKE LISTENING");
+        stopWake.setOnClickListener(v -> stopWakeListening());
+        root.addView(stopWake, matchWrap());
 
         Button camera = makeButton("OPEN CAMERA");
         camera.setOnClickListener(v -> openCamera());
@@ -176,6 +185,23 @@ public final class MainActivity extends Activity {
             }
             if (chosen != null) tts.setVoice(chosen);
         } catch (Exception ignored) { }
+    }
+
+    private void startWakeListening() {
+        if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+            wakeListeningRequested = true;
+            requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, REQ_AUDIO);
+            return;
+        }
+        Intent service = new Intent(this, WakeListeningService.class);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(service);
+        else startService(service);
+        setStatus("BACKGROUND WAKE LISTENING REQUESTED • SEE NOTIFICATION");
+    }
+
+    private void stopWakeListening() {
+        stopService(new Intent(this, WakeListeningService.class));
+        setStatus("BACKGROUND WAKE LISTENING STOPPED");
     }
 
     private void startListening() {
@@ -278,7 +304,7 @@ public final class MainActivity extends Activity {
     @Override public void onRequestPermissionsResult(int request, String[] permissions, int[] results) {
         super.onRequestPermissionsResult(request, permissions, results);
         if (results.length > 0 && results[0] == PackageManager.PERMISSION_GRANTED) {
-            if (request == REQ_AUDIO) startListening();
+            if (request == REQ_AUDIO) { if (wakeListeningRequested) { wakeListeningRequested = false; startWakeListening(); } else startListening(); }
             else if (request == REQ_CAMERA) openCamera();
         } else setStatus("PERMISSION DENIED • FEATURE UNAVAILABLE");
     }
