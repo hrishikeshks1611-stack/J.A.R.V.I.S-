@@ -468,7 +468,7 @@ function openSpeechCache(){
   });
   return speechDbPromise;
 }
-function speechCacheKey(text){return 'gemini-3.1-flash-tts-preview|Algieba|en-GB|'+text;}
+function speechCacheKey(text){return 'jarvis-alfred-male-british-v2|gemini-3.1-flash-tts-preview|Algieba|en-GB|'+text;}
 async function getCachedSpeech(key){
   if(speechMemoryCache.has(key)){
     const blob=speechMemoryCache.get(key);rememberSpeech(key,blob);return blob;
@@ -595,25 +595,12 @@ async function playPcmStream(response,cacheKey){
 let speechQuotaCooldownUntil=0;
 let speechQuotaCooldownReason='';
 function startOfflineFallback(spoken,error){
-  // Use the native offline British voice only when the hosted Algieba voice fails.
-  // This keeps the preferred voice primary and gives the Android app a real fallback.
-  const bridge=window.AndroidJarvis;
-  if(bridge&&typeof bridge.speakOfflineFallback==='function'){
-    try{
-      const result=bridge.speakOfflineFallback(String(spoken||'').slice(0,4000));
-      if(result==='started'){
-        status('Speaking · offline British voice','speaking');
-        $('hint').textContent='Algieba is temporarily unavailable. Using your selected offline British voice, Sir.';
-        return true;
-      }
-    }catch(fallbackError){
-      // Report the original service failure below; never hide it behind a bridge error.
-    }
-  }
-  status('Voice service unavailable');
+  // Alfred voice policy: fail silent. Never hand speech to Android's default TTS
+  // engine, an unverified voice, or any female/unknown voice.
+  status('Alfred voice unavailable');
   $('hint').textContent=(error?.quota
-    ?'Google has temporarily limited new Algieba speech. '
-    :'I could not generate Algieba speech, Sir. ')+(error?.message||'Speech generation failed.')+' The offline British voice is not available on this device, Sir.';
+    ?'The Alfred voice service is temporarily rate-limited. '
+    :'The Alfred voice service is unavailable. ')+(error?.message||'Speech generation failed.')+' I will remain silent rather than use another voice, Sir.';
   return false;
 }
 async function speak(text){
