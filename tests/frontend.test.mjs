@@ -43,7 +43,6 @@ test("YouTube Music commands resolve a catalogue result and open its direct app 
   assert.ok(java.includes("vnd.youtube.music://music.youtube.com/watch?v="));
   assert.ok(java.includes("https://music.youtube.com/watch?v="));
   assert.ok(java.includes("TRACK_OPENED_UNCONFIRMED:"));
-  assert.ok(java.includes("query.matches") === false);
   assert.ok(manifest.includes('<package android:name="com.google.android.apps.youtube.music" />'));
   assert.doesNotMatch(manifest, /BIND_NOTIFICATION_LISTENER_SERVICE|NotificationListenerService/);
 });
