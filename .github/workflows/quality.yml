@@ -1,8 +1,8 @@
-name: JARVIS quality checks
+name: J.A.R.V.I.S quality checks
 
 on:
   push:
-    branches: [ main, jarvis-5.0-development, jarvis-5-to-10-continuation, jarvis-master-brain, jarvis-7.0-new-app ]
+    branches: [ main, jarvis-5.0-development, jarvis-5-to-10-continuation, jarvis-master-brain, jarvis-7.0-new-app, jarvis-clean-brand-build ]
   pull_request:
     branches: [ main, jarvis-5-to-10-continuation ]
 
