@@ -976,7 +976,9 @@ window.jarvisNative={
  onWakeWordDetected:()=>{$('hint').textContent='I am listening for your command, Sir.';status('Wake word detected','listening');speak('Yes, Sir?')},
  onSpeechPartial:(transcript)=>{$('prompt').value=transcript;status('Listening · '+transcript,'listening');},
  onSpeechResult:(transcript)=>{
-  $('prompt').value=transcript;$('form').requestSubmit();
+  const command=String(transcript||'').trim().replace(/^(?:(?:hey|hello)\s+jarvis|wake\s+up\s+jarvis|jarvis(?:\s+are\s+you\s+there)?)[, ]*/i,'').trim();
+  if(!command){$('hint').textContent='I am ready for your command, Sir.';return;}
+  $('prompt').value=command;$('form').requestSubmit();
   if(browserWakeCommandCapture){browserWakeCommandCapture=false;scheduleBrowserWakeRestart(3500);}
  },
  onAttachment:(raw)=>{try{const a=typeof raw==='string'?JSON.parse(raw):raw;pendingAttachment=a;renderAttachment();$('hint').textContent='Attachment ready, Sir. Add a question or send it as it is.'}catch(e){$('hint').textContent='I could not load that attachment, Sir.'}}
