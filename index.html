@@ -54,11 +54,10 @@ footer{text-align:center;color:#577c99;font-size:10px;letter-spacing:.12em;paddi
    <input id="pairCode" autocomplete="off" maxlength="12" placeholder="8-character pairing code">
    <div class="sync-actions"><button class="sync-primary" id="pairDevice" type="button">Pair this device</button></div>
   </div>
-  <div id="recoveryArea" hidden>
-   <h3>Recover owner access</h3>
-   <p>This one-time recovery creates a fresh owner session on this phone, even if its previous pairing expired. The previous owner remains paired as a regular device. All other paired-device records and shared memory are preserved. Use your private server recovery credential.</p>
-   <input id="ownerRecoveryCode" type="password" autocomplete="off" maxlength="128" placeholder="One-time owner recovery credential">
-   <div class="sync-actions"><button class="sync-primary" id="recoverOwner" type="button">Recover owner access</button></div>
+  <div id="deviceArea" hidden>
+   <h3>Connected device</h3>
+   <p>This phone is paired as a regular device. The current owner can transfer ownership to this phone. Shared conversation sync remains active.</p>
+   <div class="sync-actions"><button class="sync-primary" id="refreshDeviceRole" type="button">Check owner status</button></div>
   </div>
   <div id="ownerArea" hidden>
    <p>This is your owner device. Generate a temporary code to connect your other devices.</p>
@@ -269,20 +268,19 @@ async function renderPairedDevices(){
  });
 }
 async function openSyncPanel(){
- $('syncPanel').hidden=false;$('setupArea').hidden=true;$('pairArea').hidden=true;$('ownerArea').hidden=true;$('recoveryArea').hidden=true;
+ $('syncPanel').hidden=false;$('setupArea').hidden=true;$('pairArea').hidden=true;$('ownerArea').hidden=true;$('deviceArea').hidden=true;
  try{
   if(sessionToken){
    const v=await pairApi({action:'verify'});sessionRole=v.role;sessionDeviceId=v.deviceId;
    $('syncStatus').textContent='Connected as '+v.deviceName+'. Shared conversation sync is active.';
    if(v.role==='owner'){$('ownerArea').hidden=false;await renderPairedDevices();}
-   else {$('pairArea').hidden=true;$('recoveryArea').hidden=false;}
+   else {$('deviceArea').hidden=false;}
    return;
   }
   const statusData=await pairApi({action:'status'});
   $('syncStatus').textContent=statusData.ownerClaimed?'This JARVIS system already has an owner. Pair this device using a code from the owner device.':'This is the first device. Claim it as the owner to initialise your private JARVIS memory.';
   $('setupArea').hidden=statusData.ownerClaimed;
   $('pairArea').hidden=!statusData.ownerClaimed;
-  $('recoveryArea').hidden=!statusData.ownerClaimed;
  }catch(e){$('syncStatus').textContent=e.message}
 }
 $('syncButton').onclick=openSyncPanel;
@@ -327,20 +325,12 @@ $('claimDevice').onclick=async()=>{
  try{const data=await pairApi({action:'claim',setupCode:$('setupCode').value,deviceName:currentDeviceName()});storeSession(data);await restoreSharedHistory();$('hint').textContent=data.message+' Shared memory is ready, Sir.';}
  catch(e){$('syncStatus').textContent=e.message}
 };
-$('recoverOwner').onclick=async()=>{
- const recoveryCode=$('ownerRecoveryCode').value;
- if(!recoveryCode){$('syncStatus').textContent='Enter the owner recovery credential configured on the JARVIS server.';return;}
- if(!confirm('Recover JARVIS ownership on THIS PHONE? A fresh owner session will be created on this phone. The previous owner device remains paired as a regular device. All other paired devices and shared memory are preserved. This recovery credential can be used only once.'))return;
- $('recoverOwner').disabled=true;
+$('refreshDeviceRole').onclick=async()=>{
  try{
-  const data=await pairApi({action:'recover-owner',recoveryCode,deviceName:currentDeviceName()});
-  $('ownerRecoveryCode').value='';
-  storeSession(data);
-  await restoreSharedHistory();
-  $('syncStatus').textContent=data.message;
-  await openSyncPanel();
+  const v=await pairApi({action:'verify'});sessionRole=v.role;sessionDeviceId=v.deviceId;
+  if(v.role==='owner'){$('deviceArea').hidden=true;$('ownerArea').hidden=false;$('syncStatus').textContent='Ownership confirmed on this phone. Shared conversation sync is active.';await renderPairedDevices();}
+  else {$('syncStatus').textContent='Still connected as a regular device. Ownership has not been transferred yet.';}
  }catch(e){$('syncStatus').textContent=e.message}
- finally{$('recoverOwner').disabled=false}
 };
 $('pairDevice').onclick=async()=>{
  try{const data=await pairApi({action:'pair',pairingCode:$('pairCode').value,deviceName:currentDeviceName()});storeSession(data);await restoreSharedHistory();$('hint').textContent=data.message+' Shared memory is ready, Sir.';}
