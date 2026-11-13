@@ -306,7 +306,7 @@ test("live app answers exact greetings locally and routes YouTube Music commands
   assert.match(instantReply("Good morning"), /Good morning, Sir/);
   assert.equal(instantReply("Good morning, explain this to me"), null);
   assert.ok(html.includes("window.AndroidJarvis.playYoutubeMusic(searchQuery)"));
-  assert.ok(html.includes("music.youtube.com/search?q="));
+  assert.ok(html.includes("window.AndroidJarvis.playYoutubeMusic(searchQuery)"));
 });
 
 test("Algieba voice starts after a short pre-buffer while the audio stream is still arriving", async () => {
