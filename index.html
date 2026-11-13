@@ -37,7 +37,7 @@ footer{text-align:center;color:#577c99;font-size:10px;letter-spacing:.12em;paddi
 <header><div class="brand">J.A.R.V.I.S.<small>PERSONAL INTELLIGENCE SYSTEM</small></div><div class="status" id="status">● SYSTEM READY</div></header>
 <main><div class="core-wrap"><div class="core" id="core"><div class="ring"></div><div class="ring two"></div><div class="reactor"><div class="reactor-cross"></div><div class="reactor-core"></div></div></div></div>
 <div class="greeting"><h1>AT YOUR SERVICE, SIR.</h1><p id="hint">Your personal assistant is standing by. Tap the microphone button when you want to speak.</p></div>
-<div class="controls"><select id="mode" aria-label="Personality mode"><option value="professional">Professional</option><option value="witty" selected>Witty</option><option value="philosophical">Philosophical</option></select><button class="control" id="testVoice">Test Alfred voice</button><button class="control" id="voiceToggle">Voice: On</button><button class="control" id="wakeWordButton" type="button">Wake-word microphone</button><button class="control" id="locationEnable">Enable precise location</button><button class="control" id="syncButton">Devices &amp; Sync</button><button class="control" id="memoryButton" type="button">Saved Memory</button><button class="control" id="missionButton" type="button">Mission Control</button><button class="control" id="updateButton" type="button">Check for updates</button><button class="control" id="castButton" type="button" aria-label="Open Android Cast settings">📺 Cast</button><button class="control" id="clear">Clear conversation</button></div>
+<div class="controls"><select id="mode" aria-label="Personality mode"><option value="professional">Professional</option><option value="witty">Witty</option><option value="philosophical">Philosophical</option><option value="alfred" selected>Alfred · British butler</option></select><button class="control" id="testVoice">Test Alfred voice</button><button class="control" id="voiceToggle">Voice: On</button><button class="control" id="wakeWordButton" type="button">Wake-word microphone</button><button class="control" id="locationEnable">Enable precise location</button><button class="control" id="syncButton">Devices &amp; Sync</button><button class="control" id="memoryButton" type="button">Saved Memory</button><button class="control" id="missionButton" type="button">Mission Control</button><button class="control" id="updateButton" type="button">Check for updates</button><button class="control" id="castButton" type="button" aria-label="Open Android Cast settings">📺 Cast</button><button class="control" id="clear">Clear conversation</button></div>
 <section class="chat"><div class="messages" id="messages" aria-live="polite"><div class="msg jarvis">Good evening, Sir. J.A.R.V.I.S. is online. How may I assist?</div></div><div id="attachmentChip" class="attachment-chip" hidden></div><form class="composer" id="form"><button class="mic" type="button" id="mic" aria-label="Speak">🎙</button><button class="attach-btn" type="button" id="attach" aria-label="Attach a file" title="Attach a file">＋</button><button class="attach-btn" type="button" id="camera" aria-label="Take a photo" title="Take a photo">▣</button><input id="prompt" autocomplete="off" placeholder="Ask me anything, Sir…" maxlength="12000"><button class="send" type="submit">SEND</button></form><input id="fileInput" type="file" accept="image/*,application/pdf,text/plain,text/csv,application/json,text/markdown" hidden><input id="cameraInput" type="file" accept="image/*" capture="environment" hidden></section>
 </main><footer>J.A.R.V.I.S. · PERSONAL AI · VOICE-FIRST INTERFACE</footer></div>
 <section class="sync-panel" id="syncPanel" hidden aria-modal="true" role="dialog" aria-labelledby="syncTitle">
@@ -98,6 +98,9 @@ footer{text-align:center;color:#577c99;font-size:10px;letter-spacing:.12em;paddi
 <section class="mission-panel" id="missionPanel" hidden aria-modal="true" role="dialog" aria-labelledby="missionTitle"><div class="mission-card"><h2 id="missionTitle">J.A.R.V.I.S. · MISSION CONTROL</h2><p id="missionSummary" class="mission-note">Live device diagnostics. Values are read from this device and browser.</p><div class="mission-grid"><div class="mission-tile"><strong>LOCAL TIME</strong><span id="mcTime">—</span></div><div class="mission-tile"><strong>DEVICE</strong><span id="mcDevice">—</span></div><div class="mission-tile"><strong>NETWORK</strong><span id="mcNetwork">—</span></div><div class="mission-tile"><strong>BATTERY</strong><span id="mcBattery">Checking…</span></div><div class="mission-tile"><strong>SHARED BRAIN</strong><span id="mcPair">Checking…</span></div><div class="mission-tile"><strong>BACKEND CHECK</strong><span id="mcBackend">Checking…</span></div><div class="mission-tile"><strong>PAIRED DEVICES</strong><span id="mcDevices">Checking…</span></div><div class="mission-tile"><strong>VOICE</strong><span id="mcVoice">—</span></div></div><h3>Daily Briefing</h3><p id="dailyBrief" class="mission-note">Generate a local briefing using the device clock and available system status.</p><div class="mission-actions"><button id="runBriefing" type="button">Prepare briefing</button><button id="refreshMission" type="button">Refresh diagnostics</button></div><h3>Smart Routines · Local controls</h3><p class="mission-note">These routines change JARVIS interface and voice settings on this device only. They do not run background jobs or control other devices.</p><div class="mission-actions"><button id="focusRoutine" type="button">Focus mode</button><button id="nightRoutine" type="button">Good night</button><button id="normalRoutine" type="button">Normal mode</button></div><h3>Custom routines</h3><p class="mission-note">Create up to eight named routines using these safe, on-device modes. They are saved only in this browser and do not trigger background actions.</p><div class="mission-actions"><input id="customRoutineName" maxlength="32" placeholder="Routine name" aria-label="Routine name"><select id="customRoutineMode" aria-label="Routine mode"><option value="focus">Focus</option><option value="night">Good night</option><option value="normal">Normal</option></select><button id="saveCustomRoutine" type="button">Save routine</button></div><div id="customRoutineList" class="mission-actions" aria-live="polite"></div><div class="mission-actions"><button id="closeMission" type="button">Close</button></div></div></section>
 <script>
 const $=id=>document.getElementById(id), core=$('core'), messages=$('messages');let history=[],voiceOn=true,pendingAttachment=null,deviceLocation=null,currentAudio=null;
+const PERSONALITY_MODE_KEY='jarvisPersonalityModeV1';
+try{const savedMode=localStorage.getItem(PERSONALITY_MODE_KEY);if(['professional','witty','philosophical','alfred'].includes(savedMode))$('mode').value=savedMode;}catch{}
+$('mode').addEventListener('change',()=>{try{localStorage.setItem(PERSONALITY_MODE_KEY,$('mode').value);}catch{}});
 const JARVIS_API='https://jarvis-6-0-yys5.onrender.com/api';
 const JARVIS_AUX_API='https://jarvis-6-0-yys5.onrender.com/api';
 let sessionToken=localStorage.getItem('jarvisSessionToken')||'',sessionRole='',sessionDeviceId='',chatBusy=false,lastSharedHistorySignature='';
@@ -504,7 +507,7 @@ function openSpeechCache(){
   });
   return speechDbPromise;
 }
-function speechCacheKey(text){return 'jarvis-alfred-male-british-v2|gemini-3.1-flash-tts-preview|Algieba|en-GB|'+text;}
+function speechCacheKey(text){return 'jarvis-alfred-male-british-v3|gemini-3.1-flash-tts-preview|Algieba|en-GB|'+text;}
 async function getCachedSpeech(key){
   if(speechMemoryCache.has(key)){
     const blob=speechMemoryCache.get(key);rememberSpeech(key,blob);return blob;
@@ -682,7 +685,7 @@ async function speak(text){
     startOfflineFallback(spoken,error);
   }
 }
-$('testVoice').onclick=()=>{speak('Good evening, Sir. I am JARVIS. How may I assist you today?');$('hint').textContent='Testing the British voice…';};
+$('testVoice').onclick=()=>{speak('Good evening, Sir. The car is parked near the garden. The water is rather warm, and the weather is changing. Would you care for a cup of tea?');$('hint').textContent='Testing the British voice…';};
 $('voiceToggle').onclick=()=>{voiceOn=!voiceOn;$('voiceToggle').textContent='Voice: '+(voiceOn?'On':'Off');if(!voiceOn){if(currentAudio){currentAudio.pause();currentAudio=null;}}};
 $('clear').onclick=async()=>{if(!sessionToken){openSyncPanel();return;}if(!confirm('Clear the shared JARVIS conversation on all paired devices? This cannot be undone.'))return;try{await pairApi({action:'clear',confirm:true});history=[];messages.innerHTML='';add('Conversation cleared across all your devices, Sir. What shall we discuss?','jarvis')}catch(e){$('hint').textContent=e.message}};
 function instantReply(text){
@@ -766,6 +769,21 @@ const contactCommandText=message.replace(/^\s*(?:hey\s+)?jarvis[, ]*/i,'').trim(
  const callContact=contactCommandText.match(/^(?:(?:please|could you|can you|would you)\s+)?(?:call|phone|ring)\s+(?:my\s+)?(.+?)(?:\s+(?:mobile|mobile number|phone|number))?$/i);
  if(callContact){
   const target=callContact[1].trim().replace(/^(?:contact\s+)/i,'');
+  // Prefer Android's live contacts database and permissioned native calling.
+  // The local VCF list remains a fallback for contacts imported manually.
+  if(window.AndroidJarvis&&typeof window.AndroidJarvis.callContact==='function'){
+   const nativeResult=window.AndroidJarvis.callContact(target)||'';
+   if(!nativeResult.startsWith('NOT_FOUND:')){
+    const nativeReply=nativeResult.startsWith('CALL_STARTING:')?'Certainly, Sir.':
+     nativeResult.startsWith('PERMISSION_REQUIRED:')?'Please allow Contacts access, Sir. I will continue with the call afterwards.':
+     nativeResult.startsWith('AMBIGUOUS:')?'I found more than one phone number for '+target+'. Please specify the full contact name, Sir.':
+     'I could not prepare that call, Sir.';
+    add(nativeReply,'jarvis');history.push({role:'model',text:nativeReply});history=history.slice(-20);
+    pairApi({action:'append-local',message,reply:nativeReply}).catch(()=>{});
+    $('hint').textContent=nativeResult.startsWith('CALL_STARTING:')?'Calling '+target+'…':nativeReply;
+    status(nativeResult.startsWith('CALL_STARTING:')?'Calling':'System ready');speak(nativeReply);return;
+   }
+  }
   const result=resolveJarvisContact(target);
   let reply='';
   if(result.missing)reply='I cannot find '+target+' in my JARVIS contact list, Sir. Say “import contacts” to load your contacts VCF, or “remember contact '+target+' as [number]”.';
@@ -787,25 +805,6 @@ if(instant){
  pairApi({action:'append-local',message,reply:instant}).catch(()=>{});
  $('hint').textContent='Ready when you are.';status('System ready');speak(instant);return;
 }
-// Place an explicitly requested contact call through Android's native dialler.
-const callCommand=message.match(/^\s*(?:jarvis[, ]+)?(?:please\s+)?call\s+(.+?)[.!?]*\s*$/i);
-if(callCommand){
- const contactName=callCommand[1].trim();
- if(window.AndroidJarvis&&typeof window.AndroidJarvis.callContact==='function'){
-  const result=window.AndroidJarvis.callContact(contactName)||'';
-  const spoken=result.startsWith('CALL_STARTING:')?'Certainly, Sir.':
-   result.startsWith('PERMISSION_REQUIRED:')?'Please allow Contacts access, Sir. I will place the call immediately afterwards.':
-   result.startsWith('AMBIGUOUS:')?'I found more than one number for '+contactName+'. Please clarify which number you want, Sir.':
-   result.startsWith('NOT_FOUND:')?'I could not find a saved phone number for '+contactName+', Sir.':
-   'I could not prepare that call, Sir.';
-  add(spoken,'jarvis');history.push({role:'model',text:spoken});history=history.slice(-20);
-  pairApi({action:'append-local',message,reply:spoken}).catch(()=>{});
-  $('hint').textContent=result.startsWith('CALL_STARTING:')?'Calling '+contactName+'…':spoken;
-  status(result.startsWith('CALL_STARTING:')?'Calling':'System ready');
-  speak(spoken);return;
- }
-}
- 
 // Handle a chained native command locally instead of sending it to the AI chat model.
 const multiAppMusic=message.match(/^\s*(?:jarvis[, ]+)?(?:please\s+)?(?:open|launch|start)\s+(whatsapp|chrome|gmail|instagram|facebook|telegram)\s+and\s+(?:then\s+)?(?:play|listen to)\s+(.+?)(?:\s+(?:on|in)\s+youtube\s+music)?[.!?]*\s*$/i);
 if(multiAppMusic && window.AndroidJarvis && typeof window.AndroidJarvis.openApp==='function'){
@@ -1136,6 +1135,8 @@ function resolveJarvisContact(query){
 }
 window.jarvisNative={
  onWakeWordDetected:()=>{$('hint').textContent='I am listening for your command, Sir.';status('Wake word detected','listening');speak('Yes, Sir?')},
+ onMicrophoneReady:()=>{$('hint').textContent='Microphone is active. Speak your command, Sir.';status('Listening','listening');},
+ onMicrophoneError:(message)=>{$('hint').textContent='Microphone unavailable: '+String(message||'Audio capture failed.');status('Microphone error');},
  onSpeechPartial:(transcript)=>{$('prompt').value=transcript;status('Listening · '+transcript,'listening');},
  onSpeechResult:(transcript)=>{
   const command=String(transcript||'').trim().replace(/^(?:(?:hey|hello)\s+jarvis|wake\s+up\s+jarvis|jarvis(?:\s+are\s+you\s+there)?)[, ]*/i,'').trim();
@@ -1145,7 +1146,7 @@ window.jarvisNative={
  },
  onAttachment:(raw)=>{try{const a=typeof raw==='string'?JSON.parse(raw):raw;if(/\.vcf$/i.test(a.name||'')||/vcard/i.test(a.mimeType||'')||/^BEGIN:VCARD/im.test(new TextDecoder('utf-8').decode(Uint8Array.from(atob(a.data||''),c=>c.charCodeAt(0)).slice(0,256)))){const count=importJarvisVcards(a);const reply='Imported '+count+' contacts into this JARVIS device, Sir. You can now say “call Amma” or “call [contact name]”.';add(reply,'jarvis');history.push({role:'model',text:reply});history=history.slice(-20);pairApi({action:'append-local',message:'Import contacts from VCF',reply}).catch(()=>{});$('hint').textContent='Contacts imported locally. No contacts permission was requested.';speak(reply);return;}pendingAttachment=a;renderAttachment();$('hint').textContent='Attachment ready, Sir. Add a question or send it as it is.'}catch(e){$('hint').textContent='Contact import failed: '+e.message}}
 };
-$('wakeWordButton').hidden=true;
+$('wakeWordButton').hidden=false;
 $('wakeWordButton').onclick=()=>{
  if(window.AndroidJarvis&&typeof window.AndroidJarvis.openWakeWordSettings==='function'){
   window.AndroidJarvis.openWakeWordSettings();return;
