@@ -1,7 +1,7 @@
 name: Deploy JARVIS to GitHub Pages
 on:
   push:
-    branches: [main]
+    branches: [main, jarvis-7.0-new-app]
   workflow_dispatch:
 permissions:
   contents: read
@@ -30,10 +30,25 @@ jobs:
           for id in $ids; do
             gh api --method POST "repos/${GITHUB_REPOSITORY}/deployments/${id}/statuses" -f state=inactive -f description="Superseded by the latest JARVIS Pages deployment" >/dev/null
           done
+      - name: Checkout main frontend for the shared root site
+        if: github.ref == 'refs/heads/jarvis-7.0-new-app'
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: main-site
+      - name: Assemble isolated JARVIS 7.0 site
+        run: |
+          mkdir -p site/7.0
+          if [ "${GITHUB_REF}" = "refs/heads/jarvis-7.0-new-app" ]; then
+            rsync -a --exclude='.git' --exclude='main-site' --exclude='site' ./ site/7.0/
+            rsync -a main-site/ site/
+          else
+            rsync -a --exclude='.git' --exclude='site' ./ site/
+          fi
       - name: Upload site
         uses: actions/upload-pages-artifact@v3
         with:
-          path: .
+          path: site
       - name: Deploy
         id: deployment
         uses: actions/deploy-pages@v4
