@@ -194,9 +194,9 @@ public final class MainActivity extends Activity {
         try {
         tts = new TextToSpeech(this, result -> {
             if (result == TextToSpeech.SUCCESS) {
-                ttsReady = true;
-                configureVoice();
-                speak("At your service, Sir.");
+                ttsReady = configureVoice();
+                if (ttsReady) speak("At your service, Sir.");
+                else setStatus("ALFRED UK MALE VOICE UNAVAILABLE • AUDIO MUTED");
             }
         });
         } catch (Throwable ttsError) {
@@ -205,25 +205,31 @@ public final class MainActivity extends Activity {
         }
     }
 
-    private void configureVoice() {
-        if (tts == null) return;
-        tts.setLanguage(Locale.UK);
+    /**
+     * Strict Alfred voice gate: never use the engine default or an unclassified voice.
+     * Only an en-GB Algieba voice or an explicitly male-labelled en-GB voice is allowed.
+     */
+    private boolean configureVoice() {
+        if (tts == null) return false;
         try {
             Set<Voice> voices = tts.getVoices();
+            if (voices == null) return false;
             Voice chosen = null;
-            if (voices != null) {
-                for (Voice voice : voices) {
-                    String n = voice.getName().toLowerCase(Locale.ROOT);
-                    if (n.contains("algieba") && voice.getLocale().getLanguage().equals("en")) { chosen = voice; break; }
-                }
-                if (chosen == null) for (Voice voice : voices) {
-                    String n = voice.getName().toLowerCase(Locale.ROOT);
-                    if (voice.getLocale().getLanguage().equals("en") && voice.getLocale().getCountry().equals("GB")
-                            && !n.contains("female")) { chosen = voice; break; }
+            for (Voice voice : voices) {
+                String name = voice.getName().toLowerCase(Locale.ROOT);
+                Locale locale = voice.getLocale();
+                if (!"en".equals(locale.getLanguage()) || !"GB".equalsIgnoreCase(locale.getCountry())) continue;
+                if (name.contains("female")) continue;
+                if (name.contains("algieba") || name.contains("male") || name.contains("masculine")) {
+                    chosen = voice;
+                    if (name.contains("algieba")) break;
                 }
             }
-            if (chosen != null) tts.setVoice(chosen);
-        } catch (Exception ignored) { }
+            if (chosen == null) return false;
+            int language = tts.setLanguage(Locale.UK);
+            if (language == TextToSpeech.LANG_MISSING_DATA || language == TextToSpeech.LANG_NOT_SUPPORTED) return false;
+            return tts.setVoice(chosen) == TextToSpeech.SUCCESS;
+        } catch (Exception ignored) { return false; }
     }
 
     private void startWakeListening() {
