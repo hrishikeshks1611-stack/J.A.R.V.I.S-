@@ -1,5 +1,5 @@
 name: Deploy JARVIS to GitHub Pages
-# Redeploys the latest isolated jarvis-7.0-new-app frontend on main-site updates.
+# Redeploys the latest isolated jarvis-7.0-new-app frontend on main-site updates. Latest browser voice fixes: 9fe942b4.
 
 on:
   push:
