@@ -13,6 +13,14 @@ import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.provider.MediaStore;
 import android.media.AudioManager;
+import android.media.MediaMetadata;
+import android.media.session.MediaController;
+import android.media.session.MediaSessionManager;
+import android.media.session.PlaybackState;
+import android.content.ComponentName;
+import android.provider.Settings;
+import android.os.Handler;
+import android.os.Looper;
 import android.view.KeyEvent;
 import android.os.SystemClock;
 import android.provider.AlarmClock;
@@ -42,6 +50,7 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Locale;
+import java.util.List;
 import java.util.Map;
 
 public class MainActivity extends Activity {
@@ -60,6 +69,8 @@ public class MainActivity extends Activity {
     private String pendingSpeech = null;
     private final Map<String, String[]> appPackages = new HashMap<>();
     private BroadcastReceiver wakeWordReceiver;
+    private final Handler musicHandler = new Handler(Looper.getMainLooper());
+    private volatile String youtubeMusicPlaybackStatus = "IDLE";
 
     @Override public void onCreate(Bundle savedInstanceState) {
         setTheme(R.style.AppTheme);
@@ -360,37 +371,166 @@ public class MainActivity extends Activity {
                     KeyEvent.ACTION_UP, keyCode, 0));
         }
 
+        private boolean hasMusicSessionAccess() {
+            String enabled = Settings.Secure.getString(getContentResolver(), "enabled_notification_listeners");
+            if (enabled == null) return false;
+            String component = new ComponentName(this, JarvisNotificationListener.class).flattenToString();
+            return enabled.contains(component) || enabled.contains(JarvisNotificationListener.class.getName());
+        }
+
+        private void openMusicSessionAccessSettings() {
+            try {
+                startActivity(new Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS));
+            } catch (ActivityNotFoundException e) {
+                Toast.makeText(this, "Open Android Settings and enable Notification access for JARVIS YouTube Music Control, Sir.", Toast.LENGTH_LONG).show();
+            }
+        }
+
+        private MediaController findYoutubeMusicController() {
+            MediaSessionManager manager = (MediaSessionManager) getSystemService(MEDIA_SESSION_SERVICE);
+            if (manager == null) return null;
+            List<MediaController> sessions = manager.getActiveSessions(
+                    new ComponentName(this, JarvisNotificationListener.class));
+            if (sessions == null) return null;
+            for (MediaController controller : sessions) {
+                if ("com.google.android.apps.youtube.music".equals(controller.getPackageName())) {
+                    return controller;
+                }
+            }
+            return null;
+        }
+
+        private String youtubeMusicTrackTitle(MediaController controller) {
+            MediaMetadata metadata = controller == null ? null : controller.getMetadata();
+            if (metadata == null) return "";
+            String title = metadata.getString(MediaMetadata.METADATA_KEY_TITLE);
+            String artist = metadata.getString(MediaMetadata.METADATA_KEY_ARTIST);
+            if (title == null) title = "";
+            if (artist != null && !artist.trim().isEmpty()) title += " — " + artist.trim();
+            return title.trim();
+        }
+
+        private boolean youtubeMusicIsPlaying(MediaController controller) {
+            PlaybackState state = controller == null ? null : controller.getPlaybackState();
+            return state != null && state.getState() == PlaybackState.STATE_PLAYING;
+        }
+
+        private void verifyYoutubeMusicPlayback(MediaController controller, String query, int retry) {
+            MediaController current;
+            try {
+                current = findYoutubeMusicController();
+            } catch (SecurityException | IllegalStateException e) {
+                youtubeMusicPlaybackStatus = "ACCESS_ERROR";
+                return;
+            }
+            if (current == null) current = controller;
+            if (youtubeMusicIsPlaying(current)) {
+                String title = youtubeMusicTrackTitle(current);
+                youtubeMusicPlaybackStatus = "PLAYING:" + (title.isEmpty() ? query : title);
+                return;
+            }
+            PlaybackState state = current == null ? null : current.getPlaybackState();
+            long actions = state == null ? 0 : state.getActions();
+            if (retry == 0 && current != null && (actions & PlaybackState.ACTION_PLAY) != 0) {
+                current.getTransportControls().play();
+                dispatchMediaKey(KeyEvent.KEYCODE_MEDIA_PLAY);
+                musicHandler.postDelayed(() -> verifyYoutubeMusicPlayback(current, query, 1), 1800);
+            } else if (retry < 2 && current != null) {
+                dispatchMediaKey(KeyEvent.KEYCODE_MEDIA_PLAY);
+                musicHandler.postDelayed(() -> verifyYoutubeMusicPlayback(current, query, retry + 1), 1800);
+            } else {
+                youtubeMusicPlaybackStatus = "NOT_PLAYING:" + query;
+            }
+        }
+
+        private void attemptYoutubeMusicPlayback(String query, int attempt) {
+            if (!hasMusicSessionAccess()) {
+                youtubeMusicPlaybackStatus = "ACCESS_REQUIRED";
+                return;
+            }
+            final MediaController controller;
+            try {
+                controller = findYoutubeMusicController();
+            } catch (SecurityException | IllegalStateException e) {
+                youtubeMusicPlaybackStatus = "ACCESS_ERROR";
+                return;
+            }
+            if (controller == null) {
+                if (attempt < 10) {
+                    musicHandler.postDelayed(() -> attemptYoutubeMusicPlayback(query, attempt + 1), 700);
+                } else {
+                    youtubeMusicPlaybackStatus = "SESSION_NOT_FOUND:" + query;
+                }
+                return;
+            }
+
+            try {
+                Bundle extras = new Bundle();
+                extras.putString(SearchManager.QUERY, query);
+                extras.putString(MediaStore.EXTRA_MEDIA_TITLE, query);
+                controller.getTransportControls().playFromSearch(query, extras);
+                youtubeMusicPlaybackStatus = "SEARCH_COMMAND_SENT:" + query;
+                musicHandler.postDelayed(() -> verifyYoutubeMusicPlayback(controller, query, 0), 1400);
+            } catch (RuntimeException e) {
+                youtubeMusicPlaybackStatus = "CONTROL_FAILED:" + e.getClass().getSimpleName();
+            }
+        }
+
+        @JavascriptInterface public String getYoutubeMusicPlaybackStatus() {
+            return youtubeMusicPlaybackStatus;
+        }
+
         @JavascriptInterface public String controlMusic(String requestedAction) {
             String action = requestedAction == null ? "" : requestedAction.trim().toLowerCase(Locale.ROOT);
-            final int keyCode;
-            switch (action) {
-                case "play":
-                case "resume":
-                    keyCode = KeyEvent.KEYCODE_MEDIA_PLAY;
-                    break;
-                case "pause":
-                case "stop":
-                    keyCode = KeyEvent.KEYCODE_MEDIA_PAUSE;
-                    break;
-                case "next":
-                case "skip":
-                    keyCode = KeyEvent.KEYCODE_MEDIA_NEXT;
-                    break;
-                case "previous":
-                case "back":
-                    keyCode = KeyEvent.KEYCODE_MEDIA_PREVIOUS;
-                    break;
-                default:
-                    return "ERROR:Unknown music control, Sir.";
+            if (!hasMusicSessionAccess()) {
+                runOnUiThread(this::openMusicSessionAccessSettings);
+                return "ACCESS_REQUIRED:Enable JARVIS YouTube Music Control in Android Notification Access settings, then repeat the command.";
             }
-            runOnUiThread(() -> dispatchMediaKey(keyCode));
-            return "MEDIA_KEY_SENT:" + action + "; Android has been asked to route this media button to the active player.";
+            final MediaController controller;
+            try {
+                controller = findYoutubeMusicController();
+            } catch (SecurityException | IllegalStateException e) {
+                return "ERROR:YouTube Music session access is unavailable, Sir.";
+            }
+            if (controller == null) return "ERROR:YouTube Music has no active media session yet, Sir.";
+            runOnUiThread(() -> {
+                try {
+                    switch (action) {
+                        case "play":
+                        case "resume":
+                            controller.getTransportControls().play();
+                            break;
+                        case "pause":
+                        case "stop":
+                            controller.getTransportControls().pause();
+                            break;
+                        case "next":
+                        case "skip":
+                            controller.getTransportControls().skipToNext();
+                            break;
+                        case "previous":
+                        case "back":
+                            controller.getTransportControls().skipToPrevious();
+                            break;
+                        default:
+                            Toast.makeText(this, "Unknown YouTube Music control, Sir.", Toast.LENGTH_SHORT).show();
+                    }
+                } catch (RuntimeException e) {
+                    Toast.makeText(this, "YouTube Music did not accept that media command, Sir.", Toast.LENGTH_SHORT).show();
+                }
+            });
+            return "YOUTUBE_MUSIC_CONTROL_SENT:" + action;
         }
 
         @JavascriptInterface public String playYoutubeMusic(String requested) {
             final String query = requested == null ? "" : requested.trim();
             if (query.isEmpty() || query.length() > 200) {
                 return "ERROR:Please provide a song title, Sir.";
+            }
+            if (!hasMusicSessionAccess()) {
+                youtubeMusicPlaybackStatus = "ACCESS_REQUIRED";
+                runOnUiThread(this::openMusicSessionAccessSettings);
+                return "ACCESS_REQUIRED:Enable JARVIS YouTube Music Control in Android Notification Access settings, then repeat the song request.";
             }
 
             Intent play = new Intent(MediaStore.INTENT_ACTION_MEDIA_PLAY_FROM_SEARCH);
@@ -400,24 +540,22 @@ public class MainActivity extends Activity {
             play.putExtra(SearchManager.QUERY, query);
             play.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
 
-            if (play.resolveActivity(getPackageManager()) != null) {
-                try {
-                    startActivity(play);
-                    // Some versions of YouTube Music open results but do not honour
-                    // MEDIA_PLAY_FROM_SEARCH. Follow with a standard PLAY key event.
-                    // KEYCODE_MEDIA_PLAY is idempotent (unlike PLAY_PAUSE), so it will
-                    // not pause a track that the intent already started.
-                    new android.os.Handler(android.os.Looper.getMainLooper())
-                            .postDelayed(() -> dispatchMediaKey(KeyEvent.KEYCODE_MEDIA_PLAY), 1800);
-                    return "PLAY_REQUESTED_UNCONFIRMED:Sent YouTube Music a song-play intent and a follow-up Android PLAY media key for " + query + ".";
-                } catch (ActivityNotFoundException | SecurityException e) {
-                    runOnUiThread(() -> openYoutubeMusicSearchFallback(query));
-                    return "SEARCH_FALLBACK:YouTube Music rejected the play request; opened search results instead.";
-                }
+            if (play.resolveActivity(getPackageManager()) == null) {
+                youtubeMusicPlaybackStatus = "APP_NOT_FOUND";
+                return "ERROR:YouTube Music is not installed or does not expose the play-from-search action, Sir.";
             }
 
-            runOnUiThread(() -> openYoutubeMusicSearchFallback(query));
-            return "SEARCH_FALLBACK:YouTube Music does not expose the play-from-search action on this device.";
+            youtubeMusicPlaybackStatus = "STARTING:" + query;
+            runOnUiThread(() -> {
+                try {
+                    startActivity(play);
+                    musicHandler.postDelayed(() -> attemptYoutubeMusicPlayback(query, 0), 1200);
+                } catch (ActivityNotFoundException | SecurityException e) {
+                    youtubeMusicPlaybackStatus = "LAUNCH_FAILED";
+                    openYoutubeMusicSearchFallback(query);
+                }
+            });
+            return "PLAYBACK_QUEUED:" + query;
         }
 
         private void openYoutubeMusicSearchFallback(String query) {
