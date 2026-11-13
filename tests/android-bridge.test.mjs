@@ -20,7 +20,7 @@ test("native bridge exposes confirmation-based Clock and Calendar actions", asyn
 test("Android release metadata identifies JARVIS 6.0 and advances installed version", async () => {
   const gradle = await readFile(new URL("../app/build.gradle", import.meta.url), "utf8");
   assert.match(gradle, /versionCode\s+601/);
-  assert.match(gradle, /versionName\s+'6\\.0\\.1'/);
+  assert.match(gradle, /versionName\s+'6\.0\.1'/);
 });
 
 test("APK workflow uploads phone and TV CI artifacts without publishing GitHub releases", async () => {
