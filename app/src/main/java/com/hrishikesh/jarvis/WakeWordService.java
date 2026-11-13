@@ -284,7 +284,9 @@ public class WakeWordService extends Service implements RecognitionListener {
         }
 
         // A partial hypothesis can grow over several callbacks. Once it has
-        // dispatched a wake/command, ignore the corresponding final result.
+        // dispatched a wake/command, ignore later partials and its final result
+        // until the recognizer closes that utterance.
+        if (partial && wakeHandledInUtterance) return;
         if (!partial && wakeHandledInUtterance) {
             wakeHandledInUtterance = false;
             return;
