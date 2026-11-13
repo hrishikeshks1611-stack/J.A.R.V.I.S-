@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { createArtifactFile, validateArtifact } from "../lib/jarvis-files.js";
 import createFileHandler from "../api/create-file.js";
+import { hashToken } from "../lib/jarvis-store.js";
 
 const sample = {
   title: "Quarterly Operations Summary",
@@ -78,7 +79,10 @@ test("file creation authenticates read-only and returns a real workbook without 
       const command = JSON.parse(options.body)[0];
       redisCommands.push(command);
       if (command[0] !== "GET") throw new Error("Staging file creation must not write to Redis.");
-      return new Response(JSON.stringify([{ result: JSON.stringify({ deviceId: "test-device", role: "owner" }) }]), { status: 200 });
+      const result = command[1] === "jarvis:v1:owner:token-hash"
+        ? hashToken("test-session-token")
+        : JSON.stringify({ deviceId: "test-device", role: "device" });
+      return new Response(JSON.stringify([{ result }]), { status: 200 });
     }
     if (String(url).includes("generativelanguage.googleapis.com")) {
       const spec = {
@@ -113,8 +117,12 @@ test("file creation authenticates read-only and returns a real workbook without 
     assert.equal(statusCode, 200);
     assert.equal(payload.filename, "Integration-Test-Budget.xlsx");
     assert.equal(Buffer.from(payload.data, "base64").subarray(0, 2).toString(), "PK");
-    assert.equal(redisCommands.length, 1);
-    assert.equal(redisCommands[0][0], "GET");
+    assert.equal(redisCommands.length, 2);
+    assert.ok(redisCommands.every(command => command[0] === "GET"));
+    assert.deepEqual(redisCommands.map(command => command[1]), [
+      "jarvis:v1:session:" + hashToken("test-session-token"),
+      "jarvis:v1:owner:token-hash"
+    ]);
     assert.equal(headers["Access-Control-Allow-Origin"], "https://hrishikeshks1611-stack.github.io");
   } finally {
     globalThis.fetch = savedFetch;
