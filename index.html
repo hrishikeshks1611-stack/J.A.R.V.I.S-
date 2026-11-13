@@ -44,6 +44,7 @@ footer{text-align:center;color:#577c99;font-size:10px;letter-spacing:.12em;paddi
  <div class="sync-card">
   <h2 id="syncTitle">J.A.R.V.I.S. · DEVICES &amp; SYNC</h2>
   <p id="syncStatus">Connecting to your shared JARVIS memory…</p>
+  <p id="deviceIdentity" class="sync-muted">Device identity will appear after verification.</p>
   <div id="setupArea" hidden>
    <p>Claim this first device as the owner. Enter the one-time owner setup code supplied to you.</p>
    <input id="setupCode" type="password" autocomplete="off" placeholder="Owner setup code">
@@ -280,12 +281,14 @@ async function openSyncPanel(){
   if(sessionToken){
    const v=await pairApi({action:'verify'});sessionRole=v.role;sessionDeviceId=v.deviceId;
    $('syncStatus').textContent='Connected as '+v.deviceName+'. Shared conversation sync is active.';
+   $('deviceIdentity').textContent='THIS DEVICE: '+(v.role==='owner'?'OWNER':'DEVICE')+' · ID '+v.deviceId;
    if(v.role==='owner'){$('ownerArea').hidden=false;await renderPairedDevices();}
    else {$('deviceArea').hidden=false;}
    return;
   }
   const statusData=await pairApi({action:'status'});
   $('syncStatus').textContent=statusData.ownerClaimed?'This JARVIS system already has an owner. Pair this device using a code from the owner device.':'This is the first device. Claim it as the owner to initialise your private JARVIS memory.';
+  $('deviceIdentity').textContent='THIS DEVICE: NOT PAIRED';
   $('setupArea').hidden=statusData.ownerClaimed;
   $('pairArea').hidden=!statusData.ownerClaimed;
  }catch(e){$('syncStatus').textContent=e.message}
