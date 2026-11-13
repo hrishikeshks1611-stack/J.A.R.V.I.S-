@@ -182,18 +182,26 @@ public final class MainActivity extends Activity {
     }
 
     private void handleCommand(String raw) {
-        String c = raw.toLowerCase(Locale.ROOT).trim();
-        if (c.contains("open camera") || c.contains("take a photo") || c.contains("selfie")) { openCamera(); return; }
-        if (c.startsWith("open ")) { launchApp(c.substring(5).trim()); return; }
-        if (c.contains("play ") || c.contains("music")) {
-            String q = c.replace("play", "").replace("music", "").trim();
-            playMusic(q.isEmpty() ? "music" : q); return;
+        CommandParser.Command command = CommandParser.parse(raw);
+        switch (command.action) {
+            case OPEN_CAMERA:
+                openCamera();
+                break;
+            case OPEN_APP:
+                launchApp(command.argument);
+                break;
+            case PLAY_MUSIC:
+                playMusic(command.argument.isEmpty() ? "music" : command.argument);
+                break;
+            case GREETING:
+                speak("Always here, Sir.");
+                setStatus("JARVIS ONLINE");
+                break;
+            default:
+                speak("I heard you, Sir. That command is not supported yet.");
+                setStatus("COMMAND RECEIVED • ACTION NOT IMPLEMENTED");
+                break;
         }
-        if (c.contains("hello") || c.contains("are you there") || c.contains("wake up")) {
-            speak("Always here, Sir."); setStatus("JARVIS ONLINE"); return;
-        }
-        speak("I heard you, Sir. That command is not supported yet.");
-        setStatus("COMMAND RECEIVED • ACTION NOT IMPLEMENTED");
     }
 
     private void launchApp(String requested) {

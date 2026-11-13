@@ -19,6 +19,8 @@ jobs:
         with:
           packages: 'platform-tools platforms;android-35 build-tools;35.0.0'
           accept-android-sdk-licenses: true
+      - name: Run command parser tests
+        run: gradle --no-daemon testDebugUnitTest
       - name: Assemble fresh phone APK
         run: gradle --no-daemon assembleDebug
       - name: Verify APK
