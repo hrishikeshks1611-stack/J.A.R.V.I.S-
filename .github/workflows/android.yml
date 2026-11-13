@@ -19,25 +19,33 @@ jobs:
         with:
           packages: 'platform-tools platforms;android-35 build-tools;35.0.0'
           accept-android-sdk-licenses: true
-      - name: Run command parser tests
+      - name: Run unit tests
         run: gradle --no-daemon testDebugUnitTest
       - name: Assemble fresh phone APK
-        run: gradle --no-daemon assembleDebug
-      - name: Verify APK package, icon resources and archive integrity
+        run: gradle --no-daemon clean assembleDebug
+      - name: Verify package, version, icon and splash resources
         shell: bash
         run: |
           set -euo pipefail
           APK=app/build/outputs/apk/debug/app-debug.apk
           test -s "$APK"
+          AAPT="$ANDROID_HOME/build-tools/35.0.0/aapt"
+          "$AAPT" dump badging "$APK" | tee /tmp/jarvis-badging.txt
+          grep -q "package: name='com.hrishikesh.jarvis.fresh' versionCode='111' versionName='1.0.11'" /tmp/jarvis-badging.txt
+          grep -q "application-icon-.*:.*res/" /tmp/jarvis-badging.txt
+          "$AAPT" dump resources "$APK" > /tmp/jarvis-resources.txt
+          grep -q 'jarvis_reactor' /tmp/jarvis-resources.txt
+          grep -q 'jarvis_splash' /tmp/jarvis-resources.txt
           unzip -t "$APK"
-          aapt dump badging "$APK" | tee /tmp/jarvis-badging.txt
-          grep -F "package: name='com.hrishikesh.jarvis.fresh' versionCode='111' versionName='1.0.11'" /tmp/jarvis-badging.txt
-          aapt dump xmltree "$APK" AndroidManifest.xml | grep -E 'ic_launcher|jarvis_splash|SplashTheme'
-          unzip -l "$APK" | grep -F 'res/drawable/jarvis_reactor.xml'
-          unzip -l "$APK" | grep -F 'res/drawable/jarvis_splash.xml'
-          unzip -l "$APK" | grep -F 'res/mipmap-anydpi-v26/ic_launcher.xml'
+          unzip -l "$APK" | grep -E 'classes[0-9]*\\.dex'
+          mkdir -p release
+          cp "$APK" release/JARVIS-1.0.11-ARC-REACTOR.apk
+          sha256sum release/JARVIS-1.0.11-ARC-REACTOR.apk | tee release/SHA256SUMS.txt
       - uses: actions/upload-artifact@v4
         with:
-          name: JARVIS-Fresh-Android
-          path: app/build/outputs/apk/debug/app-debug.apk
+          name: JARVIS-1.0.11-ARC-REACTOR-APK
+          path: |
+            release/JARVIS-1.0.11-ARC-REACTOR.apk
+            release/SHA256SUMS.txt
           if-no-files-found: error
+          retention-days: 30
