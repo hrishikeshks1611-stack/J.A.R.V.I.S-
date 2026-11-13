@@ -197,12 +197,14 @@ public class MainActivity extends Activity {
     }
 
     private boolean isBritish(Voice voice) {
+        if (voice == null) return false;
         Locale locale = voice.getLocale();
         return locale != null && "en".equalsIgnoreCase(locale.getLanguage())
                 && "GB".equalsIgnoreCase(locale.getCountry());
     }
 
     private boolean isExplicitlyMale(Voice voice) {
+        if (voice == null) return false;
         String name = voice.getName() == null ? "" : voice.getName().toLowerCase(Locale.ROOT);
         if (name.matches(".*(^|[-_ ])(male|masculine)([-_ ]|$).*")) return true;
         if (name.matches(".*(^|[-_ ])(female|feminine)([-_ ]|$).*")) return false;
