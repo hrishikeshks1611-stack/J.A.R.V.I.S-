@@ -37,6 +37,19 @@ jobs:
         run: gradle --no-daemon testPhoneDebugUnitTest testTvDebugUnitTest
       - name: Build phone and Android TV APKs
         run: gradle --no-daemon assemblePhoneDebug assembleTvDebug
+      - name: Verify phone APK package and version
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK="app/build/outputs/apk/phone/debug/app-phone-debug.apk"
+          AAPT="$ANDROID_HOME/build-tools/35.0.0/aapt"
+          test -s "$APK"
+          BADGING="$("$AAPT" dump badging "$APK")"
+          echo "$BADGING" | grep -Fq "package: name='com.hrishikesh.jarvis' versionCode='503' versionName='5.0.3'"
+          sha256sum "$APK"
+          echo "Verified package: com.hrishikesh.jarvis"
+          echo "Verified version: 5.0.3 (503)"
+          echo "Note: this does not verify compatibility with the copy installed on a user's phone."
       - name: Upload phone verification artifact
         uses: actions/upload-artifact@v4
         with:
