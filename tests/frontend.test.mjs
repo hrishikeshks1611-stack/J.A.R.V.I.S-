@@ -32,7 +32,7 @@ test("device sync identifies this device and exposes the authenticated owner tra
   assert.ok(html.includes("CURRENT OWNER"));
   assert.ok(html.includes("THIS PHONE"));
   assert.ok(html.includes("pairApi({action:'transfer-owner',deviceId:device.deviceId})"));
-  assert.ok(html.includes("Shared conversations and saved memories are preserved"));
+  assert.ok(html.includes("Shared conversations and saved memories will be preserved"));
 });
 
 test("service worker cache version is bumped and script parses", async () => {
