@@ -86,3 +86,44 @@ test("Android capability questions return the code-backed catalogue without call
     }
   }
 });
+
+
+test("medical red-flag emergencies bypass Gemini and return immediate emergency instructions", async () => {
+  const originalFetch = global.fetch;
+  const keys = ["UPSTASH_REDIS_REST_URL", "UPSTASH_REDIS_REST_TOKEN", "JARVIS", "GEMINI_API_KEY"];
+  const original = Object.fromEntries(keys.map(key => [key, process.env[key]]));
+  process.env.UPSTASH_REDIS_REST_URL = "https://redis.example.test";
+  process.env.UPSTASH_REDIS_REST_TOKEN = "test-token";
+  delete process.env.JARVIS;
+  delete process.env.GEMINI_API_KEY;
+  const writes = [];
+  global.fetch = async (_url, options) => {
+    const commands = JSON.parse(options.body);
+    const results = commands.map(command => {
+      const [op, key] = command;
+      if (op === "GET" && key.includes(":session:")) return { result: JSON.stringify({ deviceId: "android-test-device" }) };
+      if (op === "GET") return { result: null };
+      if (op === "EXPIRE") return { result: 1 };
+      if (op === "EVAL") { writes.push(command); return { result: JSON.stringify([]) }; }
+      throw new Error("Unexpected Redis command: " + op);
+    });
+    return { ok: true, status: 200, text: async () => JSON.stringify(results) };
+  };
+  try {
+    const res = response();
+    await handler({ method: "POST", headers: { authorization: "Bearer emergency-test-token" }, body: { message: "My father is having chest pain right now" } }, res);
+    assert.equal(res.statusCode, 200);
+    assert.equal(res.body.emergency, true);
+    assert.equal(res.body.engine, "medical-emergency");
+    assert.match(res.body.reply, /Call 112 now/);
+    assert.match(res.body.reply, /108 for an ambulance in Kerala/);
+    assert.deepEqual(res.body.toolCalls, []);
+    assert.equal(writes.length, 1);
+  } finally {
+    global.fetch = originalFetch;
+    for (const key of keys) {
+      if (original[key] === undefined) delete process.env[key];
+      else process.env[key] = original[key];
+    }
+  }
+});
