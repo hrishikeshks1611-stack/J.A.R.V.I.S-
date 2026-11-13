@@ -339,7 +339,7 @@ $('refreshDeviceRole').onclick=async()=>{
  try{
   const v=await pairApi({action:'verify'});sessionRole=v.role;sessionDeviceId=v.deviceId;
   if(v.role==='owner'){$('deviceArea').hidden=true;$('ownerArea').hidden=false;$('syncStatus').textContent='Ownership confirmed on this phone. Shared conversation sync is active.';await renderPairedDevices();}
-  else {$('syncStatus').textContent='Still connected as a regular device. Ownership has not been transferred yet.';}
+  else {$('syncStatus').textContent='Still connected as a regular device. Ownership has not been transferred yet.\nACTIVE DEVICE ID: '+v.deviceId+'\nVERIFIED ROLE: '+v.role+'\nPAIRING API: '+JARVIS_API;}
  }catch(e){$('syncStatus').textContent=e.message}
 };
 $('pairDevice').onclick=async()=>{
