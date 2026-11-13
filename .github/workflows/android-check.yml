@@ -1,8 +1,7 @@
-name: JARVIS Android microphone and wake-word checks
-
+name: JARVIS 7.0 Android microphone and wake-word checks
 on:
   push:
-    branches: [ jarvis-mic-wakeword-clean, jarvis-5.0-development, jarvis-5-to-10-continuation, jarvis-6-mic-calling-repair, jarvis-6.0.1-repair ]
+    branches: [ jarvis-7.0-new-app ]
     paths:
       - 'app/**'
       - '*.gradle'
@@ -15,10 +14,8 @@ on:
       - '*.gradle'
       - 'settings.gradle'
       - '.github/workflows/android-check.yml'
-
 permissions:
   contents: read
-
 jobs:
   android-build:
     runs-on: ubuntu-latest
@@ -44,14 +41,5 @@ jobs:
           gradle-version: '8.9'
       - name: Compile phone and TV variants
         run: gradle --no-daemon assemblePhoneDebug assembleTvDebug
-      - name: Publish phone and TV APK build artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: jarvis-android-apks
-          path: |
-            app/build/outputs/apk/phone/debug/app-phone-debug.apk
-            app/build/outputs/apk/tv/debug/app-tv-debug.apk
-          if-no-files-found: error
-          retention-days: 14
-      - name: Run deterministic offline wake-phrase unit tests
+      - name: Run offline wake phrase unit tests
         run: gradle --no-daemon testPhoneDebugUnitTest
