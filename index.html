@@ -749,6 +749,25 @@ if(instant){
  pairApi({action:'append-local',message,reply:instant}).catch(()=>{});
  $('hint').textContent='Ready when you are.';status('System ready');speak(instant);return;
 }
+// Place an explicitly requested contact call through Android's native dialler.
+const callCommand=message.match(/^\s*(?:jarvis[, ]+)?(?:please\s+)?call\s+(.+?)[.!?]*\s*$/i);
+if(callCommand){
+ const contactName=callCommand[1].trim();
+ if(window.AndroidJarvis&&typeof window.AndroidJarvis.callContact==='function'){
+  const result=window.AndroidJarvis.callContact(contactName)||'';
+  const spoken=result.startsWith('CALL_STARTING:')?'Certainly, Sir.':
+   result.startsWith('PERMISSION_REQUIRED:')?'Please allow Contacts access, Sir. I will place the call immediately afterwards.':
+   result.startsWith('AMBIGUOUS:')?'I found more than one number for '+contactName+'. Please clarify which number you want, Sir.':
+   result.startsWith('NOT_FOUND:')?'I could not find a saved phone number for '+contactName+', Sir.':
+   'I could not prepare that call, Sir.';
+  add(spoken,'jarvis');history.push({role:'model',text:spoken});history=history.slice(-20);
+  pairApi({action:'append-local',message,reply:spoken}).catch(()=>{});
+  $('hint').textContent=result.startsWith('CALL_STARTING:')?'Calling '+contactName+'…':spoken;
+  status(result.startsWith('CALL_STARTING:')?'Calling':'System ready');
+  speak(spoken);return;
+ }
+}
+ 
 // Handle a chained native command locally instead of sending it to the AI chat model.
 const multiAppMusic=message.match(/^\s*(?:jarvis[, ]+)?(?:please\s+)?(?:open|launch|start)\s+(whatsapp|chrome|gmail|instagram|facebook|telegram)\s+and\s+(?:then\s+)?(?:play|listen to)\s+(.+?)(?:\s+(?:on|in)\s+youtube\s+music)?[.!?]*\s*$/i);
 if(multiAppMusic && window.AndroidJarvis && typeof window.AndroidJarvis.openApp==='function'){
