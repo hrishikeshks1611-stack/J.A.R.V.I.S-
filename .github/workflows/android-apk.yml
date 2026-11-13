@@ -1,5 +1,5 @@
 name: Build separate-install JARVIS Android and TV APKs
-# These artifacts use a new package identity and coexist with legacy JARVIS 5.0.2.
+# JARVIS 6.0.1 artifacts use the new package identity and coexist with legacy JARVIS 5.0.2.
 # CI verification does not replace physical-device installation and migration tests.
 on:
   workflow_dispatch:
