@@ -29,6 +29,9 @@ test("device sync identifies this device and exposes the authenticated owner tra
   const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
   assert.ok(html.includes('id="deviceIdentity"'));
   assert.ok(html.includes("pairApi({action:'verify'})"));
+  assert.ok(html.includes("ACTIVE DEVICE ID: '+v.deviceId"));
+  assert.ok(html.includes("VERIFIED ROLE: '+v.role"));
+  assert.ok(html.includes("PAIRING API: '+JARVIS_API"));
   assert.ok(html.includes("CURRENT OWNER"));
   assert.ok(html.includes("THIS PHONE"));
   assert.ok(html.includes("FULL DEVICE ID '+device.deviceId"));
