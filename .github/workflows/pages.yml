@@ -1,4 +1,5 @@
 name: Deploy JARVIS to GitHub Pages
+# Redeploys the latest isolated jarvis-7.0-new-app frontend on main-site updates.
 
 on:
   push:
