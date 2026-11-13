@@ -24,20 +24,60 @@ test("native bridge exposes confirmation-based Clock and Calendar actions", asyn
   assert.ok(manifest.includes('com.android.alarm.permission.SET_ALARM'));
 });
 
-test("Android update metadata advances production JARVIS from 5.0.2 to 5.0.3", async () => {
+test("JARVIS 6.0.1 retains the JARVIS 6 package identity and increments its version", async () => {
   const gradle = await readFile(new URL("../app/build.gradle", import.meta.url), "utf8");
-  assert.match(gradle, /applicationId\s+'com\.hrishikesh\.jarvis'/);
-  assert.match(gradle, /versionCode\s+503/);
-  assert.match(gradle, /versionName\s+'5\.0\.3'/);
+  assert.match(gradle, /applicationId\s+'com\.hrishikesh\.jarvis\.next'/);
+  assert.match(gradle, /versionCode\s+601/);
+  assert.match(gradle, /versionName\s+'6\.0\.1'/);
 });
 
-test("APK workflow keeps debug builds as verification artifacts and never publishes them as updates", async () => {
+test("APK workflow verifies separate-install builds and never publishes debug APKs as releases", async () => {
   const workflow = await readFile(new URL("../.github/workflows/android-apk.yml", import.meta.url), "utf8");
   assert.match(workflow, /contents:\s*read/);
-  assert.doesNotMatch(workflow, /gh release create|action-gh-release|Publish phone APK/);
-  assert.match(workflow, /debug-verification/);
+  assert.doesNotMatch(workflow, /gh release create|action-gh-release|Publish.*APK/);
+  assert.match(workflow, /separate-install/);
+  assert.ok(workflow.includes("com.hrishikesh.jarvis.next"));
+  assert.ok(workflow.includes("com.hrishikesh.jarvis.next.tv"));
 });
 
+
+
+
+test("native contact calling requests runtime permissions and refuses ambiguous matches", async () => {
+  const source = await readFile(new URL("../app/src/main/java/com/hrishikesh/jarvis/MainActivity.java", import.meta.url), "utf8");
+  const manifest = await readFile(new URL("../app/src/main/AndroidManifest.xml", import.meta.url), "utf8");
+  assert.match(source, /public String callContact\(String requested\)/);
+  assert.match(source, /ContactsContract\.CommonDataKinds\.Phone\.CONTENT_FILTER_URI/);
+  assert.match(source, /AMBIGUOUS:/);
+  assert.match(source, /REQUEST_CONTACTS/);
+  assert.match(source, /REQUEST_CALL_PHONE/);
+  assert.match(source, /Intent\.ACTION_CALL/);
+  assert.ok(manifest.includes('android.permission.READ_CONTACTS'));
+  assert.ok(manifest.includes('android.permission.CALL_PHONE'));
+});
+
+
+
+test("contact commands reach the native Android caller before the VCF dialler fallback", async () => {
+  const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+  const nativeCall = html.indexOf("window.AndroidJarvis.callContact(target)");
+  const vcfFallback = html.indexOf("resolveJarvisContact(target)");
+  assert.ok(nativeCall >= 0 && vcfFallback > nativeCall);
+  assert.ok(html.includes("if(!nativeResult.startsWith('NOT_FOUND:'))"));
+  assert.ok(!html.includes("const callCommand=message.match"));
+});
+
+test("microphone readiness is reported only after native capture and errors reach the UI", async () => {
+  const activity = await readFile(new URL("../app/src/main/java/com/hrishikesh/jarvis/MainActivity.java", import.meta.url), "utf8");
+  const service = await readFile(new URL("../app/src/main/java/com/hrishikesh/jarvis/WakeWordService.java", import.meta.url), "utf8");
+  const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+  assert.match(activity, /WakeWordService\.ACTION_READY/);
+  assert.match(activity, /WakeWordService\.ACTION_ERROR/);
+  assert.match(service, /broadcast\(ACTION_READY, null\)/);
+  assert.match(service, /broadcast\(ACTION_ERROR, detail\)/);
+  assert.match(html, /onMicrophoneReady/);
+  assert.match(html, /onMicrophoneError/);
+});
 
 test("live Android bridge opens the exact selected YouTube Music track", async () => {
   const source = await readFile(new URL("../app/src/main/java/com/hrishikesh/jarvis/MainActivity.java", import.meta.url), "utf8");
@@ -89,4 +129,14 @@ test("in-app updater validates package and version before Android PackageInstall
   assert.match(manifest, /UpdateInstallReceiver/);
   assert.match(html, /checkJarvisUpdates/);
   assert.match(html, /api\.github\.com\/repos\/hrishikeshks1611-stack/);
+});
+
+
+test("explicit wake-word listening survives Activity stop and is restored on foreground launch", async () => {
+  const source = await readFile(new URL("../app/src/main/java/com/hrishikesh/jarvis/MainActivity.java", import.meta.url), "utf8");
+  const settings = await readFile(new URL("../app/src/main/java/com/hrishikesh/jarvis/WakeWordActivity.java", import.meta.url), "utf8");
+  assert.match(source, /wakePrefs\.getBoolean\("enabled", false\)/);
+  assert.match(source, /if \(!wakeWordEnabled\) stopService/);
+  assert.doesNotMatch(source, /putBoolean\("enabled", false\)\.apply\(\);\s*stopService\(new Intent\(this, WakeWordService\.class\)\);/);
+  assert.match(settings, /boolean enabled = prefs\.getBoolean\("enabled", false\);/);
 });
