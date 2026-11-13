@@ -116,12 +116,6 @@ public final class MainActivity extends Activity {
         camera.setOnClickListener(v -> openCamera());
         devicePanel.addView(camera, matchWrap());
 
-        Button mediaAccess = makeButton("ENABLE MEDIA SESSION ACCESS");
-        mediaAccess.setOnClickListener(v -> {
-            if (MediaControl.hasAccess(this)) setStatus("MEDIA SESSION ACCESS ENABLED");
-            else MediaControl.openAccessSettings(this);
-        });
-        devicePanel.addView(mediaAccess, matchWrap());
 
         Button music = makeButton("SEARCH & PLAY MUSIC");
         music.setOnClickListener(v -> playMusic("Back in Black"));
@@ -298,12 +292,8 @@ public final class MainActivity extends Activity {
             case RESUME_MEDIA:
             case NEXT_TRACK:
             case PREVIOUS_TRACK:
-                if (MediaControl.execute(this, command.action)) {
-                    speak("As you wish, Sir."); setStatus("MEDIA COMMAND SENT");
-                } else {
-                    speak("Media access is unavailable, Sir. Please enable JARVIS media controls.");
-                    setStatus("ENABLE MEDIA CONTROLS IN SETTINGS");
-                }
+                speak("I can open music apps and search for tracks, Sir, but direct controls of other apps are not available in this security-focused build.");
+                setStatus("DIRECT THIRD-PARTY MEDIA CONTROL NOT INCLUDED");
                 break;
             case GREETING:
                 speak(PersonalityEngine.respond(raw, memory == null ? null : memory.recent(12)));
