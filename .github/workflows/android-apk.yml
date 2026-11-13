@@ -1,5 +1,6 @@
 name: Build complete JARVIS Android and TV APKs
 # CI artifacts are build outputs; installation and on-device behaviour require separate validation.
+# Each branch build records package metadata and the exact source commit.
 on:
   workflow_dispatch:
   push:
