@@ -1,7 +1,7 @@
-name: JARVIS 7.0 Android microphone and wake-word checks
+name: J.A.R.V.I.S microphone and wake-word checks
 on:
   push:
-    branches: [ jarvis-7.0-new-app ]
+    branches: [ jarvis-clean-brand-build ]
     paths:
       - 'app/**'
       - '*.gradle'
@@ -46,7 +46,7 @@ jobs:
       - name: Publish APK build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: jarvis-7.0-debug-apks
+          name: J.A.R.V.I.S-debug-apks
           path: app/build/outputs/apk/**/*.apk
           if-no-files-found: error
           retention-days: 14
