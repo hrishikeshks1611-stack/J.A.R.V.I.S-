@@ -12,6 +12,16 @@ dependencies {
     androidTestImplementation 'androidx.test.ext:junit:1.2.1'
 }
 
+// Bundle the exact web client used by this build so the Android app never opens a stale or missing Pages route.
+tasks.register('copyJarvisWebClient', Copy) {
+    from(rootProject.file('index.html'))
+    into("$projectDir/src/main/assets")
+    rename { 'jarvis.html' }
+}
+tasks.named('preBuild').configure {
+    dependsOn tasks.named('copyJarvisWebClient')
+}
+
 android {
     namespace 'com.hrishikesh.jarvis'
     compileSdk 35
