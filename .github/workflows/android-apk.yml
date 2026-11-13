@@ -1,17 +1,17 @@
 name: Build separate-install JARVIS Android and TV APKs
-# These artifacts use a new package identity and coexist with legacy JARVIS 5.0.2.
+# JARVIS 6.0.1 artifacts use the new package identity and coexist with legacy JARVIS 5.0.2.
 # CI verification does not replace physical-device installation and migration tests.
 on:
   workflow_dispatch:
   push:
-    branches: [ main, jarvis-master-brain ]
+    branches: [ main, jarvis-master-brain, jarvis-6-mic-calling-repair ]
     paths:
       - 'app/**'
       - '*.gradle'
       - 'settings.gradle'
       - '.github/workflows/android-apk.yml'
 permissions:
-  contents: read
+  contents: write
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -49,8 +49,8 @@ jobs:
           test -s "$TV_APK"
           PHONE_BADGING="$("$AAPT" dump badging "$PHONE_APK")"
           TV_BADGING="$("$AAPT" dump badging "$TV_APK")"
-          echo "$PHONE_BADGING" | grep -Fq "package: name='com.hrishikesh.jarvis.next' versionCode='600' versionName='6.0.0'"
-          echo "$TV_BADGING" | grep -Fq "package: name='com.hrishikesh.jarvis.next.tv' versionCode='600' versionName='6.0.0-tv'"
+          echo "$PHONE_BADGING" | grep -Fq "package: name='com.hrishikesh.jarvis.next' versionCode='601' versionName='6.0.1'"
+          echo "$TV_BADGING" | grep -Fq "package: name='com.hrishikesh.jarvis.next.tv' versionCode='601' versionName='6.0.1-tv'"
           if echo "$PHONE_BADGING" | grep -Fq "package: name='com.hrishikesh.jarvis'"; then
             echo "ERROR: phone APK would overwrite legacy JARVIS"
             exit 1
@@ -62,14 +62,31 @@ jobs:
       - name: Upload separate-install phone APK
         uses: actions/upload-artifact@v4
         with:
-          name: JARVIS-6.0.0-Android-phone-separate-install
+          name: JARVIS-6.0.1-Android-phone
           path: app/build/outputs/apk/phone/debug/app-phone-debug.apk
           if-no-files-found: error
           retention-days: 30
       - name: Upload separate-install Android TV APK
         uses: actions/upload-artifact@v4
         with:
-          name: JARVIS-6.0.0-Android-TV-separate-install
+          name: JARVIS-6.0.1-Android-TV
           path: app/build/outputs/apk/tv/debug/app-tv-debug.apk
           if-no-files-found: error
           retention-days: 30
+
+      - name: Publish in-app 6.0.1 update (phone only)
+        if: github.ref == 'refs/heads/jarvis-6-mic-calling-repair'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: jarvis-latest
+          name: J.A.R.V.I.S. 6.0.1
+          target_commitish: jarvis-6-mic-calling-repair
+          prerelease: true
+          generate_release_notes: false
+          body: |
+            JARVIS_PACKAGE=com.hrishikesh.jarvis.next
+            JARVIS_VERSION_CODE=601
+            JARVIS_VERSION_NAME=6.0.1
+
+            In-app update candidate for JARVIS 6.0.0. Android will verify whether this package can update the installed app before installation.
+          files: app/build/outputs/apk/phone/debug/app-phone-debug.apk
