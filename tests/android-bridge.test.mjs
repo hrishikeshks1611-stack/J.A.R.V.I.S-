@@ -24,9 +24,9 @@ test("native bridge exposes confirmation-based Clock and Calendar actions", asyn
   assert.ok(manifest.includes('com.android.alarm.permission.SET_ALARM'));
 });
 
-test("JARVIS 6.0.1 retains the JARVIS 6 package identity and increments its version", async () => {
+test("JARVIS 7.0 uses an independent package identity and version", async () => {
   const gradle = await readFile(new URL("../app/build.gradle", import.meta.url), "utf8");
-  assert.match(gradle, /applicationId\s+'com\.hrishikesh\.jarvis\.next'/);
+  assert.match(gradle, /applicationId\\s+'com\\.hrishikesh\\.jarvis\\.seven'/);
   assert.match(gradle, /versionCode\s+601/);
   assert.match(gradle, /versionName\s+'6\.0\.1'/);
 });
@@ -36,8 +36,8 @@ test("APK workflow verifies separate-install builds and never publishes debug AP
   assert.match(workflow, /contents:\s*read/);
   assert.doesNotMatch(workflow, /gh release create|action-gh-release|Publish.*APK/);
   assert.match(workflow, /JARVIS 6\.0\.1 Android phone and TV packages/);
-  assert.ok(workflow.includes("com.hrishikesh.jarvis.next"));
-  assert.ok(workflow.includes("com.hrishikesh.jarvis.next.tv"));
+  assert.ok(workflow.includes("com.hrishikesh.jarvis.seven"));
+  assert.ok(workflow.includes("com.hrishikesh.jarvis.seven.tv"));
 });
 
 
