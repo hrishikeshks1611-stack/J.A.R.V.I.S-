@@ -691,6 +691,7 @@ function instantReply(text){
  if(/^(?:thanks|thank you|thank you jarvis|thanks jarvis)$/.test(q))return 'Always a pleasure, Sir.';
  if(/^(?:what time is it|tell me the time|current time)$/.test(q))return 'The time is '+new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})+', Sir.';
  if(/^(?:what is the date|what is today'?s date|what day is it|today'?s date)$/.test(q))return 'Today is '+new Date().toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long',year:'numeric'})+', Sir.';
+ if(/^(?:please\s+)?(?:introduce yourself|introduce yourself to (?:my )?(?:friend|friends)|tell (?:my )?(?:friend|friends) who you are|say hello to (?:my )?(?:friend|friends))$/.test(q))return 'Good day. I am J.A.R.V.I.S., an intelligent personal assistant designed to help my owner with information, everyday tasks, device controls and music. I aim to be capable, discreet and always at your service. It is a pleasure to meet you.';
  return null;
 }
 async function lookupYoutubeMusicTrack(query){
