@@ -73,7 +73,7 @@ jobs:
           api-level: 29
           target: default
           arch: x86_64
-          profile: Pixel_2
+          profile: pixel_2
           disable-animations: true
           script: gradle --no-daemon connectedPhoneDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.hrishikesh.jarvis.MainActivityLaunchTest
       - name: Upload phone build artifact for QA
