@@ -25,22 +25,20 @@ test("saved-memory UI is explicit and has deletion controls", async () => {
   assert.ok(html.includes("status('Offline mode')"));
 });
 
-test("one-time owner recovery is available on an unpaired phone", async () => {
+test("device sync identifies this device and exposes the authenticated owner transfer flow", async () => {
   const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
-  assert.ok(html.includes('id="recoveryArea"'));
-  assert.ok(html.includes('id="ownerRecoveryCode"'));
-  assert.ok(html.includes("action:'recover-owner'"));
-  assert.ok(html.includes("if(v.role==='owner')"));
-  assert.ok(html.includes("statusData.ownerClaimed"));
-  assert.ok(html.includes("fresh owner session on this phone"));
-  assert.ok(html.includes("Recover JARVIS ownership on THIS PHONE"));
-  assert.ok(html.includes("storeSession(data)"));
-  assert.ok(html.includes("All other paired-device records and shared memory are preserved"));
+  assert.ok(html.includes('id="deviceIdentity"'));
+  assert.ok(html.includes("pairApi({action:'verify'})"));
+  assert.ok(html.includes("CURRENT OWNER"));
+  assert.ok(html.includes("THIS PHONE"));
+  assert.ok(html.includes("pairApi({action:'transfer-owner',deviceId:device.deviceId})"));
+  assert.ok(html.includes("Shared conversations and saved memories are preserved"));
 });
 
 test("service worker cache version is bumped and script parses", async () => {
   const source = await readFile(new URL("../sw.js", import.meta.url), "utf8");
-  assert.ok(source.includes('const CACHE="jarvis-shell-v29"'));
+  assert.ok(source.includes('const CACHE="jarvis-shell-v30"'));
+  assert.ok(source.includes('fetch(request, {cache:"no-store"})'));
   assert.doesNotThrow(() => new Function(source));
 });
 
