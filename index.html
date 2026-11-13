@@ -596,9 +596,9 @@ if(callCommand){
  const contactName=callCommand[1].trim();
  if(contactName&&window.AndroidJarvis&&typeof window.AndroidJarvis.callContact==='function'){
   const reply=window.AndroidJarvis.callContact(contactName);
-  const spoken=reply&&reply.startsWith('PERMISSION_REQUIRED:')?'I need permission to look up your contacts first, Sir. Please allow Contacts access.':reply&&reply.startsWith('CONFIRMATION_SHOWN:')?'I found '+contactName+'. Please confirm the call on your screen, Sir.':reply&&reply.startsWith('AMBIGUOUS:')?'I found more than one number for '+contactName+'. Please choose the correct one in Contacts, Sir.':reply&&reply.startsWith('NOT_FOUND:')?'I could not find a phone number for '+contactName+', Sir.':'I could not prepare that call, Sir.';
+  const spoken=reply&&reply.startsWith('PERMISSION_REQUIRED:')?'I need permission to look up your contacts first, Sir. Please allow Contacts access.':reply&&reply.startsWith('CALL_STARTING:')?'Certainly, Sir.':reply&&reply.startsWith('AMBIGUOUS:')?'I found more than one number for '+contactName+'. Please choose the correct one in Contacts, Sir.':reply&&reply.startsWith('NOT_FOUND:')?'I could not find a phone number for '+contactName+', Sir.':'I could not prepare that call, Sir.';
   add(spoken,'jarvis');history.push({role:'model',text:spoken});history=history.slice(-20);pairApi({action:'append-local',message,reply:spoken}).catch(()=>{});
-  $('hint').textContent=reply&&reply.startsWith('CONFIRMATION_SHOWN:')?'Confirm the call in the JARVIS dialog if you want to proceed.':'Contact lookup requested.';
+  $('hint').textContent=reply&&reply.startsWith('CALL_STARTING:')?'Calling '+contactName+'…':'Contact lookup requested.';
   status('System ready');speak(spoken);return;
  }
 }
