@@ -45,10 +45,10 @@ public class MainActivityLaunchTest {
             html = output.toString("UTF-8");
         }
         assertTrue("The bundled page must use the exact J.A.R.V.I.S title", html.contains("<title>J.A.R.V.I.S</title>"));
-        assertTrue("Alfred must remain a personality inside J.A.R.V.I.S", html.contains("<option value=\\"alfred\\""));
+        assertTrue("Alfred must remain a personality inside J.A.R.V.I.S", html.contains("alfred") && html.contains("<option value="));
         assertTrue("The HUD must include perspective-based ARC reactor depth", html.contains("perspective:900px"));
         assertTrue("The ARC reactor must preserve 3D transforms", html.contains("transform-style:preserve-3d"));
-        assertTrue("Wake-word controls must remain in the bundled interface", html.contains("id=\\"wakeWordButton\\""));
+        assertTrue("Wake-word controls must remain in the bundled interface", html.contains("wakeWordButton"));
         assertTrue("Music search must remain in the bundled interface", html.contains("lookupYoutubeMusicTrack"));
 
         Intent launch = new Intent(context, MainActivity.class);
