@@ -285,36 +285,28 @@ public class MainActivity extends Activity {
         }
 
 
-        @JavascriptInterface public String playYoutubeMusic(String query) {
-            String cleanQuery = query == null ? "" : query.trim().replaceAll("\\s+", " ");
-            if (cleanQuery.isEmpty() || cleanQuery.length() > 240) {
-                return "ERROR: The selected YouTube Music song details are invalid.";
-            }
+        @JavascriptInterface public String playYoutubeMusic(String videoId) {
+            String id = videoId == null ? "" : videoId.trim();
+            if (!id.matches("[A-Za-z0-9_-]{11}")) return "ERROR: The selected YouTube Music track ID is invalid.";
             runOnUiThread(() -> {
-                Intent play = new Intent(MediaStore.INTENT_ACTION_MEDIA_PLAY_FROM_SEARCH);
-                play.setPackage("com.google.android.apps.youtube.music");
-                play.putExtra("query", cleanQuery);
-                play.putExtra(MediaStore.EXTRA_MEDIA_FOCUS, "audio/*");
-                play.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                Uri trackUri = Uri.parse("https://music.youtube.com/watch?v=" + Uri.encode(id));
+                Intent playTrack = new Intent(Intent.ACTION_VIEW, trackUri);
+                playTrack.setPackage("com.google.android.apps.youtube.music");
+                playTrack.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                 try {
-                    if (play.resolveActivity(getPackageManager()) != null) {
-                        startActivity(play);
-                    } else {
-                        Uri searchUri = Uri.parse("https://music.youtube.com/search?q=" + Uri.encode(cleanQuery));
-                        Intent search = new Intent(Intent.ACTION_VIEW, searchUri);
-                        search.setPackage("com.google.android.apps.youtube.music");
-                        startActivity(search);
-                    }
+                    if (playTrack.resolveActivity(getPackageManager()) == null) throw new ActivityNotFoundException("No YouTube Music handler");
+                    startActivity(playTrack);
                 } catch (ActivityNotFoundException | SecurityException appUnavailable) {
                     try {
-                        Uri searchUri = Uri.parse("https://music.youtube.com/search?q=" + Uri.encode(cleanQuery));
-                        startActivity(new Intent(Intent.ACTION_VIEW, searchUri));
+                        Intent browserTrack = new Intent(Intent.ACTION_VIEW, trackUri);
+                        browserTrack.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                        startActivity(browserTrack);
                     } catch (ActivityNotFoundException | SecurityException noHandler) {
-                        Toast.makeText(MainActivity.this, "YouTube Music could not receive the selected song, Sir.", Toast.LENGTH_LONG).show();
+                        Toast.makeText(MainActivity.this, "The selected YouTube Music track could not be opened, Sir.", Toast.LENGTH_LONG).show();
                     }
                 }
             });
-            return "TRACK_REQUEST_SENT_UNCONFIRMED:" + cleanQuery;
+            return "TRACK_OPEN_REQUESTED:" + id;
         }
 
         @JavascriptInterface public String controlMusic(String requestedAction) {
