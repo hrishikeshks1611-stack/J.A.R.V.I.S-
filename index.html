@@ -322,7 +322,7 @@ $('refreshAudit').onclick=loadSecurityAudit;
 $('auditAll').onclick=()=>{securityFilter='all';renderSecurityAudit()};
 $('auditFailedOnly').onclick=()=>{securityFilter='failed';renderSecurityAudit()};
 $('auditNewOnly').onclick=()=>{securityFilter='new';renderSecurityAudit()};
-$('closeSync').onclick=()=>{if(sessionToken)$('syncPanel').hidden=true};
+$('closeSync').onclick=()=>{$('syncPanel').hidden=true};
 $('claimDevice').onclick=async()=>{
  try{const data=await pairApi({action:'claim',setupCode:$('setupCode').value,deviceName:currentDeviceName()});storeSession(data);await restoreSharedHistory();$('hint').textContent=data.message+' Shared memory is ready, Sir.';}
  catch(e){$('syncStatus').textContent=e.message}
@@ -355,13 +355,13 @@ $('createPairCode').onclick=async()=>{
   try{const v=await pairApi({action:'verify'});sessionRole=v.role;sessionDeviceId=v.deviceId;await restoreSharedHistory();$('hint').textContent='Connected to your shared JARVIS memory, Sir.';}
   catch(e){
    if(e.status===401){
-    sessionToken='';localStorage.removeItem('jarvisSessionToken');localStorage.removeItem('jarvisDeviceId');openSyncPanel();
+    sessionToken='';localStorage.removeItem('jarvisSessionToken');localStorage.removeItem('jarvisDeviceId');$('hint').textContent='Welcome back, Sir. Open Devices & Sync whenever you are ready to reconnect this device.';
    }else{
     $('syncPanel').hidden=false;$('setupArea').hidden=true;$('pairArea').hidden=true;$('ownerArea').hidden=true;
     $('syncStatus').textContent='JARVIS could not verify this device because the service is temporarily unavailable. Your saved pairing has been kept. Reopen JARVIS when the connection is restored.';
    }
   }
- }else openSyncPanel();
+ }else $('hint').textContent='Welcome, Sir. Your assistant is ready. Open Devices & Sync to connect shared memory.';
 })();
 function status(s,cls=''){ $('status').textContent='● '+s.toUpperCase();core.className='core '+cls}
 function add(text,who,attachment,downloadFile,toolCalls,pendingActions){const d=document.createElement('div');d.className='msg '+who;const body=document.createElement('div');body.textContent=text;d.appendChild(body);if(attachment&&attachment.mimeType&&attachment.mimeType.startsWith('image/')){const img=document.createElement('img');img.alt=attachment.name||'Attached image';img.src='data:'+attachment.mimeType+';base64,'+attachment.data;d.appendChild(img)}if(downloadFile&&(downloadFile.downloadUrl||downloadFile.data)){const row=document.createElement('div');row.className='attachment-chip';const label=document.createElement('span');label.textContent='📎 '+downloadFile.filename+' · '+Math.max(1,Math.round(downloadFile.size/1024))+' KB';row.appendChild(label);const link=document.createElement('a');link.textContent='Download';if(downloadFile.downloadUrl){link.href=downloadFile.downloadUrl}else{link.href=URL.createObjectURL(new Blob([Uint8Array.from(atob(downloadFile.data),c=>c.charCodeAt(0))],{type:downloadFile.mimeType||'application/octet-stream'}));link.download=downloadFile.filename;link.onclick=(event)=>{if(window.AndroidJarvis&&typeof window.AndroidJarvis.saveFile==='function'){event.preventDefault();const result=window.AndroidJarvis.saveFile(downloadFile.filename,downloadFile.mimeType||'application/octet-stream',downloadFile.data);if(typeof result==='string'&&result.startsWith('SAVED:')){link.textContent='Saved to Downloads';$('hint').textContent=result.slice(6)}else if(typeof result==='string'){$('hint').textContent=result.replace(/^ERROR:/,'')}return;}setTimeout(()=>URL.revokeObjectURL(link.href),60000)}}link.style.cssText='color:#8cecff;font-weight:700;text-decoration:underline;margin-left:auto';row.appendChild(link);d.appendChild(row)}if(Array.isArray(toolCalls)&&toolCalls.length){
