@@ -99,3 +99,22 @@ test("offline speech fallback refuses every voice not explicitly identified as B
   assert.doesNotMatch(selection, /!isExplicitlyFemale\(candidate\)/);
   assert.ok(source.includes("Never guess gender from an unlabelled voice"));
 });
+
+
+test("every Android TTS utterance is gated by a verified British male voice", async () => {
+  const source = await readFile(new URL("../app/src/main/java/com/hrishikesh/jarvis/MainActivity.java", import.meta.url), "utf8");
+  assert.ok(source.includes("private boolean speakWithVerifiedBritishMaleVoice("));
+  assert.ok(source.includes("if (active == null || !isBritish(active) || !isExplicitlyMale(active)) return false;"));
+  assert.ok(source.includes('if (voiceChosen) speakWithVerifiedBritishMaleVoice("Yes, Sir?", "JARVIS_WAKE");'));
+  assert.ok(source.includes("offlineFallbackVoice = voice;"));
+  assert.doesNotMatch(source, /textToSpeech\.speak\("Yes, Sir\?"/);
+  const directCalls = source.match(/textToSpeech\.speak\(/g) || [];
+  assert.equal(directCalls.length, 2, "only the verified-voice gate and validated preview may call Android TTS directly");
+});
+
+test("cloud JARVIS speech is pinned to Google's documented male Algieba voice and British English", async () => {
+  const source = await readFile(new URL("../api/speech.js", import.meta.url), "utf8");
+  assert.ok(source.includes('voiceName: "Algieba"'));
+  assert.ok(source.includes('languageCode: "en-GB"'));
+  assert.doesNotMatch(source, /speechSynthesis|SpeechSynthesisUtterance|voiceName:\s*["'](?:Achernar|Aoede|Autonoe|Callirrhoe|Despina|Erinome|Gacrux|Kore|Laomedeia|Leda|Pulcherrima|Sulafat|Vindemiatrix|Zephyr)["']/);
+});
