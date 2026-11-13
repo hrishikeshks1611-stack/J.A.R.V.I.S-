@@ -184,13 +184,15 @@ test("office requests choose useful output formats and return a real download li
 });
 
 
-test("YouTube Music play commands use native playback request and disclose fallback", async () => {
+test("YouTube Music play commands search the catalogue and open a direct track link", async () => {
   const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
-  assert.ok(html.includes("window.AndroidJarvis.playYoutubeMusic(songQuery)"));
-  assert.ok(html.includes("startsWith('PLAY_REQUESTED:')"));
-  assert.ok(html.includes("playback is not confirmed."));
-  assert.ok(html.includes("Native YouTube Music control is unavailable in this app build"));
-  assert.ok(html.includes("'https://music.youtube.com/search?q='+encodeURIComponent(songQuery)"));
+  const java = await readFile(new URL("../app/src/main/java/com/hrishikesh/jarvis/MainActivity.java", import.meta.url), "utf8");
+  assert.ok(html.includes("requestYoutubeMusicPlayback(songQuery)"));
+  assert.ok(html.includes("JARVIS_API+'/music-search'"));
+  assert.ok(html.includes("window.AndroidJarvis.playYoutubeMusic(track.videoId)"));
+  assert.ok(java.includes("vnd.youtube.music://music.youtube.com/watch?v="));
+  assert.ok(java.includes("TRACK_OPENED_UNCONFIRMED:"));
+  assert.ok(!html.includes("playback is not confirmed."));
 });
 
 
