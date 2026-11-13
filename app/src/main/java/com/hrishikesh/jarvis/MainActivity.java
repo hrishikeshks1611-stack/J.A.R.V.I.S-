@@ -127,13 +127,16 @@ public final class MainActivity extends Activity {
         devicePanel.addView(music, matchWrap());
 
         LinearLayout officePanel = addPanel(root, "OFFICE & EDUCATION STUDIO");
-        Button office = makeButton("CREATE WORD / POWERPOINT / EXCEL / PDF");\n        office.setOnClickListener(v -> showOfficeComposer());
-        officePanel.addView(office, matchWrap());\n
+        Button office = makeButton("CREATE WORD / POWERPOINT / EXCEL / PDF");
+        office.setOnClickListener(v -> showOfficeComposer());
+        officePanel.addView(office, matchWrap());
+
         Button importFile = makeButton("IMPORT TXT / DOCX / PPTX / XLSX");
         importFile.setOnClickListener(v -> importAttachment());
         officePanel.addView(importFile, matchWrap());
 
-        Button study = makeButton("BUILD STUDY REVISION PACK");\n        study.setOnClickListener(v -> showStudyComposer());
+        Button study = makeButton("BUILD STUDY REVISION PACK");
+        study.setOnClickListener(v -> showStudyComposer());
         officePanel.addView(study, matchWrap());
 
         LinearLayout memoryPanel = addPanel(root, "PRIVATE MEMORY");
