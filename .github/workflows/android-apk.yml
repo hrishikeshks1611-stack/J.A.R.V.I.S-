@@ -11,7 +11,7 @@ on:
       - 'settings.gradle'
       - '.github/workflows/android-apk.yml'
 permissions:
-  contents: read
+  contents: write
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -73,3 +73,20 @@ jobs:
           path: app/build/outputs/apk/tv/debug/app-tv-debug.apk
           if-no-files-found: error
           retention-days: 30
+
+      - name: Publish in-app 6.0.1 update (phone only)
+        if: github.ref == 'refs/heads/jarvis-6-mic-calling-repair'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: jarvis-latest
+          name: J.A.R.V.I.S. 6.0.1
+          target_commitish: jarvis-6-mic-calling-repair
+          prerelease: true
+          generate_release_notes: false
+          body: |
+            JARVIS_PACKAGE=com.hrishikesh.jarvis.next
+            JARVIS_VERSION_CODE=601
+            JARVIS_VERSION_NAME=6.0.1
+
+            In-app update candidate for JARVIS 6.0.0. Android will verify whether this package can update the installed app before installation.
+          files: app/build/outputs/apk/phone/debug/app-phone-debug.apk
