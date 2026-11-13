@@ -51,6 +51,24 @@ export default async function handler(req, res) {
       return res.status(200).json({ ownerClaimed: Boolean(claimed) });
     }
 
+    if (action === "check-recovery") {
+      // Non-consuming credential check: never creates sessions or changes owner/device records.
+      const supplied = String(body.recoveryCode || "");
+      const expected = process.env.JARVIS_OWNER_RECOVERY_CODE || "";
+      const checkKey = JARVIS_PREFIX + "owner:recovery-check-attempts:" + hashToken(sourceMaterial);
+      const checks = Number(await redisCommand("INCR", checkKey));
+      if (checks === 1) await redisCommand("EXPIRE", checkKey, "3600");
+      if (checks > 5) {
+        await audit("denied", { reason: "recovery_check_rate_limited" });
+        return res.status(429).json({ error: "Too many recovery checks from this connection. Try again in one hour." });
+      }
+      const configured = expected.length >= 32;
+      const valid = configured && safeEqual(supplied, expected);
+      const ownerExists = (await redisCommand("GET", JARVIS_PREFIX + "owner:claimed")) === "1";
+      await audit(valid ? "credential_check_valid" : "credential_check_invalid", { reason: configured ? (valid ? "match" : "no_match") : "recovery_not_configured" });
+      return res.status(200).json({ configured, valid, ownerExists, consuming: false });
+    }
+
     if (action === "claim") {
       const supplied = String(body.setupCode || "");
       const expected = process.env.JARVIS_SETUP_CODE || "";
