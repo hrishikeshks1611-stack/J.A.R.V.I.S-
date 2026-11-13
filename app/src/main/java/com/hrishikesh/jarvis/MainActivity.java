@@ -327,17 +327,31 @@ public class MainActivity extends Activity {
             String id = videoId == null ? "" : videoId.trim();
             if (!id.matches("[A-Za-z0-9_-]{11}")) return "ERROR: The selected YouTube Music track ID is invalid.";
             runOnUiThread(() -> {
-                Uri trackUri = Uri.parse("https://music.youtube.com/watch?v=" + Uri.encode(id));
+                // Use YouTube Music's own URI scheme rather than a generic HTTPS
+                // link, which can resolve to a search/results screen on some builds.
+                Uri trackUri = Uri.parse("vnd.youtube.music://music.youtube.com/watch?v=" + Uri.encode(id));
                 Intent playTrack = new Intent(Intent.ACTION_VIEW, trackUri);
                 playTrack.setPackage("com.google.android.apps.youtube.music");
-                playTrack.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                playTrack.putExtra("android.intent.extra.START_PLAYBACK", true);
+                playTrack.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK
+                        | Intent.FLAG_ACTIVITY_CLEAR_TOP
+                        | Intent.FLAG_ACTIVITY_SINGLE_TOP);
                 try {
-                    if (playTrack.resolveActivity(getPackageManager()) == null) throw new ActivityNotFoundException("No YouTube Music handler");
+                    if (playTrack.resolveActivity(getPackageManager()) == null) {
+                        throw new ActivityNotFoundException("No YouTube Music deep-link handler");
+                    }
                     startActivity(playTrack);
                 } catch (ActivityNotFoundException | SecurityException appUnavailable) {
+                    // Keep a direct track URL as a compatibility fallback only;
+                    // never send the search query to YouTube Music's search box.
                     try {
-                        Intent browserTrack = new Intent(Intent.ACTION_VIEW, trackUri);
-                        browserTrack.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                        Uri webTrackUri = Uri.parse("https://music.youtube.com/watch?v=" + Uri.encode(id));
+                        Intent browserTrack = new Intent(Intent.ACTION_VIEW, webTrackUri);
+                        browserTrack.setPackage("com.google.android.apps.youtube.music");
+                        browserTrack.putExtra("android.intent.extra.START_PLAYBACK", true);
+                        browserTrack.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK
+                                | Intent.FLAG_ACTIVITY_CLEAR_TOP
+                                | Intent.FLAG_ACTIVITY_SINGLE_TOP);
                         startActivity(browserTrack);
                     } catch (ActivityNotFoundException | SecurityException noHandler) {
                         Toast.makeText(MainActivity.this, "The selected YouTube Music track could not be opened, Sir.", Toast.LENGTH_LONG).show();
