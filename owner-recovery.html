@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#050b18">
+<title>J.A.R.V.I.S. · Owner Recovery</title>
+<style>
+:root{color-scheme:dark;--bg:#050b18;--panel:#0a1426;--line:#24506e;--cyan:#75dfff;--text:#eaf7ff;--muted:#9bb8cf}
+*{box-sizing:border-box}body{margin:0;min-height:100vh;padding:22px;background:radial-gradient(ellipse at top,#0d2945,#050b18 65%);color:var(--text);font:15px/1.5 system-ui,sans-serif}
+main{max-width:560px;margin:7vh auto;background:linear-gradient(145deg,#0d2037,#07101e);border:1px solid #28719b;border-radius:20px;padding:24px;box-shadow:0 0 45px #168bff22}
+h1{font-size:22px;letter-spacing:.08em;margin:0 0 6px}p{color:var(--muted);font-size:14px}
+input{width:100%;padding:14px;margin:9px 0;background:#061324;border:1px solid var(--line);border-radius:10px;color:white;font:inherit}
+button{background:#0d3150;color:#eaf7ff;border:1px solid #2d7198;border-radius:10px;padding:12px 15px;font:inherit;font-weight:650;cursor:pointer;margin:6px 6px 6px 0}
+button.primary{background:linear-gradient(135deg,#087dcb,#1c55aa)}button:disabled{opacity:.55}
+.panel{border-top:1px solid #17334b;margin-top:20px;padding-top:16px}.hidden{display:none}
+#status{padding:12px;border:1px solid #24506e;border-radius:10px;background:#061324;white-space:pre-wrap}
+#pairCode{font-size:30px;letter-spacing:.2em;text-align:center;color:var(--cyan);font-weight:800}
+.device{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0;border-bottom:1px solid #17334b;font-size:13px}.device button{flex-shrink:0}
+.small{font-size:12px!important;color:#789bb7}
+</style>
+</head>
+<body>
+<main>
+<h1>J.A.R.V.I.S. · OWNER RECOVERY</h1>
+<p>Recover owner access on this phone, then transfer it to your installed JARVIS app. Existing shared memory and paired devices are preserved.</p>
+<div id="recovery">
+ <label for="recoveryCode">One-time owner recovery credential</label>
+ <input id="recoveryCode" type="password" autocomplete="off" spellcheck="false" placeholder="Enter your recovery credential">
+ <button class="primary" id="recover">Recover owner access</button>
+</div>
+<div id="owner" class="panel hidden">
+ <p id="ownerText">Owner access recovered on this browser.</p>
+ <button class="primary" id="makeCode">Generate app pairing code</button>
+ <div id="codeArea" class="hidden">
+  <p class="small">Enter this code in your installed JARVIS app → Devices &amp; Sync → Pair this device. It expires in 10 minutes.</p>
+  <div id="pairCode"></div>
+ </div>
+ <div class="panel">
+  <h2>Transfer ownership to your app</h2>
+  <p>After pairing the app with the code above, refresh this list and choose your phone.</p>
+  <button id="refresh">Refresh paired devices</button>
+  <div id="devices"></div>
+ </div>
+</div>
+<p id="status" role="status">Waiting for owner recovery.</p>
+<p class="small">The recovery credential is one-time. Never share it. This page does not display or save your session token.</p>
+</main>
+<script>
+const API='/api/pair';
+let token='',ownerDeviceId='';
+const $=id=>document.getElementById(id);
+async function api(payload){
+ const headers={'Content-Type':'application/json'};
+ if(token)headers.Authorization='Bearer '+token;
+ const response=await fetch(API,{method:'POST',headers,body:JSON.stringify(payload)});
+ const data=await response.json().catch(()=>({}));
+ if(!response.ok)throw new Error(data.error||'JARVIS pairing service returned HTTP '+response.status);
+ return data;
+}
+$('recover').onclick=async()=>{
+ const recoveryCode=$('recoveryCode').value.trim();
+ if(!recoveryCode){$('status').textContent='Enter the one-time recovery credential.';return;}
+ $('recover').disabled=true;
+ try{
+  const data=await api({action:'recover-owner',recoveryCode,deviceName:'Owner Recovery Browser'});
+  token=data.token;ownerDeviceId=data.deviceId;
+  $('recoveryCode').value='';$('recovery').classList.add('hidden');$('owner').classList.remove('hidden');
+  $('ownerText').textContent=data.message+' This browser is temporarily the owner device.';
+  $('status').textContent='Owner recovery successful. Next, pair your installed JARVIS app using a temporary code.';
+ }catch(error){$('status').textContent=error.message;}
+ finally{$('recover').disabled=false;}
+};
+$('makeCode').onclick=async()=>{
+ $('makeCode').disabled=true;
+ try{
+  const data=await api({action:'create-code'});
+  $('pairCode').textContent=data.code;$('codeArea').classList.remove('hidden');
+  $('status').textContent='Pairing code generated. Enter it in the installed JARVIS app within 10 minutes.';
+ }catch(error){$('status').textContent=error.message;}
+ finally{$('makeCode').disabled=false;}
+};
+$('refresh').onclick=loadDevices;
+async function loadDevices(){
+ $('refresh').disabled=true;
+ try{
+  const data=await api({action:'devices'}),list=$('devices');list.replaceChildren();
+  for(const device of data.devices||[]){
+   const row=document.createElement('div');row.className='device';
+   const label=document.createElement('span');
+   label.textContent=device.deviceName+' · '+(device.role==='owner'?'OWNER':'DEVICE')+(device.deviceId===ownerDeviceId?' · THIS BROWSER':'');
+   row.appendChild(label);
+   if(device.role!=='owner'&&device.deviceId!==ownerDeviceId){
+    const button=document.createElement('button');button.textContent='Transfer owner here';
+    button.onclick=async()=>{
+     if(!confirm('Transfer JARVIS ownership to '+device.deviceName+'?'))return;
+     button.disabled=true;
+     try{
+      const result=await api({action:'transfer-owner',deviceId:device.deviceId});
+      $('status').textContent=result.message+' Open your installed JARVIS app → Devices & Sync → Check owner status.';
+      $('owner').classList.add('hidden');
+     }catch(error){$('status').textContent=error.message;button.disabled=false;}
+    };
+    row.appendChild(button);
+   }
+   list.appendChild(row);
+  }
+  if(!(data.devices||[]).length)list.textContent='No paired devices found yet.';
+ }catch(error){$('status').textContent=error.message;}
+ finally{$('refresh').disabled=false;}
+}
+</script>
+</body>
+</html>
