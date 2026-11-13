@@ -92,8 +92,13 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh run download 43349538678 --repo hrishikeshks1611-stack/J.A.R.V.I.S- --name JARVIS-Rebirth-Android-phone --dir "$RUNNER_TEMP/previous-rebirth"
-          test -s "$RUNNER_TEMP/previous-rebirth/app-phone-debug.apk"
+          if gh run download 43349538678 --repo hrishikeshks1611-stack/J.A.R.V.I.S- --name JARVIS-Rebirth-Android-phone --dir "$RUNNER_TEMP/previous-rebirth"; then
+            test -s "$RUNNER_TEMP/previous-rebirth/app-phone-debug.apk"
+            echo "PREVIOUS_REBIRTH_APK_AVAILABLE=true" >> "$GITHUB_ENV"
+          else
+            echo "PREVIOUS_REBIRTH_APK_AVAILABLE=false" >> "$GITHUB_ENV"
+            echo "Historical artifact has expired; the fresh-install smoke test will still run."
+          fi
       - name: Install Android 10 emulator image (retry transient SDK download failures)
         shell: bash
         run: |
@@ -200,10 +205,14 @@ jobs:
             exit 1
           fi
 
-          mark "Installing the previously released Rebirth APK first; this is a disposable emulator."
-          adb_bounded 60 install --no-streaming "$RUNNER_TEMP/previous-rebirth/app-phone-debug.apk"
-          adb_bounded 15 shell pm path com.hrishikesh.jarvis.rebirth | grep -q "package:"
-          mark "Installing the new safe-install Rebirth APK beside the previous app."
+          if [ "${PREVIOUS_REBIRTH_APK_AVAILABLE:-false}" = "true" ]; then
+            mark "Installing the previously released Rebirth APK first; this is a disposable emulator."
+            adb_bounded 60 install --no-streaming "$RUNNER_TEMP/previous-rebirth/app-phone-debug.apk"
+            adb_bounded 15 shell pm path com.hrishikesh.jarvis.rebirth | grep -q "package:"
+            mark "Installing the new safe-install Rebirth APK beside the previous app."
+          else
+            mark "No historical APK is available; testing the new safe-install APK as a fresh install."
+          fi
           installed=0
           if adb_bounded 60 install --no-streaming "$APK_FILE_PATH"; then
             installed=1
@@ -223,9 +232,11 @@ jobs:
             cat "$RUNNER_TEMP/emulator.log"
             exit 1
           fi
-          adb_bounded 15 shell pm path com.hrishikesh.jarvis.rebirth | grep -q "package:"
+          if [ "${PREVIOUS_REBIRTH_APK_AVAILABLE:-false}" = "true" ]; then
+            adb_bounded 15 shell pm path com.hrishikesh.jarvis.rebirth | grep -q "package:"
+            mark "Both old Rebirth and new safe-install Rebirth are installed side by side."
+          fi
           adb_bounded 15 shell pm path com.hrishikesh.jarvis.rebirth.safe | grep -q "package:"
-          mark "Both old Rebirth and new safe-install Rebirth are installed side by side."
           mark "Granting microphone permission."
           adb_bounded 60 shell pm grant com.hrishikesh.jarvis.rebirth.safe android.permission.RECORD_AUDIO
           mark "Microphone permission granted; clearing emulator logs."
