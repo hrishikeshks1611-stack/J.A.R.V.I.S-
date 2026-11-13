@@ -4,7 +4,7 @@ name: Build separate-install JARVIS Android and TV APKs
 on:
   workflow_dispatch:
   push:
-    branches: [ main, jarvis-master-brain ]
+    branches: [ main, jarvis-master-brain, jarvis-6-mic-calling-repair ]
     paths:
       - 'app/**'
       - '*.gradle'
@@ -49,8 +49,8 @@ jobs:
           test -s "$TV_APK"
           PHONE_BADGING="$("$AAPT" dump badging "$PHONE_APK")"
           TV_BADGING="$("$AAPT" dump badging "$TV_APK")"
-          echo "$PHONE_BADGING" | grep -Fq "package: name='com.hrishikesh.jarvis.next' versionCode='600' versionName='6.0.0'"
-          echo "$TV_BADGING" | grep -Fq "package: name='com.hrishikesh.jarvis.next.tv' versionCode='600' versionName='6.0.0-tv'"
+          echo "$PHONE_BADGING" | grep -Fq "package: name='com.hrishikesh.jarvis.next' versionCode='601' versionName='6.0.1'"
+          echo "$TV_BADGING" | grep -Fq "package: name='com.hrishikesh.jarvis.next.tv' versionCode='601' versionName='6.0.1-tv'"
           if echo "$PHONE_BADGING" | grep -Fq "package: name='com.hrishikesh.jarvis'"; then
             echo "ERROR: phone APK would overwrite legacy JARVIS"
             exit 1
@@ -62,14 +62,14 @@ jobs:
       - name: Upload separate-install phone APK
         uses: actions/upload-artifact@v4
         with:
-          name: JARVIS-6.0.0-Android-phone-separate-install
+          name: JARVIS-6.0.1-Android-phone
           path: app/build/outputs/apk/phone/debug/app-phone-debug.apk
           if-no-files-found: error
           retention-days: 30
       - name: Upload separate-install Android TV APK
         uses: actions/upload-artifact@v4
         with:
-          name: JARVIS-6.0.0-Android-TV-separate-install
+          name: JARVIS-6.0.1-Android-TV
           path: app/build/outputs/apk/tv/debug/app-tv-debug.apk
           if-no-files-found: error
           retention-days: 30
