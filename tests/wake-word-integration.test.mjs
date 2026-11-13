@@ -88,6 +88,14 @@ test("wake phrase matching uses a complete token and expires the command prompt"
 });
 
 
+test("Vosk partial JSON is parsed from the partial field, not the final text field", async () => {
+  const service = await read("../app/src/main/java/com/hrishikesh/jarvis/WakeWordService.java");
+  assert.ok(service.includes("transcript(String json, boolean partial)"));
+  assert.match(service, /partial\s*\?\s*result\.optString\("partial"/);
+  assert.match(service, /:\s*result\.optString\("text"/);
+  assert.ok(service.includes("transcript(hypothesis, partial)"));
+});
+
 test("wake phrase is handled on partial recognition without duplicate final dispatch", async () => {
   const service = await read("../app/src/main/java/com/hrishikesh/jarvis/WakeWordService.java");
   assert.ok(service.includes("handleRecognizedPhrase(hypothesis, true)"));
@@ -95,4 +103,8 @@ test("wake phrase is handled on partial recognition without duplicate final disp
   assert.ok(service.includes("if (partial && wakeHandledInUtterance) return;"));
   assert.ok(service.includes("if (!partial && wakeHandledInUtterance)"));
   assert.ok(service.includes("broadcast(ACTION_WAKE, null)"));
+  assert.ok(service.includes("if (awaitingCommand)"));
+  assert.ok(service.includes("command = text.substring(wakeInCommand.end()).trim()"));
+  assert.ok(service.includes("if (partial) return;"));
+  assert.ok(service.includes("broadcast(ACTION_COMMAND, command)"));
 });
