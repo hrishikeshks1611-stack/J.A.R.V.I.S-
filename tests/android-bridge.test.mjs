@@ -44,9 +44,10 @@ test("live Android bridge opens the exact selected YouTube Music track", async (
   const manifest = await readFile(new URL("../app/src/main/AndroidManifest.xml", import.meta.url), "utf8");
   assert.ok(source.includes("public String playYoutubeMusic(String videoId)"));
   assert.ok(source.includes('id.matches("[A-Za-z0-9_-]{11}")'));
-  assert.ok(source.includes("https://music.youtube.com/watch?v="));
+  assert.ok(source.includes('Uri.parse("https://music.youtube.com/watch?v=" + Uri.encode(id))'));
   assert.ok(source.includes('playTrack.setPackage("com.google.android.apps.youtube.music")'));
   assert.ok(source.includes("Intent.ACTION_VIEW, trackUri"));
+  assert.ok(!source.includes("vnd.youtube.music://"));
   assert.ok(manifest.includes('com.google.android.apps.youtube.music'));
 });
 
