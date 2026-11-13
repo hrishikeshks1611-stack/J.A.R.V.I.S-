@@ -40,7 +40,7 @@ test("one-time owner recovery is available on an unpaired phone", async () => {
 
 test("service worker cache version is bumped and script parses", async () => {
   const source = await readFile(new URL("../sw.js", import.meta.url), "utf8");
-  assert.ok(source.includes('const CACHE="jarvis-shell-v27"'));
+  assert.ok(source.includes('const CACHE="jarvis-shell-v28"'));
   assert.doesNotThrow(() => new Function(source));
 });
 
@@ -263,4 +263,11 @@ test("Algieba voice starts after a short pre-buffer while the audio stream is st
   assert.match(player, /parts\.push\(chunk\.slice\(\)\);deliverChunk\(chunk\)/);
   assert.ok(player.includes("Playback begins after a short pre-buffer"));
   assert.ok(!player.includes("Buffer the complete PCM response before playback"));
+});
+
+test("installed-app inventory command uses the Android launcher catalogue", async () => {
+  const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+  assert.ok(html.includes("installedAppsRequest"));
+  assert.ok(html.includes("AndroidJarvis.getInstalledApps()"));
+  assert.ok(html.includes("These are the launchable apps I can see on this device"));
 });
