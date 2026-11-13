@@ -59,6 +59,7 @@ public class MainActivity extends Activity {
     private BroadcastReceiver wakeWordReceiver;
 
     @Override public void onCreate(Bundle savedInstanceState) {
+        setTheme(R.style.AppTheme);
         super.onCreate(savedInstanceState);
         getWindow().setStatusBarColor(android.graphics.Color.rgb(5, 11, 24));
         getWindow().setNavigationBarColor(android.graphics.Color.rgb(5, 11, 24));
