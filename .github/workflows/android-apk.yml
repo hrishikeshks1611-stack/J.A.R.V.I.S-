@@ -266,7 +266,8 @@ jobs:
             exit 1
           fi
           mark "Rear and front CameraX captures were saved successfully."
-          mark "Microphone permission granted; clearing emulator logs."
+          mark "Granting microphone permission before wake-word service test."
+          adb_bounded 60 shell pm grant com.hrishikesh.jarvis.rebirth.safe android.permission.RECORD_AUDIO
           adb_bounded 30 logcat -c
 
           mark "Launching debug wake-word test activity directly (MainActivity is not required for this service test)."
