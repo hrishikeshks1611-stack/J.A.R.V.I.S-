@@ -8,7 +8,7 @@ databases, or backups are imported.
 - Functional HUD-style panels grouping voice/system, device/media, and private-memory controls.
 - User-started foreground wake listener for four agreed wake phrases.
 - Command continuation for app launch, camera, music search, and media controls.
-- Native Camera2 preview, front/rear switching, and JPEG capture saved to the app's private Pictures folder.
+- Native Camera2 preview with device-supported output-size selection, front/rear switching, and JPEG capture saved to the app's private Pictures folder.
 - UK English TTS preference; Algieba is selected only when available in the installed engine.
 - Active media-session play/pause/next/previous commands, after the user enables JARVIS in Android Notification Access settings.
 - Fresh local conversation history encrypted with AES-GCM; the AES key is held in Android Keystore.
