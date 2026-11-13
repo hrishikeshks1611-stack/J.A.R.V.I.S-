@@ -35,7 +35,7 @@ test("APK workflow verifies separate-install builds and never publishes debug AP
   const workflow = await readFile(new URL("../.github/workflows/android-apk.yml", import.meta.url), "utf8");
   assert.match(workflow, /contents:\s*read/);
   assert.doesNotMatch(workflow, /gh release create|action-gh-release|Publish.*APK/);
-  assert.match(workflow, /separate-install/);
+  assert.match(workflow, /JARVIS 6\.0\.1 Android phone and TV packages/);
   assert.ok(workflow.includes("com.hrishikesh.jarvis.next"));
   assert.ok(workflow.includes("com.hrishikesh.jarvis.next.tv"));
 });
