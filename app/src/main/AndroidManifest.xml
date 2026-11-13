@@ -1,62 +1,19 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.CAMERA" />
-    <uses-feature android:name="android.hardware.camera.any" android:required="false" />
+    <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
-    <uses-permission android:name="com.android.alarm.permission.SET_ALARM" />
-    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
-    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <queries>
-        <package android:name="com.whatsapp" />
-        <package android:name="com.google.android.youtube" />
-        <package android:name="com.google.android.apps.youtube.music" />
-        <package android:name="com.android.chrome" />
-        <package android:name="com.google.android.gm" />
-        <package android:name="com.google.android.apps.maps" />
-        <package android:name="com.spotify.music" />
-        <package android:name="com.instagram.android" />
-        <package android:name="com.facebook.katana" />
-        <package android:name="org.telegram.messenger" />
-        <package android:name="com.android.settings" />
-        <package android:name="com.android.camera2" />
-        <package android:name="com.vivo.camera" />
-        <package android:name="com.android.vending" />
-        <package android:name="com.google.android.apps.messaging" />
-        <package android:name="com.google.android.dialer" />
-        <package android:name="com.android.dialer" />
-        <package android:name="com.twitter.android" />
-        <package android:name="com.reddit.frontpage" />
-        <package android:name="com.google.android.apps.photos" />
-        <package android:name="com.google.android.calendar" />
-        <package android:name="com.google.android.keep" />
-        <package android:name="com.google.android.contacts" />
-        <package android:name="com.google.android.apps.docs" />
-        <package android:name="com.google.android.apps.nbu.files" />
-        <package android:name="com.amazon.mShop.android.shopping" />
-        <package android:name="com.flipkart.android" />
-        <package android:name="com.vivo.browser" />
-        <package android:name="com.vivo.calculator" />
-        <package android:name="com.vivo.filemanager" />
-        <package android:name="com.vivo.gallery" />
-        <package android:name="in.swiggy.android" />
-        <package android:name="com.application.zomato" />
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
     </queries>
-    <application
-        android:allowBackup="false"
-        android:icon="@drawable/ic_jarvis_launcher"
-        android:label="J.A.R.V.I.S."
-        android:theme="@android:style/Theme.Material.NoActionBar"
-        android:usesCleartextTraffic="false">
-        <activity android:name=".WakeWordActivity" android:exported="false" />
-        <activity android:name=".CameraCaptureActivity" android:exported="false" android:screenOrientation="portrait" />
-        <service android:name=".WakeWordService" android:exported="false" android:foregroundServiceType="microphone" />
-        <activity
-            android:name=".MainActivity"
-            android:configChanges="keyboard|keyboardHidden|orientation|screenSize"
-            android:exported="true">
+    <application android:allowBackup="false" android:label="J.A.R.V.I.S."
+        android:theme="@android:style/Theme.Material.NoActionBar" android:usesCleartextTraffic="false">
+        <activity android:name=".MainActivity" android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
