@@ -99,6 +99,13 @@ test("education engine builds a bounded weekly study plan with spaced review", a
     assert.equal(session.activities.reduce((sum, item) => sum + item.minutes, 0), 50);
   }
   assert.deepEqual(result.spacedReview.map(item => item.afterDays), [1, 3, 7]);
+  const shortPlan = await executeJarvisTool("create_study_plan", {
+    subject: "Science", goal: "Understand cells", daysPerWeek: 2, minutesPerSession: 15
+  }, { userMessage: "Make a study plan for Science." });
+  for (const session of shortPlan.sessions) {
+    assert.equal(session.activities.reduce((sum, item) => sum + item.minutes, 0), 15);
+    assert.ok(session.activities.every(item => item.minutes > 0));
+  }
   await assert.rejects(() => executeJarvisTool("create_study_plan", {
     subject: "Maths", goal: "Pass", daysPerWeek: 8
   }, { userMessage: "Create a study plan for Maths." }), /1 and 7/);
