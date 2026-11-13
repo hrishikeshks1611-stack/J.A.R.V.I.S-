@@ -240,7 +240,7 @@ jobs:
           mark "Granting camera permission for CameraX capture verification."
           adb_bounded 60 shell pm grant com.hrishikesh.jarvis.rebirth.safe android.permission.CAMERA
           mark "Testing rear-camera capture through CameraCaptureActivity."
-          adb_bounded 20 shell am start -n com.hrishikesh.jarvis.rebirth.safe/com.hrishikesh.jarvis.CameraCaptureActivity --ez camera_selfie false
+          adb_bounded 20 shell am start -n com.hrishikesh.jarvis.rebirth.safe/com.hrishikesh.jarvis.CameraCaptureTestActivity --ez camera_selfie false
           photo_count=0
           for attempt in $(seq 1 25); do
             photo_count="$(adb_bounded 10 shell ls /sdcard/Pictures/JARVIS 2>/dev/null | tr -d '\r' | grep -c '^JARVIS_' || true)"
@@ -253,7 +253,7 @@ jobs:
             exit 1
           fi
           mark "Rear-camera photo saved; testing front-camera selfie capture."
-          adb_bounded 20 shell am start -n com.hrishikesh.jarvis.rebirth.safe/com.hrishikesh.jarvis.CameraCaptureActivity --ez camera_selfie true
+          adb_bounded 20 shell am start -n com.hrishikesh.jarvis.rebirth.safe/com.hrishikesh.jarvis.CameraCaptureTestActivity --ez camera_selfie true
           photo_count=0
           for attempt in $(seq 1 25); do
             photo_count="$(adb_bounded 10 shell ls /sdcard/Pictures/JARVIS 2>/dev/null | tr -d '\r' | grep -c '^JARVIS_' || true)"
