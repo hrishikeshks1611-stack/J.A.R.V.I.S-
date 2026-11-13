@@ -69,10 +69,6 @@ public class MainActivityLaunchTest {
 
             WebView webView = (WebView) container.getChildAt(0);
             AtomicReference<String> loadedUrl = new AtomicReference<>();
-            InstrumentationRegistry.getInstrumentation().runOnMainSync(() ->
-                    loadedUrl.set(webView.getUrl())
-            );
-            assertEquals("https://hrishikeshks1611-stack.github.io/J.A.R.V.I.S-/", loadedUrl.get());
 
             boolean interfaceReady = false;
             for (int attempt = 0; attempt < 20 && !interfaceReady; attempt++) {
@@ -91,6 +87,11 @@ public class MainActivityLaunchTest {
                 }
             }
             assertTrue("The bundled J.A.R.V.I.S page and ARC reactor must render", interfaceReady);
+            InstrumentationRegistry.getInstrumentation().runOnMainSync(() ->
+                    loadedUrl.set(webView.getUrl())
+            );
+            assertEquals("The bundled page must load under the approved J.A.R.V.I.S origin",
+                    "https://hrishikeshks1611-stack.github.io/J.A.R.V.I.S-/", loadedUrl.get());
         } finally {
             InstrumentationRegistry.getInstrumentation().runOnMainSync(activity::finish);
         }
