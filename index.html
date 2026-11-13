@@ -743,6 +743,44 @@ function openYoutubeMusicTrack(track){
   return 'WEB_TRACK_OPENED:'+videoId;
  }
  $('form').onsubmit=async e=>{e.preventDefault();const message=$('prompt').value.trim();if(!message&&!pendingAttachment)return;$('prompt').value='';const attachment=pendingAttachment;pendingAttachment=null;renderAttachment();add(message||'Please examine this attachment, Sir.', 'user',attachment);history.push({role:'user',text:message||'Please examine the attached file.'});const fileRequest=detectFileRequest(message);if(fileRequest){await createOfficeFile(message,fileRequest.format,attachment);return;}
+const contactCommandText=message.replace(/^\s*(?:hey\s+)?jarvis[, ]*/i,'').trim().replace(/[.!?]+$/,'');
+ const importContactsCommand=/^(?:please\s+)?(?:import|load)\s+(?:my\s+)?contacts$|^(?:please\s+)?import\s+(?:a\s+)?contacts?\s+file$/i.test(contactCommandText);
+ if(importContactsCommand){
+  const reply='Certainly, Sir. Please choose your exported contacts file. If Android hides the .vcf file, rename its extension to .txt first. I will import the names and numbers locally on this device.';
+  add(reply,'jarvis');history.push({role:'model',text:reply});history=history.slice(-20);
+  if(window.AndroidJarvis&&typeof window.AndroidJarvis.chooseFile==='function')window.AndroidJarvis.chooseFile();
+  else $('attach').click();
+  $('hint').textContent='Choose the contacts export (.vcf, or .txt if renamed). JARVIS reads the vCard contents locally.';
+  status('Waiting for contacts file');speak(reply);return;
+ }
+ const rememberContact=contactCommandText.match(/^remember\s+contact\s+(.+?)\s+(?:as|number)\s+([+\d() .-]+)$/i);
+ if(rememberContact){
+  const name=rememberContact[1].trim(),number=cleanContactNumber(rememberContact[2]);
+  if(!number){const reply='That phone number does not look valid, Sir. Please include the country code if needed.';add(reply,'jarvis');history.push({role:'model',text:reply});history=history.slice(-20);speak(reply);return;}
+  const items=readJarvisContacts(),index=items.findIndex(x=>String(x.name||'').toLowerCase()===name.toLowerCase());
+  if(index>=0)items[index]={name,number};else items.push({name,number});
+  writeJarvisContacts(items);
+  const reply='Saved '+name+' in this device’s JARVIS contact list, Sir.';
+  add(reply,'jarvis');history.push({role:'model',text:reply});history=history.slice(-20);pairApi({action:'append-local',message,reply}).catch(()=>{});speak(reply);return;
+ }
+ const callContact=contactCommandText.match(/^(?:(?:please|could you|can you|would you)\s+)?(?:call|phone|ring)\s+(?:my\s+)?(.+?)(?:\s+(?:mobile|mobile number|phone|number))?$/i);
+ if(callContact){
+  const target=callContact[1].trim().replace(/^(?:contact\s+)/i,'');
+  const result=resolveJarvisContact(target);
+  let reply='';
+  if(result.missing)reply='I cannot find '+target+' in my JARVIS contact list, Sir. Say “import contacts” to load your contacts VCF, or “remember contact '+target+' as [number]”.';
+  else if(result.ambiguous)reply='I found more than one matching contact: '+result.names.join(', ')+'. Please use the full contact name, Sir.';
+  else{
+   reply='Certainly, Sir. Opening the dialler for '+result.contact.name+'. Please review and confirm the call.';
+   add(reply,'jarvis');history.push({role:'model',text:reply});history=history.slice(-20);pairApi({action:'append-local',message,reply}).catch(()=>{});
+   $('hint').textContent='Opening Android dialler. No call is placed automatically.';
+   speak(reply);
+   setTimeout(()=>{window.location.href='tel:'+result.contact.number;},450);
+   return;
+  }
+  add(reply,'jarvis');history.push({role:'model',text:reply});history=history.slice(-20);speak(reply);return;
+ }
+ 
 const instant=attachment?null:instantReply(message);
 if(instant){
  add(instant,'jarvis');history.push({role:'model',text:instant});history=history.slice(-20);
@@ -910,44 +948,7 @@ function handleCalendarOrAlarmCommand(text){
  }
  return null;
 }
-const contactCommandText=message.replace(/^\s*(?:hey\s+)?jarvis[, ]*/i,'').trim().replace(/[.!?]+$/,'');
- const importContactsCommand=/^(?:please\s+)?(?:import|load)\s+(?:my\s+)?contacts$|^(?:please\s+)?import\s+(?:a\s+)?contacts?\s+file$/i.test(contactCommandText);
- if(importContactsCommand){
-  const reply='Certainly, Sir. Please choose your exported contacts .vcf file. I will import the names and numbers locally on this device.';
-  add(reply,'jarvis');history.push({role:'model',text:reply});history=history.slice(-20);
-  if(window.AndroidJarvis&&typeof window.AndroidJarvis.chooseFile==='function')window.AndroidJarvis.chooseFile();
-  else $('attach').click();
-  $('hint').textContent='Choose your .vcf contacts export. Other file types will remain ordinary attachments.';
-  status('Waiting for contacts file');speak(reply);return;
- }
- const rememberContact=contactCommandText.match(/^remember\s+contact\s+(.+?)\s+(?:as|number)\s+([+\d() .-]+)$/i);
- if(rememberContact){
-  const name=rememberContact[1].trim(),number=cleanContactNumber(rememberContact[2]);
-  if(!number){const reply='That phone number does not look valid, Sir. Please include the country code if needed.';add(reply,'jarvis');history.push({role:'model',text:reply});history=history.slice(-20);speak(reply);return;}
-  const items=readJarvisContacts(),index=items.findIndex(x=>String(x.name||'').toLowerCase()===name.toLowerCase());
-  if(index>=0)items[index]={name,number};else items.push({name,number});
-  writeJarvisContacts(items);
-  const reply='Saved '+name+' in this device’s JARVIS contact list, Sir.';
-  add(reply,'jarvis');history.push({role:'model',text:reply});history=history.slice(-20);pairApi({action:'append-local',message,reply}).catch(()=>{});speak(reply);return;
- }
- const callContact=contactCommandText.match(/^(?:please\s+)?(?:call|phone|ring)\s+(.+)$/i);
- if(callContact){
-  const target=callContact[1].trim();
-  const result=resolveJarvisContact(target);
-  let reply='';
-  if(result.missing)reply='I cannot find '+target+' in my JARVIS contact list, Sir. Say “import contacts” to load your contacts VCF, or “remember contact '+target+' as [number]”.';
-  else if(result.ambiguous)reply='I found more than one matching contact: '+result.names.join(', ')+'. Please use the full contact name, Sir.';
-  else{
-   reply='Certainly, Sir. Opening the dialler for '+result.contact.name+'. Please review and confirm the call.';
-   add(reply,'jarvis');history.push({role:'model',text:reply});history=history.slice(-20);pairApi({action:'append-local',message,reply}).catch(()=>{});
-   $('hint').textContent='Opening Android dialler. No call is placed automatically.';
-   speak(reply);
-   setTimeout(()=>{window.location.href='tel:'+result.contact.number;},450);
-   return;
-  }
-  add(reply,'jarvis');history.push({role:'model',text:reply});history=history.slice(-20);speak(reply);return;
- }
- const scheduledReply=handleCalendarOrAlarmCommand(message);
+const scheduledReply=handleCalendarOrAlarmCommand(message);
 if(scheduledReply){add(scheduledReply,'jarvis');history.push({role:'model',text:scheduledReply});history=history.slice(-20);pairApi({action:'append-local',message,reply:scheduledReply}).catch(()=>{});$('hint').textContent='Ready when you are.';status('System ready');speak(scheduledReply);return;}
 if(appCommand && window.AndroidJarvis){const requestedApp=appCommand[1].trim();const appName=appAliases[requestedApp.toLowerCase()]||requestedApp;{const reply=window.AndroidJarvis.openApp(appName);add(reply,'jarvis');history.push({role:'model',text:reply});history=history.slice(-20);pairApi({action:'append-local',message,reply}).catch(()=>{});$('hint').textContent='Ready when you are.';status('System ready');speak(reply);return;}}
 if(!sessionToken){openSyncPanel();$('syncStatus').textContent='Pair this device to use online AI features. Local device commands remain available, Sir.';return;}
