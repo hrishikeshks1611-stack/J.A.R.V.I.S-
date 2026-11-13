@@ -43,7 +43,7 @@ test("device sync identifies this device and exposes the authenticated owner tra
 
 test("service worker cache version is bumped and script parses", async () => {
   const source = await readFile(new URL("../sw.js", import.meta.url), "utf8");
-  assert.ok(source.includes('const CACHE="jarvis-shell-v32"'));
+  assert.ok(source.includes('const CACHE="jarvis-shell-v34"'));
   assert.ok(source.includes('fetch(request, {cache:"no-store"})'));
   assert.doesNotThrow(() => new Function(source));
 });
@@ -59,10 +59,10 @@ test("hosted interface provides a foreground fallback for all four JARVIS wake p
 });
 
 
-test("Build 39 does not request unavailable browser microphone permission for wake phrases", async () => {
+test("Android app wake-word control opens the native microphone settings", async () => {
   const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
-  assert.ok(html.includes("Build 39 does not include the Android microphone permission and native wake-word service"));
-  assert.ok(html.includes("continuous wake phrases need a compatible app update"));
+  assert.ok(html.includes("window.AndroidJarvis.openWakeWordSettings"));
+  assert.ok(html.includes("Wake-word microphone"));
 });
 
 test("four voice camera phrases use native camera, capture, selfie and latest-photo actions", async () => {
@@ -83,7 +83,7 @@ test("four voice camera phrases use native camera, capture, selfie and latest-ph
 test("YouTube Music voice commands use the native playback bridge or search fallback", async () => {
   const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
   assert.ok(html.includes("const openYoutubeMusicOnly="));
-  assert.ok(html.includes("AndroidJarvis.playYoutubeMusic(songQuery)"));
+  assert.ok(html.includes("window.AndroidJarvis.playYoutubeMusic(track.videoId)"));
   assert.ok(html.includes("window.AndroidJarvis.openApp('youtube music')"));
   assert.ok(html.includes("const hasNativeMusicBridge=window.AndroidJarvis&&typeof window.AndroidJarvis.playYoutubeMusic==='function'"));
   assert.ok(html.includes("else window.location.href='https://music.youtube.com/'"));
@@ -284,7 +284,7 @@ test("live app answers exact greetings locally and routes YouTube Music commands
   const instantReply = vm.runInNewContext(html.slice(start, end) + "\ninstantReply", { Date, Intl });
   assert.match(instantReply("Good morning"), /Good morning, Sir/);
   assert.equal(instantReply("Good morning, explain this to me"), null);
-  assert.ok(html.includes("AndroidJarvis.playYoutubeMusic(songQuery)"));
+  assert.ok(html.includes("window.AndroidJarvis.playYoutubeMusic(track.videoId)"));
   assert.ok(html.includes("music.youtube.com/search?q="));
 });
 
