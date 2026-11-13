@@ -31,28 +31,28 @@ test("service worker cache version is bumped and script parses", async () => {
   assert.doesNotThrow(() => new Function(source));
 });
 
-test("YouTube Music song commands use native play-from-search and disclose fallback", async () => {
+test("YouTube Music song commands use the active media session and verify actual playback", async () => {
   const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
   const java = await readFile(new URL("../app/src/main/java/com/hrishikesh/jarvis/MainActivity.java", import.meta.url), "utf8");
   const manifest = await readFile(new URL("../app/src/main/AndroidManifest.xml", import.meta.url), "utf8");
+  const listener = await readFile(new URL("../app/src/main/java/com/hrishikesh/jarvis/JarvisNotificationListener.java", import.meta.url), "utf8");
   assert.ok(html.includes("const musicCommand = message.match("));
-  assert.ok(html.includes("id=\"wakeWordButton\""));
-  assert.ok(html.includes("onWakeWordDetected"));
   assert.ok(html.includes("window.AndroidJarvis.playYoutubeMusic(songQuery)"));
-  assert.ok(html.includes("startsWith('PLAY_REQUESTED:')"));
-  assert.ok(html.includes("playback is not confirmed."));
-  assert.ok(html.includes("Native YouTube Music control is unavailable in this app build"));
+  assert.ok(html.includes("startsWith('PLAYBACK_QUEUED:')"));
+  assert.ok(html.includes("getYoutubeMusicPlaybackStatus"));
+  assert.ok(html.includes("YouTube Music confirmed playback:"));
+  assert.ok(html.includes("Enable JARVIS YouTube Music Control"));
   assert.ok(java.includes("@JavascriptInterface public String playYoutubeMusic(String requested)"));
   assert.ok(java.includes("MediaStore.INTENT_ACTION_MEDIA_PLAY_FROM_SEARCH"));
-  assert.ok(java.includes("APP_OPENED_UNCONFIRMED:"));
-  assert.ok(java.includes('"vnd.android.cursor.item/audio"'));
-  assert.ok(java.includes("MediaStore.EXTRA_MEDIA_TITLE"));
-  assert.ok(java.includes("SearchManager.QUERY"));
-  assert.ok(html.includes("Search opened; playback was not confirmed."));
-  assert.ok(html.includes("YouTube Music opened; playback is unverified."));
-  assert.ok(html.includes("If it shows search results, please select the track."));
-  assert.ok(html.includes("Please select a track to start playback."));
-  assert.ok(java.includes("https://music.youtube.com/search?q="));
+  assert.ok(java.includes("controller.getTransportControls().playFromSearch(query, extras)"));
+  assert.ok(java.includes("getActiveSessions"));
+  assert.ok(java.includes("com.google.android.apps.youtube.music"));
+  assert.ok(java.includes("PlaybackState.STATE_PLAYING"));
+  assert.ok(java.includes("getYoutubeMusicPlaybackStatus"));
+  assert.ok(manifest.includes("BIND_NOTIFICATION_LISTENER_SERVICE"));
+  assert.ok(manifest.includes("JarvisNotificationListener"));
+  assert.ok(listener.includes("extends NotificationListenerService"));
+  assert.ok(listener.includes("Deliberately do not inspect notification content."));
   assert.ok(java.includes("query.length() > 200"));
   assert.ok(manifest.includes('<package android:name="com.google.android.apps.youtube.music" />'));
 });
