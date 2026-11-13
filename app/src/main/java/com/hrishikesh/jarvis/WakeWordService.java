@@ -11,6 +11,7 @@ import android.media.AudioFormat;
 import android.media.AudioRecord;
 import android.media.MediaRecorder;
 import android.media.audiofx.AcousticEchoCanceler;
+import android.media.audiofx.AutomaticGainControl;
 import android.media.audiofx.NoiseSuppressor;
 import android.os.Build;
 import android.os.IBinder;
@@ -84,6 +85,7 @@ public class WakeWordService extends Service implements RecognitionListener {
     private Thread audioThread;
     private NoiseSuppressor noiseSuppressor;
     private AcousticEchoCanceler echoCanceler;
+    private AutomaticGainControl automaticGainControl;
 
     public static boolean isActive() { return active; }
 
@@ -225,6 +227,20 @@ public class WakeWordService extends Service implements RecognitionListener {
             }
         }
 
+        if (AutomaticGainControl.isAvailable()) {
+            try {
+                automaticGainControl = AutomaticGainControl.create(sessionId);
+                if (automaticGainControl != null) {
+                    automaticGainControl.setEnabled(true);
+                    Log.i("WakeWordService", "Hardware automatic gain control enabled");
+                }
+            } catch (RuntimeException error) {
+                Log.w("WakeWordService", "Automatic gain control could not be enabled", error);
+            }
+        } else {
+            Log.i("WakeWordService", "Hardware automatic gain control unsupported on this device");
+        }
+
         try {
             recorder.startRecording();
             if (recorder.getRecordingState() != AudioRecord.RECORDSTATE_RECORDING) {
@@ -282,6 +298,10 @@ public class WakeWordService extends Service implements RecognitionListener {
     }
 
     private void releaseAudioEffects() {
+        if (automaticGainControl != null) {
+            try { automaticGainControl.setEnabled(false); automaticGainControl.release(); } catch (Exception ignored) { }
+            automaticGainControl = null;
+        }
         if (noiseSuppressor != null) {
             try { noiseSuppressor.setEnabled(false); noiseSuppressor.release(); } catch (Exception ignored) { }
             noiseSuppressor = null;
