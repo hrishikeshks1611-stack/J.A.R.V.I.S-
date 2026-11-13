@@ -39,7 +39,10 @@ test("Android bridge requests play-from-search from the YouTube Music package", 
   assert.ok(source.includes("MediaStore.INTENT_ACTION_MEDIA_PLAY_FROM_SEARCH"));
   assert.ok(source.includes("SearchManager.QUERY"));
   assert.ok(source.includes('setPackage("com.google.android.apps.youtube.music")'));
-  assert.ok(source.includes("SEARCH_FALLBACK:"));
+  assert.ok(source.includes("playFromSearch(query, extras)"));
+  assert.ok(source.includes("findYoutubeMusicController"));
+  assert.ok(source.includes("getActiveSessions"));
+  assert.ok(manifest.includes("BIND_NOTIFICATION_LISTENER_SERVICE"));
   assert.ok(manifest.includes('package android:name="com.google.android.apps.youtube.music"'));
 });
 
