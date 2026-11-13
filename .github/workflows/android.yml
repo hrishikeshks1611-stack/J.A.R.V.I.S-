@@ -51,12 +51,12 @@ jobs:
           unzip -l "$APK" | grep -E 'classes([0-9]+)?[.]dex'
           mkdir -p release
           cp "$APK" release/JARVIS-1.0.15-SECURITY-REVIEW.apk
-          sha256sum release/JARVIS-1.0.14-ALFRED-ARC.apk | tee release/SHA256SUMS.txt
+          sha256sum release/JARVIS-1.0.15-SECURITY-REVIEW.apk | tee release/SHA256SUMS.txt
       - uses: actions/upload-artifact@v4
         with:
           name: JARVIS-1.0.15-SECURITY-REVIEW-APK
           path: |
-            release/JARVIS-1.0.14-ALFRED-ARC.apk
+            release/JARVIS-1.0.15-SECURITY-REVIEW.apk
             release/SHA256SUMS.txt
           if-no-files-found: error
           retention-days: 30
