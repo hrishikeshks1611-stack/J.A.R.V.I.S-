@@ -49,6 +49,7 @@ import java.util.Locale;
 import java.util.Map;
 
 public class MainActivity extends Activity {
+    private static final String JARVIS_WEB_BASE_URL = "https://hrishikeshks1611-stack.github.io/J.A.R.V.I.S-/";
     private static final int REQUEST_AUDIO_INPUT = 4102;
     private static final int REQUEST_FILE = 4103;
     private static final int REQUEST_CAMERA = 4104;
@@ -170,7 +171,34 @@ public class MainActivity extends Activity {
         setContentView(webView);
         webView.requestFocus();
         if (BuildConfig.JARVIS_TV) applyTvImmersiveMode();
-        webView.loadUrl("https://hrishikeshks1611-stack.github.io/J.A.R.V.I.S-/");
+        loadBundledInterface();
+    }
+
+
+    // The HTML UI is bundled in the APK. The HTTPS base URL preserves the approved
+    // origin for API CORS, local storage, and relative site assets without loading a stale page.
+    private void loadBundledInterface() {
+        try (InputStream input = getAssets().open("jarvis.html");
+             ByteArrayOutputStream output = new ByteArrayOutputStream()) {
+            byte[] buffer = new byte[8192];
+            int count;
+            while ((count = input.read(buffer)) != -1) {
+                output.write(buffer, 0, count);
+            }
+            webView.loadDataWithBaseURL(
+                    JARVIS_WEB_BASE_URL,
+                    output.toString("UTF-8"),
+                    "text/html",
+                    "UTF-8",
+                    null
+            );
+        } catch (Exception error) {
+            Toast.makeText(this, "J.A.R.V.I.S interface could not load. Please reinstall the app.", Toast.LENGTH_LONG).show();
+            String fallback = "<!doctype html><meta charset='utf-8'><title>J.A.R.V.I.S</title>" +
+                    "<body style='background:#050b18;color:#eaf7ff;font:18px system-ui;padding:24px'>" +
+                    "J.A.R.V.I.S interface is missing. Please reinstall the app.</body>";
+            webView.loadDataWithBaseURL(JARVIS_WEB_BASE_URL, fallback, "text/html", "UTF-8", null);
+        }
     }
 
 
