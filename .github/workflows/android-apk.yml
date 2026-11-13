@@ -55,14 +55,14 @@ jobs:
           PHONE_BADGING="$("$AAPT" dump badging "$PHONE_APK")"
           TV_BADGING="$("$AAPT" dump badging "$TV_APK")"
           echo "$PHONE_BADGING" | grep -Fq "package: name='com.hrishikesh.jarvis.seven.release' versionCode='701' versionName='7.0'"
-          echo "$TV_BADGING" | grep -Fq "package: name='com.hrishikesh.jarvis.seven.release.release.tv' versionCode='701' versionName='7.0-tv'"
+          echo "$TV_BADGING" | grep -Fq "package: name='com.hrishikesh.jarvis.seven.release.tv' versionCode='701' versionName='7.0-tv'"
           if echo "$PHONE_BADGING" | grep -Eq "package: name='com.hrishikesh.jarvis(\.next)?'"; then
             echo "ERROR: JARVIS 7.0 package collides with an earlier JARVIS app"
             exit 1
           fi
           sha256sum "$PHONE_APK" "$TV_APK"
           echo "Verified independent phone package: com.hrishikesh.jarvis.seven.release"
-          echo "Verified independent TV package: com.hrishikesh.jarvis.seven.release.release.tv"
+          echo "Verified independent TV package: com.hrishikesh.jarvis.seven.release.tv"
       - name: Upload phone build artifact for QA
         uses: actions/upload-artifact@v4
         with:
