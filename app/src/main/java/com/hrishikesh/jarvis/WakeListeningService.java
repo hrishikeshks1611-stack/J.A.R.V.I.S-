@@ -36,6 +36,7 @@ public final class WakeListeningService extends Service {
     private boolean ready;
     private boolean listening;
     private boolean stopping;
+    private boolean onDeviceRecognition;
 
     @Override public void onCreate() {
         super.onCreate();
@@ -65,11 +66,16 @@ public final class WakeListeningService extends Service {
         stop.setAction("STOP");
         PendingIntent pending = PendingIntent.getService(this, 7105, stop,
                 PendingIntent.FLAG_UPDATE_CURRENT | (Build.VERSION.SDK_INT >= 23 ? PendingIntent.FLAG_IMMUTABLE : 0));
+        Intent open = new Intent(this, MainActivity.class);
+        open.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        PendingIntent openPending = PendingIntent.getActivity(this, 7106, open,
+                PendingIntent.FLAG_UPDATE_CURRENT | (Build.VERSION.SDK_INT >= 23 ? PendingIntent.FLAG_IMMUTABLE : 0));
         Notification.Builder builder = Build.VERSION.SDK_INT >= 26
                 ? new Notification.Builder(this, CHANNEL) : new Notification.Builder(this);
         return builder.setSmallIcon(android.R.drawable.ic_btn_speak_now)
                 .setContentTitle("J.A.R.V.I.S. is active")
                 .setContentText(message)
+                .setContentIntent(openPending)
                 .setOngoing(true)
                 .addAction(android.R.drawable.ic_media_pause, "Stop", pending)
                 .build();
@@ -103,17 +109,28 @@ public final class WakeListeningService extends Service {
 
     private void beginRecognition() {
         if (stopping || listening) return;
-        if (!SpeechRecognizer.isRecognitionAvailable(this)) {
+        boolean localAvailable = Build.VERSION.SDK_INT >= 31
+                && SpeechRecognizer.isOnDeviceRecognitionAvailable(this);
+        if (!localAvailable && !SpeechRecognizer.isRecognitionAvailable(this)) {
             updateNotification("Speech recognition provider unavailable");
             handler.postDelayed(this::beginRecognition, 5000);
             return;
         }
         try {
             if (recognizer == null) {
-                recognizer = SpeechRecognizer.createSpeechRecognizer(this);
+                if (localAvailable) {
+                    recognizer = SpeechRecognizer.createOnDeviceSpeechRecognizer(this);
+                    onDeviceRecognition = true;
+                } else {
+                    recognizer = SpeechRecognizer.createSpeechRecognizer(this);
+                    onDeviceRecognition = false;
+                }
                 recognizer.setRecognitionListener(new RecognitionListener() {
                     @Override public void onReadyForSpeech(Bundle params) {
-                        listening = true; updateNotification("Listening for all four JARVIS wake phrases");
+                        listening = true;
+                        updateNotification(onDeviceRecognition
+                                ? "Offline on-device listening • four wake phrases enabled"
+                                : "Listening with Android speech provider • offline support depends on provider");
                     }
                     @Override public void onBeginningOfSpeech() { }
                     @Override public void onRmsChanged(float rmsdB) { }
@@ -166,7 +183,7 @@ public final class WakeListeningService extends Service {
                 break;
             case PLAY_MUSIC:
                 Intent music = new Intent(Intent.ACTION_VIEW,
-                        android.net.Uri.parse("https://www.youtube.com/results?search_query="
+                        android.net.Uri.parse("https://music.youtube.com/search?q="
                                 + android.net.Uri.encode(command.argument.isEmpty() ? "music" : command.argument)));
                 music.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                 startActivity(music);

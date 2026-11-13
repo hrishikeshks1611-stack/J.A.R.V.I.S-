@@ -331,7 +331,7 @@ public final class MainActivity extends Activity {
 
     private void playMusic(String query) {
         Intent i = new Intent(Intent.ACTION_VIEW);
-        i.setData(android.net.Uri.parse("https://www.youtube.com/results?search_query=" + android.net.Uri.encode(query)));
+        i.setData(android.net.Uri.parse("https://music.youtube.com/search?q=" + android.net.Uri.encode(query)));
         try { startActivity(i); setStatus("OPENING MUSIC SEARCH • " + query.toUpperCase(Locale.ROOT)); speak("Searching for " + query + ", Sir."); }
         catch (Exception e) { setStatus("NO MUSIC HANDLER AVAILABLE"); }
     }
