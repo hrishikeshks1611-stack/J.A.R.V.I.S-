@@ -550,7 +550,7 @@ if(musicTransport && window.AndroidJarvis && typeof window.AndroidJarvis.control
  const raw=message.toLowerCase();
  const action=/\b(pause|stop)\b/.test(raw)?'pause':/\b(play|resume|continue)\b/.test(raw)?'play':/\b(next|skip)\b/.test(raw)?'next':'previous';
  const nativeReply=window.AndroidJarvis.controlMusic(action)||'';
- const reply=nativeReply.startsWith('MEDIA_KEY_SENT:')?'I have sent the '+action+' command to Android’s active music player, Sir.':nativeReply.replace(/^ERROR:/,'');
+ const reply=nativeReply.startsWith('YOUTUBE_MUSIC_CONTROL_SENT:')?'YouTube Music '+action+' command sent, Sir.':nativeReply.startsWith('ACCESS_REQUIRED:')?'Sir, enable JARVIS YouTube Music Control in Android Notification Access settings, then repeat the command.':nativeReply.replace(/^ERROR:/,'');
  add(reply,'jarvis');history.push({role:'model',text:reply});history=history.slice(-20);
  pairApi({action:'append-local',message,reply}).catch(()=>{});
  $('hint').textContent='Media control command sent; the receiving player determines the result.';
@@ -576,7 +576,31 @@ if(musicCommand&&(explicitMusicCommand||/^\s*(?:jarvis[, ]+)?(?:please\s+)?play\
   if(window.AndroidJarvis&&typeof window.AndroidJarvis.playYoutubeMusic==='function'){
    const nativeReply=window.AndroidJarvis.playYoutubeMusic(songQuery)||'';
    let spokenReply=reply;
-   if(typeof nativeReply==='string'&&(nativeReply.startsWith('APP_OPENED_UNCONFIRMED:')||nativeReply.startsWith('PLAY_REQUESTED:'))){
+   if(typeof nativeReply==='string'&&nativeReply.startsWith('ACCESS_REQUIRED:')){
+    spokenReply='Sir, Android has opened Notification Access settings. Please enable JARVIS YouTube Music Control, return here, and repeat your song request.';
+    $('hint').textContent='Enable JARVIS YouTube Music Control in Android settings.';
+   }else if(typeof nativeReply==='string'&&nativeReply.startsWith('PLAYBACK_QUEUED:')){
+    spokenReply='Opening YouTube Music and sending a direct playback command for '+songQuery+', Sir. I will verify whether it actually starts.';
+    $('hint').textContent='Waiting for YouTube Music playback confirmation.';
+    let musicChecks=0;
+    const checkMusicPlayback=()=>{
+     if(!window.AndroidJarvis||typeof window.AndroidJarvis.getYoutubeMusicPlaybackStatus!=='function')return;
+     const playback=window.AndroidJarvis.getYoutubeMusicPlaybackStatus()||'';
+     if(playback.startsWith('PLAYING:')){
+      const track=playback.slice(8);
+      $('hint').textContent='YouTube Music confirmed playback: '+track;
+      status('YouTube Music playing');
+      speak('Now playing '+track+', Sir.');
+     }else if(playback.startsWith('NOT_PLAYING:')||playback.startsWith('SESSION_NOT_FOUND:')||playback.startsWith('ACCESS_ERROR')){
+      $('hint').textContent='YouTube Music did not confirm playback. Status: '+playback;
+      status('Playback not confirmed');
+      speak('Sir, YouTube Music did not confirm that playback started. Please check the app.');
+     }else if(musicChecks++<12){
+      setTimeout(checkMusicPlayback,900);
+     }
+    };
+    setTimeout(checkMusicPlayback,1800);
+   }else if(typeof nativeReply==='string'&&(nativeReply.startsWith('APP_OPENED_UNCONFIRMED:')||nativeReply.startsWith('PLAY_REQUESTED:'))){
     spokenReply='I opened YouTube Music with a song request for '+songQuery+', Sir, but playback is not confirmed. If it shows search results, please select the track.';
     $('hint').textContent='YouTube Music opened; playback is unverified.';
    }else if(typeof nativeReply==='string'&&nativeReply.startsWith('SEARCH_FALLBACK:')){
