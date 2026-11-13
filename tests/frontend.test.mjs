@@ -104,7 +104,7 @@ test("four voice camera phrases use native camera, capture, selfie and latest-ph
 test("YouTube Music voice commands use the native playback bridge or search fallback", async () => {
   const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
   assert.ok(html.includes("const openYoutubeMusicOnly="));
-  assert.ok(html.includes("window.AndroidJarvis.playYoutubeMusic(track.videoId)"));
+  assert.ok(html.includes("window.AndroidJarvis.playYoutubeMusic(searchQuery)"));
   assert.ok(html.includes("window.AndroidJarvis.openApp('youtube music')"));
   assert.ok(html.includes("const hasNativeMusicBridge=window.AndroidJarvis&&typeof window.AndroidJarvis.playYoutubeMusic==='function'"));
   assert.ok(html.includes("else window.location.href='https://music.youtube.com/'"));
@@ -305,7 +305,7 @@ test("live app answers exact greetings locally and routes YouTube Music commands
   const instantReply = vm.runInNewContext(html.slice(start, end) + "\ninstantReply", { Date, Intl });
   assert.match(instantReply("Good morning"), /Good morning, Sir/);
   assert.equal(instantReply("Good morning, explain this to me"), null);
-  assert.ok(html.includes("window.AndroidJarvis.playYoutubeMusic(track.videoId)"));
+  assert.ok(html.includes("window.AndroidJarvis.playYoutubeMusic(searchQuery)"));
   assert.ok(html.includes("music.youtube.com/search?q="));
 });
 
