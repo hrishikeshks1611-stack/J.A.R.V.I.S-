@@ -40,7 +40,7 @@ test("one-time owner recovery is available on an unpaired phone", async () => {
 
 test("service worker cache version is bumped and script parses", async () => {
   const source = await readFile(new URL("../sw.js", import.meta.url), "utf8");
-  assert.ok(source.includes('const CACHE="jarvis-shell-v28"'));
+  assert.ok(source.includes('const CACHE="jarvis-shell-v33"'));
   assert.doesNotThrow(() => new Function(source));
 });
 
@@ -270,4 +270,9 @@ test("installed-app inventory command uses the Android launcher catalogue", asyn
   assert.ok(html.includes("installedAppsRequest"));
   assert.ok(html.includes("AndroidJarvis.getInstalledApps()"));
   assert.ok(html.includes("These are the launchable apps I can see on this device"));
+});
+
+test("arbitrary installed app names are sent to the native launcher bridge", async () => {
+  const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+  assert.ok(html.includes("appAliases[requestedApp.toLowerCase()]||requestedApp"));
 });
