@@ -10,8 +10,8 @@ android {
         applicationId 'com.hrishikesh.jarvis.fresh'
         minSdk 23
         targetSdk 35
-        versionCode 117
-        versionName '1.1.1'
+        versionCode 118
+        versionName '1.1.2'
         buildConfigField 'boolean', 'JARVIS_TV', 'false'
         buildConfigField 'String', 'ASSISTANT_NAME', '"J.A.R.V.I.S."'
     }
