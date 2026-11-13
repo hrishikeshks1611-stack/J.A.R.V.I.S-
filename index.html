@@ -920,6 +920,21 @@ if(installedAppsRequest&&window.AndroidJarvis&&typeof window.AndroidJarvis.getIn
 const appAliases={'whatsapp':'whatsapp','you tube':'youtube','youtube':'youtube','youtube music':'youtube music','chrome':'chrome','gmail':'gmail','google maps':'maps','maps':'maps','spotify':'spotify','instagram':'instagram','facebook':'facebook','telegram':'telegram','camera':'camera','play store':'play store','messages':'messages','message':'messages','phone':'phone','settings':'settings','phone settings':'settings','twitter':'twitter','x':'x','reddit':'reddit','photos':'photos','google photos':'photos','calendar':'calendar','google calendar':'calendar','keep':'keep','google keep':'keep','contacts':'contacts','drive':'drive','google drive':'drive','files':'files','file manager':'files','amazon':'amazon','flipkart':'flipkart','browser':'browser','calculator':'calculator','gallery':'gallery','swiggy':'swiggy','zomato':'zomato'};
 function handleCalendarOrAlarmCommand(text){
  if(!window.AndroidJarvis)return null;
+  const showAlarms=/^\s*(?:jarvis[, ]+)?(?:please\s+)?(?:show|list|open)\s+(?:my\s+)?alarms?\s*[.!?]*\s*$/i.test(text);
+  if(showAlarms){
+   if(typeof window.AndroidJarvis.showAlarms!=='function')return 'This J.A.R.V.I.S. build cannot open the Clock alarm list yet, Sir.';
+   return window.AndroidJarvis.showAlarms();
+  }
+  const snooze=text.match(/^\s*(?:jarvis[, ]+)?(?:please\s+)?snooze(?:\s+(?:the\s+)?alarm)?(?:\s+for\s+(\d{1,2})\s+minutes?)?\s*[.!?]*\s*$/i);
+  if(snooze){
+   if(typeof window.AndroidJarvis.snoozeAlarm!=='function')return 'This J.A.R.V.I.S. build cannot request alarm snoozing yet, Sir.';
+   return window.AndroidJarvis.snoozeAlarm(Number(snooze[1]||5));
+  }
+  const dismiss=text.match(/^\s*(?:jarvis[, ]+)?(?:please\s+)?(?:dismiss|stop)\s+(?:the\s+)?(?:ringing\s+)?alarm(?:\s+(?:called|named|labelled)\s+(.+?))?\s*[.!?]*\s*$/i);
+  if(dismiss){
+   if(typeof window.AndroidJarvis.dismissAlarm!=='function')return 'This J.A.R.V.I.S. build cannot request alarm dismissal yet, Sir.';
+   return window.AndroidJarvis.dismissAlarm(String(dismiss[1]||''));
+  }
  const reminder=text.match(/^\s*(?:jarvis[, ]+)?(?:please\s+)?remind me to (.+?) at (\d{1,2})(?::(\d{2}))?\s*(am|pm)\s*[.!?]*\s*$/i);
  const alarm=text.match(/^\s*(?:jarvis[, ]+)?(?:please\s+)?(?:set|create)\s+(?:an?\s+)?alarm\s+(?:for|at)\s+(\d{1,2})(?::(\d{2}))?\s*(am|pm)?(?:\s+(?:called|named|labelled)\s+(.+?))?[.!?]*\s*$/i);
  const match=reminder||alarm;
