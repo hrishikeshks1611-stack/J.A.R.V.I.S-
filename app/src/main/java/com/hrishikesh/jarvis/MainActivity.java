@@ -718,8 +718,6 @@ public class MainActivity extends Activity {
         }
     }
 
-    }
-
     private void downloadAndInstallJarvisUpdate(String address, int expectedVersionCode) {
         File apk = null;
         HttpURLConnection connection = null;
