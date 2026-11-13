@@ -6,6 +6,7 @@ import static org.junit.Assert.*;
 public class CommandParserTest {
     @Test public void recognisesCameraAndSelfieCommands() {
         assertEquals(CommandParser.Action.OPEN_CAMERA, CommandParser.parse("open camera").action);
+        assertEquals(CommandParser.Action.OPEN_CAMERA, CommandParser.parse("open the camera").action);
         assertEquals(CommandParser.Action.OPEN_CAMERA, CommandParser.parse("take a photo").action);
         assertEquals(CommandParser.Action.OPEN_CAMERA, CommandParser.parse("take a selfie").action);
     }
@@ -14,6 +15,7 @@ public class CommandParserTest {
         CommandParser.Command c = CommandParser.parse("Open WhatsApp");
         assertEquals(CommandParser.Action.OPEN_APP, c.action);
         assertEquals("whatsapp", c.argument);
+        assertEquals("whatsapp", CommandParser.parse("open the WhatsApp").argument);
     }
 
     @Test public void extractsMusicQuery() {
@@ -30,6 +32,7 @@ public class CommandParserTest {
 
     @Test public void recognisesMediaSessionCommands() {
         assertEquals(CommandParser.Action.PAUSE_MEDIA, CommandParser.parse("pause music").action);
+        assertEquals(CommandParser.Action.PAUSE_MEDIA, CommandParser.parse("pause the music").action);
         assertEquals(CommandParser.Action.RESUME_MEDIA, CommandParser.parse("resume music").action);
         assertEquals(CommandParser.Action.NEXT_TRACK, CommandParser.parse("next song").action);
         assertEquals(CommandParser.Action.PREVIOUS_TRACK, CommandParser.parse("previous track").action);

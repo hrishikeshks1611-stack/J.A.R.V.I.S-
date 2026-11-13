@@ -21,20 +21,21 @@ public final class CommandParser {
         if (raw == null) return new Command(Action.UNKNOWN, "");
         String text = raw.toLowerCase(Locale.ROOT).trim().replaceAll("\\s+", " ");
         if (text.isEmpty()) return new Command(Action.UNKNOWN, "");
-        if (text.contains("pause music") || text.equals("pause") || text.contains("stop music"))
+        if (text.startsWith("pause") || text.equals("stop") || (text.startsWith("stop") && text.contains("music")))
             return new Command(Action.PAUSE_MEDIA, "");
-        if (text.contains("resume music") || text.contains("continue music") || text.equals("resume"))
+        if (text.startsWith("resume") || text.startsWith("continue"))
             return new Command(Action.RESUME_MEDIA, "");
         if (text.contains("next track") || text.contains("next song") || text.equals("next"))
             return new Command(Action.NEXT_TRACK, "");
         if (text.contains("previous track") || text.contains("previous song") || text.equals("previous") || text.equals("go back"))
             return new Command(Action.PREVIOUS_TRACK, "");
-        if (text.contains("open camera") || text.contains("take a photo")
+        if ((text.startsWith("open") && text.contains("camera")) || text.contains("take a photo")
                 || text.contains("take photo") || text.contains("selfie")) {
             return new Command(Action.OPEN_CAMERA, "");
         }
         if (text.startsWith("open ")) {
             String app = text.substring(5).trim();
+            if (app.startsWith("the ")) app = app.substring(4).trim();
             return app.isEmpty() ? new Command(Action.UNKNOWN, "")
                     : new Command(Action.OPEN_APP, app);
         }
