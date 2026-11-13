@@ -32,7 +32,8 @@ import java.io.IOException;
 
 public final class MainActivity extends Activity {
     private static final int REQ_AUDIO = 41, REQ_CAMERA = 42, REQ_SPEECH = 43, REQ_SAVE_OFFICE = 44, REQ_OPEN_ATTACHMENT = 45;
-    private String importedText = "";\n    private File pendingOfficeFile;
+    private String importedText = "";
+    private File pendingOfficeFile;
     private TextToSpeech tts;
     private ConversationStore memory;
     private ArcReactorView reactorView;
