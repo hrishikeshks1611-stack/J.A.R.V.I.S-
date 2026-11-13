@@ -34,9 +34,13 @@ test("owner recovery requires a valid paired session and atomically preserves de
     const command = redisCommands[0];
     commands.push(command);
     let result = 1;
-    if (command[0] === "GET" && command[1] === "jarvis:v1:session:" + hash(token)) {
+    if (command[0] === "GET" && command[1] === "jarvis:v1:owner:claimed") {
+      result = "1";
+    } else if (command[0] === "GET" && command[1] === "jarvis:v1:session:" + hash(token)) {
       result = JSON.stringify({ deviceId: "laptop-1", deviceName: "Laptop", role: "device" });
     } else if (command[0] === "INCR") result = 1;
+    else if (command[0] === "SET") result = "OK";
+    else if (command[0] === "SADD") result = 1;
     else if (command[0] === "EVAL") {
       assert.equal(command[2], "6");
       assert.equal(command[5], "jarvis:v1:owner:recovery:used");
