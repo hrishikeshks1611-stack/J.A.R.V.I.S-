@@ -522,6 +522,28 @@ if(instant){
  pairApi({action:'append-local',message,reply:instant}).catch(()=>{});
  $('hint').textContent='Ready when you are.';status('System ready');speak(instant);return;
 }
+// Handle a chained native command locally instead of sending it to the AI chat model.
+const multiAppMusic=message.match(/^\\s*(?:jarvis[, ]+)?(?:please\\s+)?(?:open|launch|start)\\s+(whatsapp|chrome|gmail|instagram|facebook|telegram)\\s+and\\s+(?:then\\s+)?(?:play|listen to)\\s+(.+?)(?:\\s+(?:on|in)\\s+youtube\\s+music)?[.!?]*\\s*$/i);
+if(multiAppMusic && window.AndroidJarvis && typeof window.AndroidJarvis.openApp==='function' && typeof window.AndroidJarvis.playYoutubeMusic==='function'){
+ const appName=multiAppMusic[1].toLowerCase();
+ const songQuery=multiAppMusic[2].trim().replace(/\\s+(?:on|in)\\s+youtube\\s+music$/i,'').trim();
+ const appReply=window.AndroidJarvis.openApp(appName);
+ const musicReply=songQuery?window.AndroidJarvis.playYoutubeMusic(songQuery):'ERROR:No song title was recognised.';
+ let spokenReply;
+ if(!appReply || /does not appear to be installed|do not have a launch command|could not/i.test(appReply)){
+  spokenReply=appReply||'I could not open '+appName+', Sir.';
+ }else if(typeof musicReply==='string'&&musicReply.startsWith('APP_OPENED_UNCONFIRMED:')){
+  spokenReply=appReply+' I have also sent a play request for '+songQuery+' to YouTube Music, Sir. Playback is not confirmed.';
+ }else if(typeof musicReply==='string'&&musicReply.startsWith('SEARCH_FALLBACK:')){
+  spokenReply=appReply+' YouTube Music could only open search results for '+songQuery+'. Please select the track to start playback.';
+ }else{
+  spokenReply=appReply+' '+(musicReply.startsWith('ERROR:')?musicReply.slice(6):musicReply);
+ }
+ add(spokenReply,'jarvis');history.push({role:'model',text:spokenReply});history=history.slice(-20);
+ pairApi({action:'append-local',message,reply:spokenReply}).catch(()=>{});
+ $('hint').textContent='Native multi-action command processed; music playback may need confirmation.';
+ status('System ready');speak(spokenReply);return;
+}
 const openYoutubeMusicOnly=/^\s*(?:jarvis[, ]+)?(?:please\s+)?(?:open|launch|start)\s+youtube\s+music(?:\s+app)?[.!?]*\s*$/i.test(message);
 const musicCommand = message.match(/^\s*(?:jarvis[, ]+)?(?:please\s+)?(?:play|search(?:\s+for)?)\s+(.+?)(?:\s+(?:on|in)\s+youtube\s+music)?[.!?]*\s*$/i);
 const explicitMusicCommand=/\byoutube\s+music\b/i.test(message)&&musicCommand;
