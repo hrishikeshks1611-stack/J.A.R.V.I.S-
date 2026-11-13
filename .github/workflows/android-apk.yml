@@ -54,7 +54,7 @@ jobs:
           ! grep -q "BIND_NOTIFICATION_LISTENER_SERVICE\\|NotificationListenerService" app/src/main/AndroidManifest.xml
           grep -q "vnd.youtube.music://music.youtube.com/watch?v=" app/src/main/java/com/hrishikesh/jarvis/MainActivity.java
           grep -q "JARVIS_API+'/music-search'" index.html
-          grep -q "INTENT_ACTION_MEDIA_PLAY_FROM_SEARCH" app/src/main/java/com/hrishikesh/jarvis/MainActivity.java
+          grep -q "TRACK_OPENED_UNCONFIRMED:" app/src/main/java/com/hrishikesh/jarvis/MainActivity.java
           grep -q "playYoutubeMusic" app/src/main/java/com/hrishikesh/jarvis/MainActivity.java
           grep -q "AudioManager" app/src/main/java/com/hrishikesh/jarvis/MainActivity.java
           grep -q "dispatchMediaKeyEvent" app/src/main/java/com/hrishikesh/jarvis/MainActivity.java
