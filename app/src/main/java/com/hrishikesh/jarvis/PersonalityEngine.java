@@ -70,7 +70,7 @@ public final class PersonalityEngine {
 
     private static String normalise(String input) {
         return input == null ? "" : input.toLowerCase(Locale.ROOT).trim()
-                .replaceAll("[^\\p{L}\\p{N}' ]", " ").replaceAll("\\s+", " ");
+                .replaceAll("[^\\p{L}\\p{N}' ?]", " ").replaceAll("\\s+", " ");
     }
 
     private static boolean containsAny(String text, String... phrases) {
