@@ -5,6 +5,7 @@ import { buildJarvisSystemInstruction } from "../lib/jarvis-personality.js";
 import { buildJarvisCapabilitiesReply, isJarvisCapabilitiesQuestion } from "../lib/jarvis-capabilities.js";
 import { buildTutorSystemInstruction, isTutorRequest } from "../lib/jarvis-tutor.js";
 import { buildMedicalEmergencyReply, buildMedicalSystemInstruction, detectMedicalEmergency, isMedicalRequest } from "../lib/jarvis-medical.js";
+import { buildMentalistSystemInstruction, buildEmotionalAvailabilityInstruction, isMentalistRequest } from "../lib/jarvis-mentalist.js";
 
 export default async function handler(req, res) {
   const origin = req.headers.origin || "";
@@ -73,7 +74,8 @@ export default async function handler(req, res) {
 
     const tutorMode = isTutorRequest(message);
     const medicalMode = isMedicalRequest(message);
-    const system = [buildJarvisSystemInstruction(mode), tutorMode ? buildTutorSystemInstruction() : "", medicalMode ? buildMedicalSystemInstruction() : ""].filter(Boolean).join(" ");
+    const mentalistMode = isMentalistRequest(message);
+    const system = [buildJarvisSystemInstruction(mode), "You are emotionally available as described here: " + buildEmotionalAvailabilityInstruction(), tutorMode ? buildTutorSystemInstruction() : "", medicalMode ? buildMedicalSystemInstruction() : "", mentalistMode ? buildMentalistSystemInstruction() : ""].filter(Boolean).join(" ");
 
     // Every paired device reads the same central conversation rather than sending
     // a private browser-only history. Only the latest eight turns enter the prompt.
@@ -273,7 +275,7 @@ export default async function handler(req, res) {
     }
 
     await appendConversationTurn(message, reply);
-    return res.status(200).json({ reply, deviceId: session.deviceId, toolCalls: toolTrace, pendingActions, engine: medicalMode ? "medical" : tutorMode ? "tutor" : "general" });
+    return res.status(200).json({ reply, deviceId: session.deviceId, toolCalls: toolTrace, pendingActions, engine: medicalMode ? "medical" : tutorMode ? "tutor" : mentalistMode ? "mentalist" : "general", emotionalAvailability: true });
   } catch (error) {
     console.error("JARVIS API failure:", error);
     return res.status(500).json({ error: "JARVIS server error: " + String(error?.message || error).slice(0, 300) });
