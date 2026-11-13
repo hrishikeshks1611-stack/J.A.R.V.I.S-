@@ -2,9 +2,9 @@ name: JARVIS quality checks
 
 on:
   push:
-    branches: [ main, jarvis-5.0-development, jarvis-6.0-development, jarvis-intelligence-tools, jarvis-rebirth-6.0 ]
+    branches: [ main, jarvis-5.0-development, jarvis-6.0-development, jarvis-intelligence-tools, jarvis-rebirth-6.0, jarvis-full-recovery-1.1 ]
   pull_request:
-    branches: [ main, jarvis-6.0-development, jarvis-rebirth-6.0 ]
+    branches: [ main, jarvis-6.0-development, jarvis-rebirth-6.0, jarvis-full-recovery-1.1 ]
 
 permissions:
   contents: read
