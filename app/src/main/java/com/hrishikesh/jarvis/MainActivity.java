@@ -1,6 +1,13 @@
 package com.hrishikesh.jarvis;
 
 import android.app.Activity;
+import android.app.PendingIntent;
+import android.content.pm.PackageInfo;
+import android.content.pm.PackageInstaller;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import android.content.BroadcastReceiver;
 import android.content.IntentFilter;
 import android.Manifest;
@@ -267,6 +274,109 @@ public class MainActivity extends Activity {
     }
 
     private class JarvisBridge {
+        @JavascriptInterface public int getInstalledVersionCode() {
+            return BuildConfig.VERSION_CODE;
+        }
+
+        @JavascriptInterface public String installJarvisUpdate(String apkUrl, int expectedVersionCode) {
+            if (expectedVersionCode <= BuildConfig.VERSION_CODE) return "ERROR:This update is not newer than the installed JARVIS version.";
+            Uri uri;
+            try { uri = Uri.parse(apkUrl); }
+            catch (Exception error) { return "ERROR:The update address is invalid."; }
+            String host = uri.getHost() == null ? "" : uri.getHost().toLowerCase(Locale.ROOT);
+            if (!"https".equalsIgnoreCase(uri.getScheme()) || !("github.com".equals(host))) {
+                return "ERROR:Updates must come from the official JARVIS GitHub release.";
+            }
+            if (Build.VERSION.SDK_INT >= 26 && !getPackageManager().canRequestPackageInstalls()) {
+                runOnUiThread(() -> {
+                    try {
+                        Intent settings = new Intent(android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                                Uri.parse("package:" + getPackageName()));
+                        startActivity(settings);
+                        Toast.makeText(MainActivity.this, "Allow J.A.R.V.I.S. to request updates, then return and check again, Sir.", Toast.LENGTH_LONG).show();
+                    } catch (Exception error) {
+                        Toast.makeText(MainActivity.this, "Please allow app installs for J.A.R.V.I.S. in Android Settings, Sir.", Toast.LENGTH_LONG).show();
+                    }
+                });
+                return "ALLOW_INSTALL";
+            }
+            new Thread(() -> downloadAndInstallJarvisUpdate(uri.toString(), expectedVersionCode)).start();
+            return "DOWNLOAD_STARTED";
+        }
+    }
+
+    private void downloadAndInstallJarvisUpdate(String address, int expectedVersionCode) {
+        File apk = null;
+        HttpURLConnection connection = null;
+        try {
+            URL url = new URL(address);
+            connection = (HttpURLConnection) url.openConnection();
+            connection.setInstanceFollowRedirects(true);
+            connection.setConnectTimeout(20000);
+            connection.setReadTimeout(45000);
+            connection.setRequestProperty("User-Agent", "JARVIS-Android-Updater");
+            connection.connect();
+            String finalHost = connection.getURL().getHost() == null ? "" : connection.getURL().getHost().toLowerCase(Locale.ROOT);
+            if (!"github.com".equals(finalHost) && !"release-assets.githubusercontent.com".equals(finalHost)) {
+                throw new Exception("The update download did not come from GitHub.");
+            }
+            if (connection.getResponseCode() != HttpURLConnection.HTTP_OK) {
+                throw new Exception("GitHub could not provide the update (HTTP " + connection.getResponseCode() + ").");
+            }
+            long length = connection.getContentLengthLong();
+            if (length > 150L * 1024L * 1024L) throw new Exception("The update file is larger than the allowed size.");
+            apk = new File(getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "jarvis-update-" + expectedVersionCode + ".apk");
+            File parent = apk.getParentFile();
+            if (parent != null && !parent.exists() && !parent.mkdirs()) throw new Exception("Could not prepare secure update storage.");
+            try (InputStream input = connection.getInputStream(); FileOutputStream output = new FileOutputStream(apk, false)) {
+                byte[] buffer = new byte[16384];
+                int count;
+                long total = 0;
+                while ((count = input.read(buffer)) != -1) {
+                    total += count;
+                    if (total > 150L * 1024L * 1024L) throw new Exception("The update file is larger than the allowed size.");
+                    output.write(buffer, 0, count);
+                }
+                output.getFD().sync();
+            }
+            if (!apk.isFile() || apk.length() == 0) throw new Exception("The downloaded update is empty.");
+            PackageInfo candidate = getPackageManager().getPackageArchiveInfo(apk.getAbsolutePath(), 0);
+            if (candidate == null || !getPackageName().equals(candidate.packageName)) {
+                throw new Exception("This APK is not the JARVIS phone app. Your installed app has not been changed.");
+            }
+            long candidateVersion = Build.VERSION.SDK_INT >= 28 ? candidate.getLongVersionCode() : candidate.versionCode;
+            if (candidateVersion != expectedVersionCode || candidateVersion <= BuildConfig.VERSION_CODE) {
+                throw new Exception("The APK version does not match the update listing or is not newer. Your installed app has not been changed.");
+            }
+            PackageInstaller installer = getPackageManager().getPackageInstaller();
+            PackageInstaller.SessionParams params = new PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL);
+            params.setAppPackageName(getPackageName());
+            params.setSize(apk.length());
+            int sessionId = installer.createSession(params);
+            PackageInstaller.Session session = installer.openSession(sessionId);
+            try (InputStream input = new java.io.FileInputStream(apk);
+                 java.io.OutputStream output = session.openWrite("jarvis-update.apk", 0, apk.length())) {
+                byte[] buffer = new byte[16384];
+                int count;
+                while ((count = input.read(buffer)) != -1) output.write(buffer, 0, count);
+                session.fsync(output);
+            }
+            Intent statusIntent = new Intent(this, UpdateInstallReceiver.class);
+            int pendingFlags = PendingIntent.FLAG_UPDATE_CURRENT;
+            if (Build.VERSION.SDK_INT >= 31) pendingFlags |= PendingIntent.FLAG_MUTABLE;
+            PendingIntent statusPending = PendingIntent.getBroadcast(this, expectedVersionCode, statusIntent, pendingFlags);
+            session.commit(statusPending.getIntentSender());
+            runOnUiThread(() -> Toast.makeText(this, "JARVIS update checked. Android will ask you to confirm installation if it is compatible, Sir.", Toast.LENGTH_LONG).show());
+        } catch (Exception error) {
+            final String message = error.getMessage() == null ? "The update could not be prepared." : error.getMessage();
+            runOnUiThread(() -> Toast.makeText(this, message + " Your existing JARVIS installation and data have not been deliberately removed.", Toast.LENGTH_LONG).show());
+        } finally {
+            if (connection != null) connection.disconnect();
+            // PackageInstaller has copied the session contents by the time commit is called.
+            if (apk != null && apk.exists()) apk.delete();
+        }
+    }
+
         @JavascriptInterface public String openApp(String requested) {
             String name = requested == null ? "" : requested.toLowerCase(Locale.ROOT).trim();
             if (name.equals("settings") || name.equals("phone settings")) {
