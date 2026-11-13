@@ -37,7 +37,7 @@ jobs:
           grep -q 'jarvis_reactor' /tmp/jarvis-resources.txt
           grep -q 'jarvis_splash' /tmp/jarvis-resources.txt
           unzip -t "$APK"
-          unzip -l "$APK" | grep -E 'classes[0-9]*\\.dex'
+          unzip -l "$APK" | grep -E 'classes([0-9]+)?[.]dex'
           mkdir -p release
           cp "$APK" release/JARVIS-1.0.11-ARC-REACTOR.apk
           sha256sum release/JARVIS-1.0.11-ARC-REACTOR.apk | tee release/SHA256SUMS.txt
