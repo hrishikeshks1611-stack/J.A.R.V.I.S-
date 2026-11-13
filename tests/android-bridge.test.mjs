@@ -24,17 +24,17 @@ test("native bridge exposes confirmation-based Clock and Calendar actions", asyn
   assert.ok(manifest.includes('com.android.alarm.permission.SET_ALARM'));
 });
 
-test("Android update metadata advances production JARVIS from 5.0.1 to 5.0.2", async () => {
+test("Android update metadata advances production JARVIS from 5.0.2 to 5.0.3", async () => {
   const gradle = await readFile(new URL("../app/build.gradle", import.meta.url), "utf8");
   assert.match(gradle, /applicationId\s+'com\.hrishikesh\.jarvis'/);
-  assert.match(gradle, /versionCode\s+502/);
-  assert.match(gradle, /versionName\s+'5\.0\.2'/);
+  assert.match(gradle, /versionCode\\s+503/);
+  assert.match(gradle, /versionName\\s+'5\\.0\\.3'/);
 });
 
-test("APK workflow cannot publish debug-signed builds as downloadable releases", async () => {
+test("APK workflow keeps debug builds as verification artifacts and never publishes them as updates", async () => {
   const workflow = await readFile(new URL("../.github/workflows/android-apk.yml", import.meta.url), "utf8");
   assert.match(workflow, /contents:\s*read/);
-  assert.doesNotMatch(workflow, /gh release create/);
+  assert.doesNotMatch(workflow, /gh release create|action-gh-release|Publish phone APK/);
   assert.match(workflow, /debug-verification/);
 });
 
@@ -69,4 +69,23 @@ test("Android camera bridge supports camera launch, automatic photo, selfie and 
   assert.ok(html.includes("window.AndroidJarvis.capturePhoto(true)"));
   assert.ok(html.includes("window.AndroidJarvis.capturePhoto(false)"));
   assert.match(html, /cameraAction==='show'/);
+});
+
+test("in-app updater validates package and version before Android PackageInstaller handoff", async () => {
+  const source = await readFile(new URL("../app/src/main/java/com/hrishikesh/jarvis/MainActivity.java", import.meta.url), "utf8");
+  const receiver = await readFile(new URL("../app/src/main/java/com/hrishikesh/jarvis/UpdateInstallReceiver.java", import.meta.url), "utf8");
+  const manifest = await readFile(new URL("../app/src/main/AndroidManifest.xml", import.meta.url), "utf8");
+  const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+  assert.match(source, /getInstalledVersionCode/);
+  assert.match(source, /expectedVersionCode <= BuildConfig\.VERSION_CODE/);
+  assert.match(source, /getPackageArchiveInfo/);
+  assert.match(source, /getPackageName\(\)\.equals\(candidate\.packageName\)/);
+  assert.match(source, /candidateVersion <= BuildConfig\.VERSION_CODE/);
+  assert.match(source, /getPackageInstaller\(\)/);
+  assert.match(receiver, /STATUS_PENDING_USER_ACTION/);
+  assert.match(receiver, /STATUS_SUCCESS/);
+  assert.match(manifest, /REQUEST_INSTALL_PACKAGES/);
+  assert.match(manifest, /UpdateInstallReceiver/);
+  assert.match(html, /checkJarvisUpdates/);
+  assert.match(html, /api\.github\.com\/repos\/hrishikeshks1611-stack/);
 });
