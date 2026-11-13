@@ -1,6 +1,12 @@
 name: JARVIS Google Firebase Test Lab physical-device checks
 
 on:
+  push:
+    branches: [ jarvis-mic-wakeword-clean ]
+    paths:
+      - 'app/src/main/**'
+      - 'app/src/androidTest/**'
+      - '.github/workflows/firebase-test-lab.yml'
   workflow_dispatch:
 
 permissions:
