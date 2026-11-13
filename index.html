@@ -727,6 +727,12 @@ if(cameraAction){
  speak(reply);
  return;
 }
+const installedAppsRequest=/^\s*(?:hey\s+)?jarvis[, ]*(?:please\s+)?(?:list|show)(?:\s+me)?(?:\s+all)?\s+(?:my\s+)?(?:installed\s+)?apps\s*[.!?]*\s*$|^\s*(?:hey\s+)?jarvis[, ]*what apps are installed\s*[.!?]*\s*$/i.test(message);
+if(installedAppsRequest&&window.AndroidJarvis&&typeof window.AndroidJarvis.getInstalledApps==='function'){
+ let reply='I could not retrieve the installed-app list, Sir.';
+ try{const apps=JSON.parse(window.AndroidJarvis.getInstalledApps()||'[]');reply=apps.length?'These are the launchable apps I can see on this device, Sir: '+apps.map(app=>app.name).join(', '):'Android did not return any launchable apps, Sir.';}catch(error){}
+ add(reply,'jarvis');history.push({role:'model',text:reply});history=history.slice(-20);pairApi({action:'append-local',message,reply}).catch(()=>{});$('hint').textContent='Device app inventory checked.';status('System ready');speak(reply);return;
+}
 const appAliases={'whatsapp':'whatsapp','you tube':'youtube','youtube':'youtube','youtube music':'youtube music','chrome':'chrome','gmail':'gmail','google maps':'maps','maps':'maps','spotify':'spotify','instagram':'instagram','facebook':'facebook','telegram':'telegram','camera':'camera','play store':'play store','messages':'messages','message':'messages','phone':'phone','settings':'settings','phone settings':'settings','twitter':'twitter','x':'x','reddit':'reddit','photos':'photos','google photos':'photos','calendar':'calendar','google calendar':'calendar','keep':'keep','google keep':'keep','contacts':'contacts','drive':'drive','google drive':'drive','files':'files','file manager':'files','amazon':'amazon','flipkart':'flipkart','browser':'browser','calculator':'calculator','gallery':'gallery','swiggy':'swiggy','zomato':'zomato'};
 function handleCalendarOrAlarmCommand(text){
  if(!window.AndroidJarvis)return null;
