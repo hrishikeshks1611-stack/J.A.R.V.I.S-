@@ -26,9 +26,9 @@ test("native bridge exposes confirmation-based Clock and Calendar actions", asyn
 
 test("new JARVIS 6.0.0 has a separate package identity from legacy 5.0.2", async () => {
   const gradle = await readFile(new URL("../app/build.gradle", import.meta.url), "utf8");
-  assert.match(gradle, /applicationId\s+'com\.hrishikesh\.jarvis'/);
-  assert.match(gradle, /versionCode\s+503/);
-  assert.match(gradle, /versionName\s+'5\.0\.3'/);
+  assert.match(gradle, /applicationId\s+'com\.hrishikesh\.jarvis\.next'/);
+  assert.match(gradle, /versionCode\s+600/);
+  assert.match(gradle, /versionName\s+'6\.0\.0'/);
 });
 
 test("APK workflow verifies separate-install builds and never publishes debug APKs as releases", async () => {
