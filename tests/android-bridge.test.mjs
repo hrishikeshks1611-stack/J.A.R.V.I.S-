@@ -45,6 +45,7 @@ test("live Android bridge sends YouTube Music play-from-search intents", async (
   assert.ok(source.includes("public String playYoutubeMusic(String query)"));
   assert.ok(source.includes("MediaStore.INTENT_ACTION_MEDIA_PLAY_FROM_SEARCH"));
   assert.ok(source.includes('play.setPackage("com.google.android.apps.youtube.music")'));
+  assert.ok(source.includes('play.putExtra("query", cleanQuery)'));
   assert.ok(manifest.includes('com.google.android.apps.youtube.music'));
 });
 
