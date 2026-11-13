@@ -56,7 +56,7 @@ public class WakeWordService extends Service implements RecognitionListener {
     private final Handler dictationTimeoutHandler = new Handler(Looper.getMainLooper());
     private final StringBuilder dictationTranscript = new StringBuilder();
     private final Object dictationLock = new Object();
-    private static final long DICTATION_SILENCE_MS = 1900L;
+    private static final long DICTATION_SILENCE_MS = 2600L;
     private final Runnable dictationFinalize = () -> finishDictation("pause");
     private final Runnable dictationTimeout = () -> {
         if (!dictationMode) return;
