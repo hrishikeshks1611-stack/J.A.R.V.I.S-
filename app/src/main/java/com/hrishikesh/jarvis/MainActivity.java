@@ -126,11 +126,17 @@ public final class MainActivity extends Activity {
         music.setOnClickListener(v -> playMusic("Back in Black"));
         devicePanel.addView(music, matchWrap());
 
-        LinearLayout officePanel = addPanel(root, "OFFICE & EDUCATION STUDIO");\n        Button office = makeButton("CREATE WORD / POWERPOINT / EXCEL / PDF");\n        office.setOnClickListener(v -> showOfficeComposer());\n        officePanel.addView(office, matchWrap());\n\n        Button importFile = makeButton("IMPORT TXT / DOCX / PPTX / XLSX");
+        LinearLayout officePanel = addPanel(root, "OFFICE & EDUCATION STUDIO");
+        Button office = makeButton("CREATE WORD / POWERPOINT / EXCEL / PDF");\n        office.setOnClickListener(v -> showOfficeComposer());
+        officePanel.addView(office, matchWrap());\n
+        Button importFile = makeButton("IMPORT TXT / DOCX / PPTX / XLSX");
         importFile.setOnClickListener(v -> importAttachment());
         officePanel.addView(importFile, matchWrap());
 
-        Button study = makeButton("BUILD STUDY REVISION PACK");\n        study.setOnClickListener(v -> showStudyComposer());\n        officePanel.addView(study, matchWrap());\n\n        LinearLayout memoryPanel = addPanel(root, "PRIVATE MEMORY");
+        Button study = makeButton("BUILD STUDY REVISION PACK");\n        study.setOnClickListener(v -> showStudyComposer());
+        officePanel.addView(study, matchWrap());
+
+        LinearLayout memoryPanel = addPanel(root, "PRIVATE MEMORY");
         Button viewMemory = makeButton("VIEW RECENT MEMORY");
         viewMemory.setOnClickListener(v -> showMemory());
         memoryPanel.addView(viewMemory, matchWrap());
