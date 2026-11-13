@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { isTutorRequest, buildTutorSystemInstruction, buildExamRevisionPlan } from "../lib/jarvis-tutor.js";
 import { isMedicalRequest, detectMedicalEmergency, buildMedicalEmergencyReply, buildMedicalSystemInstruction } from "../lib/jarvis-medical.js";
+import { isMentalistRequest, buildMentalistSystemInstruction, buildEmotionalAvailabilityInstruction } from "../lib/jarvis-mentalist.js";
 
 test("Tutor Engine recognises learning and exam requests and has an exam-focused teaching contract", () => {
   assert.equal(isTutorRequest("Teach me accounting for my exam"), true);
@@ -40,4 +41,21 @@ test("Medical Assistant recognises health requests and prioritises acute red fla
   const instruction = buildMedicalSystemInstruction();
   assert.match(instruction, /not a diagnosis/i);
   assert.match(instruction, /Never prescribe/i);
+});
+
+test("Mentalist Engine grounds people-reading in evidence and avoids false certainty", () => {
+  assert.equal(isMentalistRequest("Analyse this body language"), true);
+  assert.equal(isMentalistRequest("Help me understand people"), true);
+  assert.equal(isMentalistRequest("What is the weather?"), false);
+  const instruction = buildMentalistSystemInstruction();
+  assert.match(instruction, /cannot.*read minds/i);
+  assert.match(instruction, /alternative explanations/i);
+  assert.match(instruction, /manipulation/i);
+});
+
+test("JARVIS remains emotionally attentive without pretending to be human", () => {
+  const instruction = buildEmotionalAvailabilityInstruction();
+  assert.match(instruction, /listen before trying to fix/i);
+  assert.match(instruction, /do not claim to be human/i);
+  assert.match(instruction, /emotional dependence/i);
 });
