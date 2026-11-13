@@ -12,6 +12,7 @@ on:
       - '.github/workflows/android-apk.yml'
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: jarvis-rebirth-android-build-${{ github.ref }}
@@ -87,6 +88,12 @@ jobs:
           echo "Checking APK: $APK_FILE_PATH"
           test -s "$APK_FILE_PATH"
           ls -lh "$APK_FILE_PATH"
+      - name: Download previous Rebirth APK for side-by-side compatibility test
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh run download 43349538678 --repo hrishikeshks1611-stack/J.A.R.V.I.S- --name JARVIS-Rebirth-Android-phone --dir "$RUNNER_TEMP/previous-rebirth"
+          test -s "$RUNNER_TEMP/previous-rebirth/app-phone-debug.apk"
       - name: Install Android 10 emulator image (retry transient SDK download failures)
         shell: bash
         run: |
@@ -193,33 +200,39 @@ jobs:
             exit 1
           fi
 
-          mark "Installing APK (one attempt, then verify package state even if adb times out)."
+          mark "Installing the previously released Rebirth APK first; this is a disposable emulator."
+          adb_bounded 60 install --no-streaming "$RUNNER_TEMP/previous-rebirth/app-phone-debug.apk"
+          adb_bounded 15 shell pm path com.hrishikesh.jarvis.rebirth | grep -q "package:"
+          mark "Installing the new safe-install Rebirth APK beside the previous app."
           installed=0
-          if adb_bounded 60 install --no-streaming -r "$APK_FILE_PATH"; then
+          if adb_bounded 60 install --no-streaming "$APK_FILE_PATH"; then
             installed=1
           fi
           if [ "$installed" -ne 1 ]; then
             mark "Checking whether Package Manager completed installation before adb timed out."
-            if adb_bounded 15 shell pm path com.hrishikesh.jarvis.rebirth 2>/dev/null | grep -q "package:"; then
+            if adb_bounded 15 shell pm path com.hrishikesh.jarvis.rebirth.safe 2>/dev/null | grep -q "package:"; then
               installed=1
-              mark "Package Manager confirms APK is installed; not repeating a successful install."
+              mark "Package Manager confirms the new package is installed."
             fi
           fi
           if [ "$installed" -ne 1 ]; then
-            mark "APK installation failed; collecting diagnostics."
+            mark "Safe-install APK installation failed; collecting diagnostics."
             adb devices -l || true
             adb_bounded 15 shell pm list packages | grep -i jarvis || true
             adb_bounded 15 shell df -h /data || true
             cat "$RUNNER_TEMP/emulator.log"
             exit 1
           fi
+          adb_bounded 15 shell pm path com.hrishikesh.jarvis.rebirth | grep -q "package:"
+          adb_bounded 15 shell pm path com.hrishikesh.jarvis.rebirth.safe | grep -q "package:"
+          mark "Both old Rebirth and new safe-install Rebirth are installed side by side."
           mark "Granting microphone permission."
-          adb_bounded 60 shell pm grant com.hrishikesh.jarvis.rebirth android.permission.RECORD_AUDIO
+          adb_bounded 60 shell pm grant com.hrishikesh.jarvis.rebirth.safe android.permission.RECORD_AUDIO
           mark "Microphone permission granted; clearing emulator logs."
           adb_bounded 30 logcat -c
 
           mark "Launching debug wake-word test activity directly (MainActivity is not required for this service test)."
-          adb_bounded 20 shell am start -n com.hrishikesh.jarvis.rebirth/com.hrishikesh.jarvis.WakeWordTestActivity
+          adb_bounded 20 shell am start -n com.hrishikesh.jarvis.rebirth.safe/com.hrishikesh.jarvis.WakeWordTestActivity
           ready=0
           service_failed=0
           mark "Waiting up to 180 seconds for WakeWordService READY; each poll uses one bounded logcat read."
@@ -238,7 +251,7 @@ jobs:
             fi
             if [ $((attempt % 5)) -eq 0 ]; then
               mark "Still waiting for READY ($attempt/60 polls); current service state:"
-              adb_bounded 5 shell dumpsys activity services com.hrishikesh.jarvis.rebirth | grep -A 18 -B 3 "WakeWordService" || true
+              adb_bounded 5 shell dumpsys activity services com.hrishikesh.jarvis.rebirth.safe | grep -A 18 -B 3 "WakeWordService" || true
             fi
             sleep 2
           done
@@ -247,9 +260,9 @@ jobs:
             mark "Wake-word service did not report READY. Collecting complete bounded diagnostics."
             adb_bounded 20 logcat -d -v threadtime > "$RUNNER_TEMP/wakeword-logcat.txt" || true
             grep -E "WakeWordTest|WakeWordService|AndroidRuntime|ActivityManager|ForegroundService|Permission|AudioRecord|Vosk|linker" "$RUNNER_TEMP/wakeword-logcat.txt" | tail -n 250 || true
-            adb_bounded 20 shell dumpsys activity services com.hrishikesh.jarvis.rebirth || true
-            adb_bounded 10 shell pidof com.hrishikesh.jarvis.rebirth || true
-            adb_bounded 20 shell dumpsys package com.hrishikesh.jarvis.rebirth | grep -A 10 RECORD_AUDIO || true
+            adb_bounded 20 shell dumpsys activity services com.hrishikesh.jarvis.rebirth.safe || true
+            adb_bounded 10 shell pidof com.hrishikesh.jarvis.rebirth.safe || true
+            adb_bounded 20 shell dumpsys package com.hrishikesh.jarvis.rebirth.safe | grep -A 10 RECORD_AUDIO || true
             cat "$RUNNER_TEMP/emulator.log"
             if [ "$service_failed" -eq 1 ]; then
               mark "The service reported a concrete startup/runtime error; failing with diagnostics above."
@@ -266,17 +279,17 @@ jobs:
             adb_bounded 20 logcat -d -v threadtime | grep -E "WakeWordService|AndroidRuntime|AudioRecord|Permission" || true
             exit 1
           fi
-          if ! adb_bounded 20 shell dumpsys activity services com.hrishikesh.jarvis.rebirth | grep -q "WakeWordService"; then
+          if ! adb_bounded 20 shell dumpsys activity services com.hrishikesh.jarvis.rebirth.safe | grep -q "WakeWordService"; then
             mark "Wake-word foreground service exited after startup."
             adb_bounded 20 logcat -d -v threadtime | grep -E "WakeWordService|AndroidRuntime|AudioRecord|Permission" || true
             exit 1
           fi
 
           mark "Requesting clean wake-word service stop."
-          adb_bounded 10 shell am start -n com.hrishikesh.jarvis.rebirth/com.hrishikesh.jarvis.WakeWordTestActivity -a com.hrishikesh.jarvis.TEST_STOP_WAKE
+          adb_bounded 10 shell am start -n com.hrishikesh.jarvis.rebirth.safe/com.hrishikesh.jarvis.WakeWordTestActivity -a com.hrishikesh.jarvis.TEST_STOP_WAKE
           mark "Stop request dispatched; verifying service termination independently."
           sleep 3
-          if adb_bounded 20 shell dumpsys activity services com.hrishikesh.jarvis.rebirth | grep -q WakeWordService; then
+          if adb_bounded 20 shell dumpsys activity services com.hrishikesh.jarvis.rebirth.safe | grep -q WakeWordService; then
             mark "Wake-word service did not stop cleanly."
             adb_bounded 20 logcat -d -v threadtime | grep -E "WakeWordTest|WakeWordService|AndroidRuntime|ActivityManager" || true
             exit 1
