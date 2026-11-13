@@ -55,6 +55,13 @@ footer{text-align:center;color:#577c99;font-size:10px;letter-spacing:.12em;paddi
    <input id="pairCode" autocomplete="off" maxlength="12" placeholder="8-character pairing code">
    <div class="sync-actions"><button class="sync-primary" id="pairDevice" type="button">Pair this device</button></div>
   </div>
+  <div id="recoveryArea" hidden>
+   <h3>Recover owner access</h3>
+   <p>The previous owner app is no longer available? Use your one-time owner recovery credential to make this phone the owner. Shared memory and paired devices are preserved.</p>
+   <input id="ownerRecoveryCode" type="password" autocomplete="off" placeholder="One-time owner recovery code">
+   <div class="sync-actions"><button class="sync-primary" id="recoverOwner" type="button">Recover ownership on this phone</button></div>
+   <p class="sync-muted">This credential can be used once. Keep it private.</p>
+  </div>
   <div id="deviceArea" hidden>
    <h3>Connected device</h3>
    <p>This phone is paired as a regular device. The current owner can transfer ownership to this phone. Shared conversation sync remains active.</p>
@@ -276,7 +283,7 @@ async function renderPairedDevices(){
  });
 }
 async function openSyncPanel(){
- $('syncPanel').hidden=false;$('setupArea').hidden=true;$('pairArea').hidden=true;$('ownerArea').hidden=true;$('deviceArea').hidden=true;
+ $('syncPanel').hidden=false;$('setupArea').hidden=true;$('pairArea').hidden=true;$('recoveryArea').hidden=true;$('ownerArea').hidden=true;$('deviceArea').hidden=true;
  try{
   if(sessionToken){
    const v=await pairApi({action:'verify'});sessionRole=v.role;sessionDeviceId=v.deviceId;
@@ -291,6 +298,7 @@ async function openSyncPanel(){
   $('deviceIdentity').textContent='THIS DEVICE: NOT PAIRED';
   $('setupArea').hidden=statusData.ownerClaimed;
   $('pairArea').hidden=!statusData.ownerClaimed;
+  $('recoveryArea').hidden=!statusData.ownerClaimed;
  }catch(e){$('syncStatus').textContent=e.message}
 }
 $('syncButton').onclick=openSyncPanel;
@@ -334,6 +342,19 @@ $('closeSync').onclick=()=>{$('syncPanel').hidden=true};
 $('claimDevice').onclick=async()=>{
  try{const data=await pairApi({action:'claim',setupCode:$('setupCode').value,deviceName:currentDeviceName()});storeSession(data);await restoreSharedHistory();$('hint').textContent=data.message+' Shared memory is ready, Sir.';}
  catch(e){$('syncStatus').textContent=e.message}
+};
+$('recoverOwner').onclick=async()=>{
+ const recoveryCode=$('ownerRecoveryCode').value.trim();
+ if(!recoveryCode){$('syncStatus').textContent='Enter your one-time owner recovery code.';return;}
+ const button=$('recoverOwner');button.disabled=true;
+ try{
+  const data=await pairApi({action:'recover-owner',recoveryCode,deviceName:currentDeviceName()});
+  $('ownerRecoveryCode').value='';
+  storeSession(data);
+  await restoreSharedHistory();
+  $('hint').textContent=data.message+' Shared memory is ready, Sir.';
+ }catch(e){$('syncStatus').textContent=e.message;}
+ finally{button.disabled=false;}
 };
 $('refreshDeviceRole').onclick=async()=>{
  try{
