@@ -59,6 +59,8 @@ public class MainActivity extends Activity {
 
     @Override public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        getSharedPreferences("jarvis_wake_word", MODE_PRIVATE).edit().putBoolean("enabled", false).apply();
+        stopService(new Intent(this, WakeWordService.class));
         getWindow().setStatusBarColor(android.graphics.Color.rgb(5, 11, 24));
         getWindow().setNavigationBarColor(android.graphics.Color.rgb(5, 11, 24));
         registerApps();
@@ -808,6 +810,12 @@ public class MainActivity extends Activity {
     @Override public void onWindowFocusChanged(boolean hasFocus) {
         super.onWindowFocusChanged(hasFocus);
         if (hasFocus && BuildConfig.JARVIS_TV) applyTvImmersiveMode();
+    }
+
+    @Override protected void onStop() {
+        stopService(new Intent(this, WakeWordService.class));
+        getSharedPreferences("jarvis_wake_word", MODE_PRIVATE).edit().putBoolean("enabled", false).apply();
+        super.onStop();
     }
 
     @Override protected void onDestroy() {
