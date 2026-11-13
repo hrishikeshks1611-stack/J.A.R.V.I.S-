@@ -58,9 +58,10 @@ footer{text-align:center;color:#577c99;font-size:10px;letter-spacing:.12em;paddi
   <div id="recoveryArea" hidden>
    <h3>Recover owner access</h3>
    <p>The previous owner app is no longer available? Use your one-time owner recovery credential to make this phone the owner. Shared memory and paired devices are preserved.</p>
-   <input id="ownerRecoveryCode" type="password" autocomplete="off" placeholder="One-time owner recovery code">
-   <div class="sync-actions"><button class="sync-primary" id="recoverOwner" type="button">Recover ownership on this phone</button></div>
-   <p class="sync-muted">This credential can be used once. Keep it private.</p>
+   <input id="ownerRecoveryCode" type="password" autocomplete="off" spellcheck="false" placeholder="One-time owner recovery code">
+   <div class="sync-actions"><button id="checkOwnerRecovery" type="button">Verify code safely</button><button class="sync-primary" id="recoverOwner" type="button">Recover ownership on this phone</button></div>
+   <p id="ownerRecoveryCheckStatus" class="sync-muted" aria-live="polite">Verify first. The check does not consume your code or change device ownership.</p>
+   <p class="sync-muted">Keep this credential private. Recovery itself is a separate, one-time action.</p>
   </div>
   <div id="deviceArea" hidden>
    <h3>Connected device</h3>
@@ -342,6 +343,20 @@ $('closeSync').onclick=()=>{$('syncPanel').hidden=true};
 $('claimDevice').onclick=async()=>{
  try{const data=await pairApi({action:'claim',setupCode:$('setupCode').value,deviceName:currentDeviceName()});storeSession(data);await restoreSharedHistory();$('hint').textContent=data.message+' Shared memory is ready, Sir.';}
  catch(e){$('syncStatus').textContent=e.message}
+};
+$('checkOwnerRecovery').onclick=async()=>{
+ const recoveryCode=$('ownerRecoveryCode').value.trim();
+ if(!recoveryCode){$('ownerRecoveryCheckStatus').textContent='Enter your recovery code first.';return;}
+ const button=$('checkOwnerRecovery');button.disabled=true;button.textContent='Checking…';
+ $('ownerRecoveryCheckStatus').textContent='Checking privately. This will not consume the code.';
+ try{
+  const result=await pairApi({action:'check-recovery',recoveryCode});
+  if(!result.configured)$('ownerRecoveryCheckStatus').textContent='Recovery is not configured on this JARVIS server. The code was not consumed.';
+  else if(!result.ownerExists)$('ownerRecoveryCheckStatus').textContent='No existing owner record was found. No changes were made.';
+  else if(result.valid)$('ownerRecoveryCheckStatus').textContent='✓ Valid recovery code. It has NOT been used. Your current owner and devices are unchanged.';
+  else $('ownerRecoveryCheckStatus').textContent='The code does not match. It has NOT been consumed.';
+ }catch(e){$('ownerRecoveryCheckStatus').textContent='Could not verify: '+e.message+' No recovery action was performed.';}
+ finally{button.disabled=false;button.textContent='Verify code safely';}
 };
 $('recoverOwner').onclick=async()=>{
  const recoveryCode=$('ownerRecoveryCode').value.trim();
