@@ -9,7 +9,7 @@ on:
       - 'settings.gradle'
       - '.github/workflows/android-check.yml'
   pull_request:
-    branches: [ main ]
+    branches: [ main, jarvis-mic-wakeword-clean ]
     paths:
       - 'app/**'
       - '*.gradle'
