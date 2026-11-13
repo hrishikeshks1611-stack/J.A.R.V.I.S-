@@ -28,6 +28,8 @@ Application ID: `com.hrishikesh.jarvis.fresh`. This is a clean-room app identity
 
 ## Still to build
 - Dedicated low-power offline hotword engine for dependable always-on wake detection, including Android 10.
+- Full Office authoring: multi-slide presentations, structured/formula-enabled spreadsheets, richer document layouts, multi-page PDF export, and PDF attachment extraction.
+- A genuinely conversational AI Education engine with subject explanations, worked solutions, and fact-checked learning support; current study pack generation is an offline organiser.
 - Owner-controlled encrypted pairing and optional multi-device sync, including a Windows companion.
 - Expanded device commands, setup diagnostics, and broader Android compatibility.
 - Physical-device validation on the owner's Android 10 phone.
@@ -38,7 +40,9 @@ The encrypted conversation database starts empty on a fresh install. Android app
 
 ## Voice guarantee and current limits
 - JARVIS will not intentionally fall back to a female or unclassified TTS voice. If the phone's installed TTS engine does not expose a qualifying UK male voice, JARVIS remains silent and reports that the Alfred voice is unavailable. The exact Alfred timbre and phrasing cannot be guaranteed by Android TTS alone.
-- Office engine, Education engine, and document-attachment ingestion are not present in this source branch; they are not included in this APK.
+- Basic offline Office export is included: text-based DOCX, single-slide PPTX, one-column XLSX, and a simple single-page PDF. These are starter templates, not a full-featured or AI-designed Office suite.
+- Attachment text import supports TXT, CSV, Markdown, DOCX, PPTX, and XLSX. PDF text extraction is not implemented.
+- The study tool builds a revision outline and self-test prompts from material supplied by the user. It is not an AI tutor and does not independently verify subject facts.
 - Launcher icon and splash use a circular multi-ring ARC reactor design, with no triangular centrepiece.
 
 
