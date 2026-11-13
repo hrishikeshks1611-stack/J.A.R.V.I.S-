@@ -33,16 +33,15 @@ test("APK workflow uploads phone and TV CI artifacts without publishing GitHub r
 });
 
 
-test("Android bridge requests play-from-search from the YouTube Music package", async () => {
+test("Android bridge opens a resolved YouTube Music track by its app deep link", async () => {
   const source = await readFile(new URL("../app/src/main/java/com/hrishikesh/jarvis/MainActivity.java", import.meta.url), "utf8");
   const manifest = await readFile(new URL("../app/src/main/AndroidManifest.xml", import.meta.url), "utf8");
-  assert.ok(source.includes("MediaStore.INTENT_ACTION_MEDIA_PLAY_FROM_SEARCH"));
-  assert.ok(source.includes("SearchManager.QUERY"));
-  assert.ok(source.includes('setPackage("com.google.android.apps.youtube.music")'));
+  assert.ok(source.includes("@JavascriptInterface public String playYoutubeMusic(String requestedVideoId)"));
   assert.ok(source.includes("vnd.youtube.music://music.youtube.com/watch?v="));
+  assert.ok(source.includes("https://music.youtube.com/watch?v="));
   assert.ok(source.includes("TRACK_OPENED_UNCONFIRMED:"));
-  assert.doesNotMatch(manifest, /BIND_NOTIFICATION_LISTENER_SERVICE|NotificationListenerService/);
   assert.ok(manifest.includes('package android:name="com.google.android.apps.youtube.music"'));
+  assert.doesNotMatch(manifest, /BIND_NOTIFICATION_LISTENER_SERVICE|NotificationListenerService/);
 });
 
 test("native CameraX capture supports rear photos, selfies, and latest-photo retrieval", async () => {
