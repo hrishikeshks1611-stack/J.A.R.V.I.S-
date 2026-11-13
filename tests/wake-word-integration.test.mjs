@@ -86,3 +86,13 @@ test("wake phrase matching uses a complete token and expires the command prompt"
   assert.ok(service.includes("commandTimeoutHandler.postDelayed(commandTimeout, 8000)"));
   assert.ok(service.includes("commandTimeoutHandler.removeCallbacks(commandTimeout)"));
 });
+
+
+test("wake phrase is handled on partial recognition without duplicate final dispatch", async () => {
+  const service = await read("../app/src/main/java/com/hrishikesh/jarvis/WakeWordService.java");
+  assert.ok(service.includes("handleRecognizedPhrase(hypothesis, true)"));
+  assert.ok(service.includes("handleRecognizedPhrase(hypothesis, false)"));
+  assert.ok(service.includes("if (partial && wakeHandledInUtterance) return;"));
+  assert.ok(service.includes("if (!partial && wakeHandledInUtterance)"));
+  assert.ok(service.includes("broadcast(ACTION_WAKE, null)"));
+});
