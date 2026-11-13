@@ -37,28 +37,34 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p site/7.0
+          mkdir -p site/7.0 site/v7
           rsync -a --exclude='.git' --exclude='site' --exclude='jarvis-7.0-source' ./ site/
           rsync -a --delete \
             --exclude='.git' \
             --exclude='.github' \
             --exclude='app' \
             --exclude='node_modules' \
-            jarvis-7.0-source/ site/7.0/
+            jarvis-7.0-source/ site/v7/
+          rsync -a --delete site/v7/ site/7.0/
           touch site/.nojekyll
           touch site/7.0/.nojekyll
           test -s site/index.html
+          test -s site/v7/index.html
           test -s site/7.0/index.html
+          test -s site/v7/manifest.webmanifest
           test -s site/7.0/manifest.webmanifest
+          test -s site/v7/sw.js
           test -s site/7.0/sw.js
+          grep -q 'id="wakeWordButton"' site/v7/index.html
           grep -q 'id="wakeWordButton"' site/7.0/index.html
           grep -q 'JARVIS' site/7.0/index.html
-          echo "Validated shared root and isolated JARVIS 7.0 frontend."
+          echo "Validated shared root plus JARVIS 7.0 frontend at both /v7/ and /7.0/."
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v4
         with:
           path: site
+          include-hidden-files: true
 
       - name: Deploy Pages
         id: deployment
