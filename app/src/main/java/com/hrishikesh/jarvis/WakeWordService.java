@@ -54,18 +54,22 @@ public class WakeWordService extends Service implements RecognitionListener {
     private volatile boolean readyBroadcasted = false;
     private final Handler commandTimeoutHandler = new Handler(Looper.getMainLooper());
     private final Handler dictationTimeoutHandler = new Handler(Looper.getMainLooper());
+    private final StringBuilder dictationTranscript = new StringBuilder();
+    private final Object dictationLock = new Object();
+    private static final long DICTATION_SILENCE_MS = 1900L;
+    private final Runnable dictationFinalize = () -> finishDictation("pause");
     private final Runnable dictationTimeout = () -> {
         if (!dictationMode) return;
         boolean wasReady = readyBroadcasted;
-        dictationMode = false;
         if (!wasReady) {
+            dictationMode = false;
             String detail = "Microphone startup timed out before audio capture became active.";
             updateNotification("Microphone startup timed out");
             broadcast(ACTION_ERROR, detail);
+            if (!getSharedPreferences("jarvis_wake_word", MODE_PRIVATE).getBoolean("enabled", false)) stopSelf();
         } else {
-            updateNotification("No speech detected · microphone stopped");
+            finishDictation("timeout");
         }
-        if (!getSharedPreferences("jarvis_wake_word", MODE_PRIVATE).getBoolean("enabled", false)) stopSelf();
     };
     private final Runnable commandTimeout = () -> {
         awaitingCommand = false;
@@ -108,10 +112,10 @@ public class WakeWordService extends Service implements RecognitionListener {
         if (intent != null && ACTION_DICTATION.equals(intent.getAction())) {
             dictationMode = true;
             dictationTimeoutHandler.removeCallbacks(dictationTimeout);
-            dictationTimeoutHandler.postDelayed(dictationTimeout, 90000);
+            dictationTimeoutHandler.postDelayed(dictationTimeout, 60000);
             if (audioRecord != null && recording) {
                 dictationTimeoutHandler.removeCallbacks(dictationTimeout);
-                dictationTimeoutHandler.postDelayed(dictationTimeout, 20000);
+                dictationTimeoutHandler.postDelayed(dictationTimeout, 60000);
                 updateNotification("JARVIS voice input · speak now · audio stays on this phone");
                 if (readyBroadcasted) broadcast(ACTION_READY, null);
             }
@@ -441,7 +445,12 @@ public class WakeWordService extends Service implements RecognitionListener {
         String partial = partialTranscript(hypothesis);
         if (partial.isEmpty()) return;
         if (dictationMode) {
-            broadcast(ACTION_PARTIAL, partial);
+            String combined;
+            synchronized (dictationLock) {
+                combined = dictationTranscript.length() == 0
+                        ? partial : dictationTranscript.toString() + " " + partial;
+            }
+            broadcast(ACTION_PARTIAL, combined.trim());
             return;
         }
         String normalized = partial.toLowerCase(Locale.ROOT)
@@ -479,17 +488,19 @@ public class WakeWordService extends Service implements RecognitionListener {
         if (text.isEmpty()) return;
 
         if (dictationMode) {
-            dictationTimeoutHandler.removeCallbacks(dictationTimeout);
-            dictationMode = false;
-            broadcast(ACTION_COMMAND, text);
-            boolean wakeWordEnabled = getSharedPreferences("jarvis_wake_word", MODE_PRIVATE)
-                    .getBoolean("enabled", false);
-            if (wakeWordEnabled) {
-                updateNotification("Microphone ON · offline wake-word detection active");
-            } else {
-                updateNotification("Voice input complete · microphone stopped");
-                stopSelf();
+            synchronized (dictationLock) {
+                if (dictationTranscript.length() > 0) dictationTranscript.append(' ');
+                dictationTranscript.append(text);
             }
+            // Vosk can split one spoken sentence into several final segments when
+            // it hears a natural pause. Keep collecting them and submit only after
+            // a deliberate silence window, rather than ending on the first segment.
+            dictationTimeoutHandler.removeCallbacks(dictationFinalize);
+            dictationTimeoutHandler.postDelayed(dictationFinalize, DICTATION_SILENCE_MS);
+            String combined;
+            synchronized (dictationLock) { combined = dictationTranscript.toString(); }
+            broadcast(ACTION_PARTIAL, combined);
+            updateNotification("JARVIS voice input · keep speaking or pause to send");
             return;
         }
 
@@ -535,6 +546,34 @@ public class WakeWordService extends Service implements RecognitionListener {
         }
     }
 
+    private void finishDictation(String reason) {
+        if (!dictationMode) return;
+        dictationTimeoutHandler.removeCallbacks(dictationTimeout);
+        dictationTimeoutHandler.removeCallbacks(dictationFinalize);
+        String complete;
+        synchronized (dictationLock) {
+            complete = dictationTranscript.toString().trim();
+            dictationTranscript.setLength(0);
+        }
+        dictationMode = false;
+        if (!complete.isEmpty()) {
+            broadcast(ACTION_COMMAND, complete);
+            Log.i("WakeWordService", "Dictation submitted after " + reason + "; characters=" + complete.length());
+        } else {
+            Log.i("WakeWordService", "Dictation ended after " + reason + " without recognised speech");
+        }
+        boolean wakeWordEnabled = getSharedPreferences("jarvis_wake_word", MODE_PRIVATE)
+                .getBoolean("enabled", false);
+        if (wakeWordEnabled) {
+            updateNotification("Microphone ON · offline wake-word detection active");
+        } else {
+            updateNotification(complete.isEmpty()
+                    ? "No speech recognised · microphone stopped"
+                    : "Voice input complete · microphone stopped");
+            stopSelf();
+        }
+    }
+
     @Override public void onError(Exception exception) {
         Log.e("WakeWordService", "Offline speech recognition error", exception);
         active = false;
@@ -554,6 +593,8 @@ public class WakeWordService extends Service implements RecognitionListener {
         Log.i("WakeWordService", "onDestroy: stopping offline wake-word service");
         commandTimeoutHandler.removeCallbacks(commandTimeout);
         dictationTimeoutHandler.removeCallbacks(dictationTimeout);
+        dictationTimeoutHandler.removeCallbacks(dictationFinalize);
+        synchronized (dictationLock) { dictationTranscript.setLength(0); }
         dictationMode = false;
         awaitingCommand = false;
         wakeDetectedInUtterance = false;
