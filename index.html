@@ -759,7 +759,7 @@ if(callCommand){
  if(window.AndroidJarvis&&typeof window.AndroidJarvis.callContact==='function'){
   const result=window.AndroidJarvis.callContact(contactName)||'';
   const spoken=result.startsWith('CALL_STARTING:')?'Certainly, Sir.':
-   result.startsWith('PERMISSION_REQUIRED:')?'Certainly, Sir. I need permission to access your contacts before placing that call.':
+   result.startsWith('PERMISSION_REQUIRED:')?'Please allow Contacts access, Sir. I will place the call immediately afterwards.':
    result.startsWith('AMBIGUOUS:')?'I found more than one number for '+contactName+'. Please clarify which number you want, Sir.':
    result.startsWith('NOT_FOUND:')?'I could not find a saved phone number for '+contactName+', Sir.':
    'I could not prepare that call, Sir.';
