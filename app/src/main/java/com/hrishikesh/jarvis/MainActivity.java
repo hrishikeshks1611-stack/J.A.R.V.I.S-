@@ -71,7 +71,7 @@ public class MainActivity extends Activity {
             @Override public void onReceive(android.content.Context context, Intent intent) {
                 String action = intent == null ? null : intent.getAction();
                 if (WakeWordService.ACTION_WAKE.equals(action)) {
-                    if (ttsReady && textToSpeech != null) textToSpeech.speak("Yes, Sir?", TextToSpeech.QUEUE_FLUSH, null, "JARVIS_WAKE");
+                    if (voiceChosen) speakWithVerifiedBritishMaleVoice("Yes, Sir?", "JARVIS_WAKE");
                     if (webView != null) webView.evaluateJavascript("window.jarvisNative && window.jarvisNative.onWakeWordDetected && window.jarvisNative.onWakeWordDetected()", null);
                 } else if (WakeWordService.ACTION_COMMAND.equals(action)) {
                     String command = intent.getStringExtra(WakeWordService.EXTRA_COMMAND);
@@ -172,12 +172,29 @@ public class MainActivity extends Activity {
                     }
                 }
             }
-            if (chosen != null && textToSpeech.setVoice(chosen) != TextToSpeech.ERROR) {
+            if (chosen != null && textToSpeech.setVoice(chosen) != TextToSpeech.ERROR
+                    && isBritish(textToSpeech.getVoice()) && isExplicitlyMale(textToSpeech.getVoice())) {
                 offlineFallbackVoice = chosen;
+                voiceChosen = true;
+            } else {
+                offlineFallbackVoice = null;
+                voiceChosen = false;
             }
         });
     }
 
+
+    // All Android speech output is routed through this gate. Unknown, female,
+    // non-UK, or changed engine voices are never allowed to speak.
+    private boolean speakWithVerifiedBritishMaleVoice(String message, String utteranceId) {
+        if (!ttsReady || textToSpeech == null || offlineFallbackVoice == null) return false;
+        if (!isBritish(offlineFallbackVoice) || !isExplicitlyMale(offlineFallbackVoice)) return false;
+        if (textToSpeech.setVoice(offlineFallbackVoice) == TextToSpeech.ERROR) return false;
+        Voice active = textToSpeech.getVoice();
+        if (active == null || !isBritish(active) || !isExplicitlyMale(active)) return false;
+        return textToSpeech.speak(message, TextToSpeech.QUEUE_FLUSH, null, utteranceId)
+                != TextToSpeech.ERROR;
+    }
 
     private boolean isBritish(Voice voice) {
         Locale locale = voice.getLocale();
@@ -586,12 +603,8 @@ public class MainActivity extends Activity {
             if (!ttsReady || textToSpeech == null || offlineFallbackVoice == null) return "unavailable";
             final String message = text == null ? "" : text.trim();
             if (message.isEmpty()) return "unavailable";
-            runOnUiThread(() -> {
-                if (textToSpeech == null || offlineFallbackVoice == null) return;
-                textToSpeech.setVoice(offlineFallbackVoice);
-                textToSpeech.speak(message, TextToSpeech.QUEUE_FLUSH, null,
-                        "JARVIS_OFFLINE_" + System.currentTimeMillis());
-            });
+            runOnUiThread(() -> speakWithVerifiedBritishMaleVoice(
+                    message, "JARVIS_OFFLINE_" + System.currentTimeMillis()));
             return "started";
         }
 
@@ -645,13 +658,22 @@ public class MainActivity extends Activity {
             if (!ttsReady || voiceName == null) return "Voice engine is not ready, Sir.";
             Voice candidate = findVoice(voiceName);
             if (candidate == null) return "That British voice is not installed, Sir.";
-            Voice previous = textToSpeech.getVoice();
+            Voice previous = offlineFallbackVoice;
             if (textToSpeech.setVoice(candidate) == TextToSpeech.ERROR) return "Android could not preview that voice, Sir.";
+            Voice active = textToSpeech.getVoice();
+            if (active == null || !isBritish(active) || !isExplicitlyMale(active)) {
+                if (previous != null) textToSpeech.setVoice(previous);
+                return "Android did not activate a verified British male voice, Sir.";
+            }
             final String previewId = "JARVIS_PREVIEW_" + System.currentTimeMillis();
             textToSpeech.setOnUtteranceProgressListener(new UtteranceProgressListener() {
                 private void restore() {
                     runOnUiThread(() -> {
-                        if (previous != null) textToSpeech.setVoice(previous);
+                        if (previous != null && isBritish(previous) && isExplicitlyMale(previous)) {
+                            textToSpeech.setVoice(previous);
+                        } else {
+                            textToSpeech.stop();
+                        }
                     });
                 }
                 @Override public void onStart(String id) { }
@@ -669,6 +691,13 @@ public class MainActivity extends Activity {
             if (voice == null) return "That British voice is not installed, Sir.";
             int result = textToSpeech.setVoice(voice);
             if (result == TextToSpeech.ERROR) return "Android could not activate that voice, Sir.";
+            Voice active = textToSpeech.getVoice();
+            if (active == null || !isBritish(active) || !isExplicitlyMale(active)) {
+                voiceChosen = false;
+                offlineFallbackVoice = null;
+                return "Android did not activate a verified British male voice, Sir.";
+            }
+            offlineFallbackVoice = voice;
             voicePrefs.edit().putString("voice_name", voice.getName()).apply();
             voiceChosen = true;
             return "Selected " + voice.getName() + ", Sir. Use Test voice to audition it.";
@@ -687,7 +716,12 @@ public class MainActivity extends Activity {
                             Toast.LENGTH_LONG).show();
                     return;
                 }
-                textToSpeech.speak(message, TextToSpeech.QUEUE_FLUSH, null, "JARVIS_" + System.currentTimeMillis());
+                if (!speakWithVerifiedBritishMaleVoice(message, "JARVIS_" + System.currentTimeMillis())) {
+                    voiceChosen = false;
+                    Toast.makeText(MainActivity.this,
+                            "I cannot verify an active British male voice, Sir. Speech is disabled rather than switching voices.",
+                            Toast.LENGTH_LONG).show();
+                }
             });
         }
 
