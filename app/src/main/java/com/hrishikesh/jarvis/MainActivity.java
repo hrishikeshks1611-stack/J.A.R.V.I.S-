@@ -56,83 +56,110 @@ public final class MainActivity extends Activity {
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setGravity(Gravity.CENTER_HORIZONTAL);
-        root.setPadding(dp(22), dp(24), dp(22), dp(24));
-        root.setBackgroundColor(Color.rgb(3, 9, 20));
+        root.setPadding(dp(18), dp(18), dp(18), dp(26));
+        root.setBackgroundColor(Color.rgb(2, 8, 18));
         scroll.addView(root);
 
         TextView title = new TextView(this);
         title.setText("J.A.R.V.I.S.");
         title.setTextColor(cyan);
-        title.setTextSize(26);
-        title.setLetterSpacing(.2f);
+        title.setTextSize(27);
+        title.setLetterSpacing(.24f);
         title.setGravity(Gravity.CENTER);
         root.addView(title, matchWrap());
 
         reactorView = new ArcReactorView(this);
         LinearLayout.LayoutParams rp = new LinearLayout.LayoutParams(dp(260), dp(260));
-        rp.setMargins(0, dp(10), 0, dp(10));
+        rp.setMargins(0, dp(6), 0, dp(8));
         root.addView(reactorView, rp);
 
+        LinearLayout corePanel = addPanel(root, "CORE STATUS");
         status = new TextView(this);
         status.setTextColor(Color.rgb(142, 213, 240));
         status.setTextSize(12);
         status.setGravity(Gravity.CENTER);
-        root.addView(status, matchWrap());
+        status.setPadding(0, dp(4), 0, dp(6));
+        corePanel.addView(status, matchWrap());
 
         transcript = new TextView(this);
         transcript.setTextColor(Color.WHITE);
-        transcript.setTextSize(15);
+        transcript.setTextSize(14);
         transcript.setGravity(Gravity.CENTER);
-        transcript.setPadding(0, dp(14), 0, dp(14));
-        root.addView(transcript, matchWrap());
+        transcript.setPadding(dp(4), dp(8), dp(4), dp(8));
+        corePanel.addView(transcript, matchWrap());
 
+        LinearLayout voicePanel = addPanel(root, "VOICE & SYSTEM CONTROL");
         Button listen = makeButton("TALK TO JARVIS");
         listen.setOnClickListener(v -> startListening());
-        root.addView(listen, matchWrap());
+        voicePanel.addView(listen, matchWrap());
 
         Button wake = makeButton("START BACKGROUND WAKE LISTENING");
         wake.setOnClickListener(v -> startWakeListening());
-        root.addView(wake, matchWrap());
+        voicePanel.addView(wake, matchWrap());
 
         Button stopWake = makeButton("STOP WAKE LISTENING");
         stopWake.setOnClickListener(v -> stopWakeListening());
-        root.addView(stopWake, matchWrap());
-
-        Button camera = makeButton("OPEN CAMERA");
-        camera.setOnClickListener(v -> openCamera());
-        root.addView(camera, matchWrap());
+        voicePanel.addView(stopWake, matchWrap());
 
         Button apps = makeButton("DISCOVER INSTALLED APPS");
         apps.setOnClickListener(v -> showApps());
-        root.addView(apps, matchWrap());
+        voicePanel.addView(apps, matchWrap());
 
-        Button viewMemory = makeButton("VIEW RECENT MEMORY");
-        viewMemory.setOnClickListener(v -> showMemory());
-        root.addView(viewMemory, matchWrap());
+        LinearLayout devicePanel = addPanel(root, "DEVICE & MEDIA CONTROL");
+        Button camera = makeButton("OPEN JARVIS CAMERA");
+        camera.setOnClickListener(v -> openCamera());
+        devicePanel.addView(camera, matchWrap());
 
-        Button clearMemory = makeButton("CLEAR LOCAL MEMORY");
-        clearMemory.setOnClickListener(v -> confirmClearMemory());
-        root.addView(clearMemory, matchWrap());
-
-        Button mediaAccess = makeButton("ENABLE MEDIA CONTROLS");
+        Button mediaAccess = makeButton("ENABLE MEDIA SESSION ACCESS");
         mediaAccess.setOnClickListener(v -> {
             if (MediaControl.hasAccess(this)) setStatus("MEDIA SESSION ACCESS ENABLED");
             else MediaControl.openAccessSettings(this);
         });
-        root.addView(mediaAccess, matchWrap());
+        devicePanel.addView(mediaAccess, matchWrap());
 
-        Button music = makeButton("PLAY MUSIC");
+        Button music = makeButton("SEARCH & PLAY MUSIC");
         music.setOnClickListener(v -> playMusic("Back in Black"));
-        root.addView(music, matchWrap());
+        devicePanel.addView(music, matchWrap());
+
+        LinearLayout memoryPanel = addPanel(root, "PRIVATE MEMORY");
+        Button viewMemory = makeButton("VIEW RECENT MEMORY");
+        viewMemory.setOnClickListener(v -> showMemory());
+        memoryPanel.addView(viewMemory, matchWrap());
+
+        Button clearMemory = makeButton("CLEAR LOCAL MEMORY");
+        clearMemory.setOnClickListener(v -> confirmClearMemory());
+        memoryPanel.addView(clearMemory, matchWrap());
 
         TextView note = new TextView(this);
-        note.setText("VOICE INPUT • FOREGROUND WAKE LISTENER • APP LAUNCH • IN-APP CAMERA • MEDIA SEARCH\nEncrypted pairing, shared memory and full media-session control are still in development.");
-        note.setTextColor(Color.rgb(105, 145, 170));
-        note.setTextSize(11);
+        note.setText("USER-CONTROLLED MICROPHONE • ENCRYPTED LOCAL MEMORY • PRIVATE CAMERA CAPTURE");
+        note.setTextColor(Color.rgb(90, 132, 158));
+        note.setTextSize(10);
         note.setGravity(Gravity.CENTER);
-        note.setPadding(0, dp(18), 0, dp(4));
+        note.setPadding(0, dp(14), 0, dp(2));
         root.addView(note, matchWrap());
         setContentView(scroll);
+    }
+
+    private LinearLayout addPanel(LinearLayout root, String heading) {
+        LinearLayout panel = new LinearLayout(this);
+        panel.setOrientation(LinearLayout.VERTICAL);
+        panel.setPadding(dp(12), dp(10), dp(12), dp(12));
+        android.graphics.drawable.GradientDrawable background = new android.graphics.drawable.GradientDrawable();
+        background.setColor(Color.argb(210, 5, 20, 37));
+        background.setCornerRadius(dp(13));
+        background.setStroke(dp(1), Color.argb(170, 42, 155, 210));
+        panel.setBackground(background);
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2);
+        params.setMargins(0, dp(7), 0, dp(7));
+        root.addView(panel, params);
+        TextView label = new TextView(this);
+        label.setText(heading);
+        label.setTextColor(Color.rgb(75, 210, 255));
+        label.setTextSize(11);
+        label.setLetterSpacing(.12f);
+        label.setPadding(dp(3), 0, dp(3), dp(5));
+        panel.addView(label, matchWrap());
+        return panel;
     }
 
     private void initialiseSpeech() {
