@@ -3,6 +3,8 @@ import { getSession, readHistory, readMemories, appendConversationTurn } from ".
 import { JARVIS_TOOL_DECLARATIONS, executeJarvisTool } from "../lib/jarvis-tools.js";
 import { buildJarvisSystemInstruction } from "../lib/jarvis-personality.js";
 import { buildJarvisCapabilitiesReply, isJarvisCapabilitiesQuestion } from "../lib/jarvis-capabilities.js";
+import { buildTutorSystemInstruction, isTutorRequest } from "../lib/jarvis-tutor.js";
+import { buildMedicalEmergencyReply, buildMedicalSystemInstruction, detectMedicalEmergency, isMedicalRequest } from "../lib/jarvis-medical.js";
 
 export default async function handler(req, res) {
   const origin = req.headers.origin || "";
@@ -55,13 +57,23 @@ export default async function handler(req, res) {
       return res.status(200).json({ reply, deviceId: session.deviceId, toolCalls: [], pendingActions: [], capabilityCatalogue: true });
     }
 
+    // Red-flag emergencies bypass generative inference: give immediate, local
+    // emergency instructions rather than risking a slow or speculative answer.
+    if (detectMedicalEmergency(message)) {
+      const reply = buildMedicalEmergencyReply();
+      await appendConversationTurn(message, reply);
+      return res.status(200).json({ reply, deviceId: session.deviceId, toolCalls: [], pendingActions: [], engine: "medical-emergency", emergency: true });
+    }
+
     if (!apiKey) {
       return res.status(503).json({
         error: "No Gemini API key is configured. Add GEMINI_API_KEY (or JARVIS) in this Vercel project's Environment Variables, then redeploy."
       });
     }
 
-    const system = buildJarvisSystemInstruction(mode);
+    const tutorMode = isTutorRequest(message);
+    const medicalMode = isMedicalRequest(message);
+    const system = [buildJarvisSystemInstruction(mode), tutorMode ? buildTutorSystemInstruction() : "", medicalMode ? buildMedicalSystemInstruction() : ""].filter(Boolean).join(" ");
 
     // Every paired device reads the same central conversation rather than sending
     // a private browser-only history. Only the latest eight turns enter the prompt.
@@ -261,7 +273,7 @@ export default async function handler(req, res) {
     }
 
     await appendConversationTurn(message, reply);
-    return res.status(200).json({ reply, deviceId: session.deviceId, toolCalls: toolTrace, pendingActions });
+    return res.status(200).json({ reply, deviceId: session.deviceId, toolCalls: toolTrace, pendingActions, engine: medicalMode ? "medical" : tutorMode ? "tutor" : "general" });
   } catch (error) {
     console.error("JARVIS API failure:", error);
     return res.status(500).json({ error: "JARVIS server error: " + String(error?.message || error).slice(0, 300) });
