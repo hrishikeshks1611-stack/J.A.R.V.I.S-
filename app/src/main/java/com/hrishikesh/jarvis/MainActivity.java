@@ -5,6 +5,7 @@ import android.content.BroadcastReceiver;
 import android.content.IntentFilter;
 import android.Manifest;
 import android.content.pm.PackageManager;
+import android.content.pm.ResolveInfo;
 import android.content.ContentValues;
 import android.content.ClipData;
 import android.database.Cursor;
@@ -281,7 +282,63 @@ public class MainActivity extends Activity {
                     catch (Exception ignored) { }
                 }
             }
+            ResolveInfo match = findLaunchableApp(name);
+            if (match != null && match.activityInfo != null) {
+                Intent launch = new Intent(Intent.ACTION_MAIN);
+                launch.addCategory(Intent.CATEGORY_LAUNCHER);
+                launch.setClassName(match.activityInfo.packageName, match.activityInfo.name);
+                launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                try {
+                    startActivity(launch);
+                    CharSequence label = match.loadLabel(getPackageManager());
+                    return "Opening " + (label == null ? title(name) : label.toString()) + ", Sir.";
+                } catch (Exception ignored) { }
+            }
             return title(name) + " does not appear to be installed, Sir.";
+        }
+
+        @JavascriptInterface public String getInstalledApps() {
+            JSONArray apps = new JSONArray();
+            try {
+                Intent launcher = new Intent(Intent.ACTION_MAIN);
+                launcher.addCategory(Intent.CATEGORY_LAUNCHER);
+                java.util.List<ResolveInfo> matches = getPackageManager().queryIntentActivities(launcher, 0);
+                java.util.Map<String, String> unique = new java.util.TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+                for (ResolveInfo info : matches) {
+                    if (info.activityInfo == null || !info.activityInfo.enabled) continue;
+                    CharSequence label = info.loadLabel(getPackageManager());
+                    String appName = label == null ? info.activityInfo.packageName : label.toString().trim();
+                    if (!appName.isEmpty()) unique.put(appName, info.activityInfo.packageName);
+                }
+                for (java.util.Map.Entry<String, String> app : unique.entrySet()) {
+                    JSONObject item = new JSONObject();
+                    item.put("name", app.getKey());
+                    item.put("packageName", app.getValue());
+                    apps.put(item);
+                }
+            } catch (Exception ignored) { }
+            return apps.toString();
+        }
+
+        private ResolveInfo findLaunchableApp(String requestedName) {
+            String wanted = normalizeAppName(requestedName);
+            if (wanted.isEmpty()) return null;
+            Intent launcher = new Intent(Intent.ACTION_MAIN);
+            launcher.addCategory(Intent.CATEGORY_LAUNCHER);
+            java.util.List<ResolveInfo> matches = getPackageManager().queryIntentActivities(launcher, 0);
+            for (ResolveInfo info : matches) {
+                if (info.activityInfo == null || !info.activityInfo.enabled) continue;
+                CharSequence label = info.loadLabel(getPackageManager());
+                String labelName = normalizeAppName(label == null ? "" : label.toString());
+                String packageName = normalizeAppName(info.activityInfo.packageName.replace('.', ' '));
+                if (wanted.equals(labelName) || wanted.equals(packageName)) return info;
+            }
+            return null;
+        }
+
+        private String normalizeAppName(String value) {
+            return value == null ? "" : value.toLowerCase(Locale.ROOT)
+                    .replaceAll("[^a-z0-9]+", " ").trim().replaceAll("\\s+", " ");
         }
 
 
