@@ -374,7 +374,7 @@ public class MainActivity extends Activity {
         private boolean hasMusicSessionAccess() {
             String enabled = Settings.Secure.getString(getContentResolver(), "enabled_notification_listeners");
             if (enabled == null) return false;
-            String component = new ComponentName(this, JarvisNotificationListener.class).flattenToString();
+            String component = new ComponentName(MainActivity.this, JarvisNotificationListener.class).flattenToString();
             return enabled.contains(component) || enabled.contains(JarvisNotificationListener.class.getName());
         }
 
@@ -382,7 +382,7 @@ public class MainActivity extends Activity {
             try {
                 startActivity(new Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS));
             } catch (ActivityNotFoundException e) {
-                Toast.makeText(this, "Open Android Settings and enable Notification access for JARVIS YouTube Music Control, Sir.", Toast.LENGTH_LONG).show();
+                Toast.makeText(MainActivity.this, "Open Android Settings and enable Notification access for JARVIS YouTube Music Control, Sir.", Toast.LENGTH_LONG).show();
             }
         }
 
@@ -390,7 +390,7 @@ public class MainActivity extends Activity {
             MediaSessionManager manager = (MediaSessionManager) getSystemService(MEDIA_SESSION_SERVICE);
             if (manager == null) return null;
             List<MediaController> sessions = manager.getActiveSessions(
-                    new ComponentName(this, JarvisNotificationListener.class));
+                    new ComponentName(MainActivity.this, JarvisNotificationListener.class));
             if (sessions == null) return null;
             for (MediaController controller : sessions) {
                 if ("com.google.android.apps.youtube.music".equals(controller.getPackageName())) {
@@ -513,10 +513,10 @@ public class MainActivity extends Activity {
                             controller.getTransportControls().skipToPrevious();
                             break;
                         default:
-                            Toast.makeText(this, "Unknown YouTube Music control, Sir.", Toast.LENGTH_SHORT).show();
+                            Toast.makeText(MainActivity.this, "Unknown YouTube Music control, Sir.", Toast.LENGTH_SHORT).show();
                     }
                 } catch (RuntimeException e) {
-                    Toast.makeText(this, "YouTube Music did not accept that media command, Sir.", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(MainActivity.this, "YouTube Music did not accept that media command, Sir.", Toast.LENGTH_SHORT).show();
                 }
             });
             return "YOUTUBE_MUSIC_CONTROL_SENT:" + action;
@@ -865,7 +865,7 @@ public class MainActivity extends Activity {
             pendingGeoOrigin = null;
             callback.invoke(origin, precise, false);
             if (!precise) {
-                runOnUiThread(() -> Toast.makeText(this,
+                runOnUiThread(() -> Toast.makeText(MainActivity.this,
                         "For precise location, choose Precise in the Android permission prompt and allow location access, Sir.",
                         Toast.LENGTH_LONG).show());
             }
@@ -905,7 +905,7 @@ public class MainActivity extends Activity {
             bitmap.compress(Bitmap.CompressFormat.JPEG, 88, output);
             sendAttachmentPayload("JARVIS_camera.jpg", "image/jpeg", output.toByteArray());
         } catch (Exception e) {
-            Toast.makeText(this, "Could not prepare the camera image.", Toast.LENGTH_LONG).show();
+            Toast.makeText(MainActivity.this, "Could not prepare the camera image.", Toast.LENGTH_LONG).show();
         }
     }
 
@@ -938,7 +938,7 @@ public class MainActivity extends Activity {
             sendAttachmentPayload(name, mime, output.toByteArray());
         } catch (Exception e) {
             String message = e.getMessage() == null ? "Could not read that attachment." : e.getMessage();
-            Toast.makeText(this, message, Toast.LENGTH_LONG).show();
+            Toast.makeText(MainActivity.this, message, Toast.LENGTH_LONG).show();
         }
     }
 
