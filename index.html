@@ -705,19 +705,18 @@ async function lookupYoutubeMusicTrack(query){
  return data.selected;
 }
 function openYoutubeMusicTrack(track){
- const searchQuery=[track.title,track.artist].filter(Boolean).join(' ').trim();
- if(!searchQuery)throw new Error('The selected YouTube Music result has no searchable title or artist.');
- if(window.AndroidJarvis&&typeof window.AndroidJarvis.playYoutubeMusic==='function'){
-  // Android 10's installed JARVIS bridge accepts a media-search query, not a YouTube video ID.
-  // Passing the ID here makes older installed builds open YouTube Music without selecting the song.
-  const result=window.AndroidJarvis.playYoutubeMusic(searchQuery)||'';
-  if(result.startsWith('ERROR:'))throw new Error(result.replace(/^ERROR:/,''));
-  return result||'TRACK_REQUEST_SENT_UNCONFIRMED';
+  const videoId=String(track&&track.videoId||'').trim();
+  if(!/^[A-Za-z0-9_-]{11}$/.test(videoId))throw new Error('The selected YouTube Music result has an invalid track ID.');
+  if(window.AndroidJarvis&&typeof window.AndroidJarvis.playYoutubeMusic==='function'){
+   const result=window.AndroidJarvis.playYoutubeMusic(videoId)||'';
+   if(result.startsWith('ERROR:'))throw new Error(result.replace(/^ERROR:/,''));
+   if(!result.startsWith('TRACK_OPEN_REQUESTED:'))throw new Error('Android did not accept the selected track request.');
+   return result;
+  }
+  window.location.href='https://music.youtube.com/watch?v='+encodeURIComponent(videoId);
+  return 'WEB_TRACK_OPENED:'+videoId;
  }
- window.location.href=track.url||('https://music.youtube.com/watch?v='+encodeURIComponent(track.videoId));
- return 'WEB_LINK_OPENED:'+track.videoId;
-}
-$('form').onsubmit=async e=>{e.preventDefault();const message=$('prompt').value.trim();if(!message&&!pendingAttachment)return;$('prompt').value='';const attachment=pendingAttachment;pendingAttachment=null;renderAttachment();add(message||'Please examine this attachment, Sir.', 'user',attachment);history.push({role:'user',text:message||'Please examine the attached file.'});const fileRequest=detectFileRequest(message);if(fileRequest){await createOfficeFile(message,fileRequest.format,attachment);return;}
+ $('form').onsubmit=async e=>{e.preventDefault();const message=$('prompt').value.trim();if(!message&&!pendingAttachment)return;$('prompt').value='';const attachment=pendingAttachment;pendingAttachment=null;renderAttachment();add(message||'Please examine this attachment, Sir.', 'user',attachment);history.push({role:'user',text:message||'Please examine the attached file.'});const fileRequest=detectFileRequest(message);if(fileRequest){await createOfficeFile(message,fileRequest.format,attachment);return;}
 const instant=attachment?null:instantReply(message);
 if(instant){
  add(instant,'jarvis');history.push({role:'model',text:instant});history=history.slice(-20);
@@ -734,10 +733,10 @@ if(multiAppMusic && window.AndroidJarvis && typeof window.AndroidJarvis.openApp=
  try{
   const track=await lookupYoutubeMusicTrack(songQuery);
   openYoutubeMusicTrack(track);
-  spokenReply=appReply+' Opening '+track.title+' by '+track.artist+' in YouTube Music, Sir.';
-  $('hint').textContent='Sent the selected song to YouTube Music; playback confirmation is pending.';
+  spokenReply='Sending '+track.title+' by '+track.artist+' in YouTube Music, Sir.';
+  $('hint').textContent='Exact track sent to YouTube Music; verify actual playback on the phone.';
  }catch(error){
-  spokenReply=appReply+' Sir, I could not open that song in YouTube Music: '+error.message;
+  spokenReply='Sir, I could not open that song in YouTube Music: '+error.message;
   $('hint').textContent='YouTube Music track lookup or launch failed.';
  }
  add(spokenReply,'jarvis');history.push({role:'model',text:spokenReply});history=history.slice(-20);
