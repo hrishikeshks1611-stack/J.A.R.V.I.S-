@@ -545,10 +545,10 @@ if(multiAppMusic && window.AndroidJarvis && typeof window.AndroidJarvis.openApp=
  status('System ready');speak(spokenReply);return;
 }
 const openYoutubeMusicOnly=/^\s*(?:jarvis[, ]+)?(?:please\s+)?(?:open|launch|start)\s+youtube\s+music(?:\s+app)?[.!?]*\s*$/i.test(message);
-const musicTransport = message.match(/^\s*(?:hey\s+)?(?:jarvis[, ]+)?(?:please\s+)?(?:pause|stop|resume|continue|next|skip|previous|back)\s*(?:the\s+)?(?:music|song|track)?[.!?]*\s*$/i);
+const musicTransport = message.match(/^\s*(?:hey\s+)?(?:jarvis[, ]+)?(?:please\s+)?(?:play|pause|stop|resume|continue|next|skip|previous|back)\s*(?:the\s+)?(?:music|song|track)?[.!?]*\s*$/i);
 if(musicTransport && window.AndroidJarvis && typeof window.AndroidJarvis.controlMusic==='function'){
  const raw=message.toLowerCase();
- const action=/\b(pause|stop)\b/.test(raw)?'pause':/\b(resume|continue)\b/.test(raw)?'play':/\b(next|skip)\b/.test(raw)?'next':'previous';
+ const action=/\b(pause|stop)\b/.test(raw)?'pause':/\b(play|resume|continue)\b/.test(raw)?'play':/\b(next|skip)\b/.test(raw)?'next':'previous';
  const nativeReply=window.AndroidJarvis.controlMusic(action)||'';
  const reply=nativeReply.startsWith('MEDIA_KEY_SENT:')?'I have sent the '+action+' command to Android’s active music player, Sir.':nativeReply.replace(/^ERROR:/,'');
  add(reply,'jarvis');history.push({role:'model',text:reply});history=history.slice(-20);
