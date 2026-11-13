@@ -1,5 +1,5 @@
 name: Build JARVIS Full Recovery Android and TV APKs
-# Rebirth uses a separate Android application ID so it can coexist with Build 39.
+# Full recovery keeps the 1.0.15 package identity and advances its version code for an in-place update.
 on:
   workflow_dispatch:
   push:
