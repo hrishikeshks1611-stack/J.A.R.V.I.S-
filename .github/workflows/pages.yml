@@ -6,6 +6,7 @@ on:
 permissions:
   contents: read
   pages: write
+  deployments: write
   id-token: write
 concurrency:
   group: pages
@@ -21,6 +22,14 @@ jobs:
         uses: actions/checkout@v4
       - name: Configure Pages
         uses: actions/configure-pages@v5
+      - name: Close stale Pages deployments
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ids=$(gh api "repos/${GITHUB_REPOSITORY}/deployments?environment=github-pages&per_page=100" --jq '.[].id')
+          for id in $ids; do
+            gh api --method POST "repos/${GITHUB_REPOSITORY}/deployments/${id}/statuses" -f state=inactive -f description="Superseded by the latest JARVIS Pages deployment" >/dev/null
+          done
       - name: Upload site
         uses: actions/upload-pages-artifact@v3
         with:
