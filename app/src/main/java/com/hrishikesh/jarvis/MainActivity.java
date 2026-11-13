@@ -416,28 +416,28 @@ public class MainActivity extends Activity {
         }
 
         private void verifyYoutubeMusicPlayback(MediaController controller, String query, int retry) {
-            MediaController current;
+            MediaController found;
             try {
-                current = findYoutubeMusicController();
+                found = findYoutubeMusicController();
             } catch (SecurityException | IllegalStateException e) {
                 youtubeMusicPlaybackStatus = "ACCESS_ERROR";
                 return;
             }
-            if (current == null) current = controller;
-            if (youtubeMusicIsPlaying(current)) {
-                String title = youtubeMusicTrackTitle(current);
+            final MediaController active = found == null ? controller : found;
+            if (youtubeMusicIsPlaying(active)) {
+                String title = youtubeMusicTrackTitle(active);
                 youtubeMusicPlaybackStatus = "PLAYING:" + (title.isEmpty() ? query : title);
                 return;
             }
-            PlaybackState state = current == null ? null : current.getPlaybackState();
+            PlaybackState state = active == null ? null : active.getPlaybackState();
             long actions = state == null ? 0 : state.getActions();
-            if (retry == 0 && current != null && (actions & PlaybackState.ACTION_PLAY) != 0) {
-                current.getTransportControls().play();
+            if (retry == 0 && active != null && (actions & PlaybackState.ACTION_PLAY) != 0) {
+                active.getTransportControls().play();
                 dispatchMediaKey(KeyEvent.KEYCODE_MEDIA_PLAY);
-                musicHandler.postDelayed(() -> verifyYoutubeMusicPlayback(current, query, 1), 1800);
-            } else if (retry < 2 && current != null) {
+                musicHandler.postDelayed(() -> verifyYoutubeMusicPlayback(active, query, 1), 1800);
+            } else if (retry < 2 && active != null) {
                 dispatchMediaKey(KeyEvent.KEYCODE_MEDIA_PLAY);
-                musicHandler.postDelayed(() -> verifyYoutubeMusicPlayback(current, query, retry + 1), 1800);
+                musicHandler.postDelayed(() -> verifyYoutubeMusicPlayback(active, query, retry + 1), 1800);
             } else {
                 youtubeMusicPlaybackStatus = "NOT_PLAYING:" + query;
             }
