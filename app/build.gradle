@@ -17,16 +17,16 @@ android {
     compileSdk 35
     buildFeatures { buildConfig true }
     defaultConfig {
-        // A fresh application ID avoids colliding with previously installed JARVIS packages.
-        // Keep the existing installation untouched; this is a separately installable 7.0 release.
-        applicationId 'com.hrishikesh.jarvis.seven.release'
+        // A fresh application ID keeps this build separate from every previous JARVIS package.
+        // The Android launcher name remains exactly J.A.R.V.I.S; the version is metadata only.
+        applicationId 'com.hrishikesh.jarvis.eight.release'
         minSdk 23
         targetSdk 35
-        versionCode 701
-        versionName '7.0'
+        versionCode 801
+        versionName '8.0'
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
         buildConfigField 'boolean', 'JARVIS_TV', 'false'
-        buildConfigField 'String', 'ASSISTANT_NAME', '"J.A.R.V.I.S. 7.0"'
+        buildConfigField 'String', 'ASSISTANT_NAME', '\"J.A.R.V.I.S\"'
     }
     flavorDimensions += 'device'
     productFlavors {
