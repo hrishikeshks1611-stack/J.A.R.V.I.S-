@@ -19,6 +19,7 @@ import android.graphics.Bitmap;
 import android.provider.MediaStore;
 import android.provider.AlarmClock;
 import android.provider.CalendarContract;
+import android.provider.ContactsContract;
 import android.util.Base64;
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
@@ -52,6 +53,12 @@ public class MainActivity extends Activity {
     private static final int REQUEST_FILE = 4103;
     private static final int REQUEST_CAMERA = 4104;
     private static final int REQUEST_LOCATION = 4105;
+    private static final int REQUEST_CONTACTS = 4106;
+    private static final int REQUEST_CALL_PHONE = 4107;
+    private String pendingContactCall;
+    private String pendingCallName;
+    private String pendingCallNumber;
+    private JarvisBridge jarvisBridge;
     private GeolocationPermissions.Callback pendingGeoCallback;
     private String pendingGeoOrigin;
     private Uri pendingCameraUri;
@@ -66,8 +73,15 @@ public class MainActivity extends Activity {
 
     @Override public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        getSharedPreferences("jarvis_wake_word", MODE_PRIVATE).edit().putBoolean("enabled", false).apply();
-        stopService(new Intent(this, WakeWordService.class));
+        // Preserve the owner's explicit wake-word choice across Activity recreation.
+        // A previously enabled foreground service is resumed only while this Activity is foregrounded.
+        SharedPreferences wakePrefs = getSharedPreferences("jarvis_wake_word", MODE_PRIVATE);
+        if (wakePrefs.getBoolean("enabled", false)
+                && checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+            Intent wakeIntent = new Intent(this, WakeWordService.class);
+            if (Build.VERSION.SDK_INT >= 26) startForegroundService(wakeIntent);
+            else startService(wakeIntent);
+        }
         getWindow().setStatusBarColor(android.graphics.Color.rgb(5, 11, 24));
         getWindow().setNavigationBarColor(android.graphics.Color.rgb(5, 11, 24));
         registerApps();
@@ -77,6 +91,14 @@ public class MainActivity extends Activity {
                 String action = intent == null ? null : intent.getAction();
                 if (WakeWordService.ACTION_WAKE.equals(action)) {
                     if (webView != null) webView.evaluateJavascript("window.jarvisNative && window.jarvisNative.onWakeWordDetected && window.jarvisNative.onWakeWordDetected()", null);
+                } else if (WakeWordService.ACTION_READY.equals(action)) {
+                    if (webView != null) webView.evaluateJavascript("window.jarvisNative && window.jarvisNative.onMicrophoneReady && window.jarvisNative.onMicrophoneReady()", null);
+                    Toast.makeText(MainActivity.this, "Microphone ready. Speak your command, Sir.", Toast.LENGTH_SHORT).show();
+                } else if (WakeWordService.ACTION_ERROR.equals(action)) {
+                    String message = intent.getStringExtra(WakeWordService.EXTRA_ERROR);
+                    String safe = message == null ? "The microphone could not start." : message;
+                    if (webView != null) webView.evaluateJavascript("window.jarvisNative && window.jarvisNative.onMicrophoneError && window.jarvisNative.onMicrophoneError(" + JSONObject.quote(safe) + ")", null);
+                    Toast.makeText(MainActivity.this, "JARVIS microphone error: " + safe, Toast.LENGTH_LONG).show();
                 } else if (WakeWordService.ACTION_PARTIAL.equals(action)) {
                     String partial = intent.getStringExtra(WakeWordService.EXTRA_COMMAND);
                     if (partial != null && webView != null) webView.evaluateJavascript("window.jarvisNative && window.jarvisNative.onSpeechPartial && window.jarvisNative.onSpeechPartial(" + JSONObject.quote(partial) + ")", null);
@@ -88,6 +110,8 @@ public class MainActivity extends Activity {
         };
         IntentFilter wakeFilter = new IntentFilter();
         wakeFilter.addAction(WakeWordService.ACTION_WAKE);
+        wakeFilter.addAction(WakeWordService.ACTION_READY);
+        wakeFilter.addAction(WakeWordService.ACTION_ERROR);
         wakeFilter.addAction(WakeWordService.ACTION_COMMAND);
         wakeFilter.addAction(WakeWordService.ACTION_PARTIAL);
         if (Build.VERSION.SDK_INT >= 33) registerReceiver(wakeWordReceiver, wakeFilter, android.content.Context.RECEIVER_NOT_EXPORTED);
@@ -102,7 +126,8 @@ public class MainActivity extends Activity {
         webView.getSettings().setAllowFileAccess(false);
         webView.getSettings().setAllowContentAccess(false);
         webView.getSettings().setGeolocationEnabled(true);
-        webView.addJavascriptInterface(new JarvisBridge(), "AndroidJarvis");
+        jarvisBridge = new JarvisBridge();
+        webView.addJavascriptInterface(jarvisBridge, "AndroidJarvis");
         webView.setWebChromeClient(new WebChromeClient() {
             @Override public void onGeolocationPermissionsShowPrompt(String origin, GeolocationPermissions.Callback callback) {
                 if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
@@ -274,6 +299,75 @@ public class MainActivity extends Activity {
     }
 
     private class JarvisBridge {
+        @JavascriptInterface public String callContact(String requested) {
+            final String contactName = requested == null ? "" : requested.trim();
+            if (contactName.isEmpty() || contactName.length() > 100) return "ERROR:Please say the contact name, Sir.";
+            if (Build.VERSION.SDK_INT >= 23 && checkSelfPermission(Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED) {
+                pendingContactCall = contactName;
+                runOnUiThread(() -> requestPermissions(new String[]{Manifest.permission.READ_CONTACTS}, REQUEST_CONTACTS));
+                return "PERMISSION_REQUIRED:Contacts permission is needed to find " + contactName + ".";
+            }
+            return resolveContactForCall(contactName);
+        }
+
+        private String resolveContactForCall(String requestedName) {
+            Cursor cursor = null;
+            try {
+                Uri filter = Uri.withAppendedPath(ContactsContract.CommonDataKinds.Phone.CONTENT_FILTER_URI, Uri.encode(requestedName));
+                cursor = getContentResolver().query(filter,
+                        new String[]{ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME, ContactsContract.CommonDataKinds.Phone.NUMBER},
+                        null, null, ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME + " ASC");
+                if (cursor == null || !cursor.moveToFirst()) return "NOT_FOUND:No saved phone contact matched " + requestedName + ".";
+                java.util.LinkedHashMap<String, String[]> matches = new java.util.LinkedHashMap<>();
+                java.util.LinkedHashMap<String, String[]> exactMatches = new java.util.LinkedHashMap<>();
+                do {
+                    String displayName = cursor.getString(0);
+                    String number = cursor.getString(1);
+                    if (number == null || number.trim().isEmpty()) continue;
+                    String key = number.replaceAll("[^0-9+]", "");
+                    if (key.isEmpty()) continue;
+                    matches.put(key, new String[]{displayName, number});
+                    if (displayName != null && displayName.equalsIgnoreCase(requestedName))
+                        exactMatches.put(key, new String[]{displayName, number});
+                } while (cursor.moveToNext());
+                java.util.Map<String, String[]> selected = exactMatches.isEmpty() ? matches : exactMatches;
+                if (selected.isEmpty()) return "NOT_FOUND:No phone number was saved for " + requestedName + ".";
+                if (selected.size() != 1) return "AMBIGUOUS:More than one phone number matched " + requestedName + ".";
+                String[] match = selected.values().iterator().next();
+                String name = match[0] == null ? requestedName : match[0];
+                String number = match[1];
+                runOnUiThread(() -> requestOrPlaceCall(name, number));
+                return "CALL_STARTING:Calling " + name + ".";
+            } catch (SecurityException error) {
+                return "ERROR:Contacts permission was not granted, Sir.";
+            } finally {
+                if (cursor != null) cursor.close();
+            }
+        }
+
+        private void requestOrPlaceCall(String name, String number) {
+            pendingCallName = name;
+            pendingCallNumber = number;
+            if (Build.VERSION.SDK_INT >= 23 && checkSelfPermission(Manifest.permission.CALL_PHONE) != PackageManager.PERMISSION_GRANTED) {
+                requestPermissions(new String[]{Manifest.permission.CALL_PHONE}, REQUEST_CALL_PHONE);
+                return;
+            }
+            placePendingCall();
+        }
+
+        private void placePendingCall() {
+            String number = pendingCallNumber;
+            pendingCallName = null;
+            pendingCallNumber = null;
+            if (number == null || number.trim().isEmpty()) return;
+            try {
+                startActivity(new Intent(Intent.ACTION_CALL, Uri.fromParts("tel", number, null)));
+            } catch (SecurityException error) {
+                Toast.makeText(MainActivity.this, "Android did not grant permission to place the call, Sir.", Toast.LENGTH_LONG).show();
+            } catch (ActivityNotFoundException error) {
+                Toast.makeText(MainActivity.this, "No compatible Phone app is available, Sir.", Toast.LENGTH_LONG).show();
+            }
+        }
         @JavascriptInterface public int getInstalledVersionCode() {
             return BuildConfig.VERSION_CODE;
         }
@@ -797,8 +891,7 @@ public class MainActivity extends Activity {
             if (Build.VERSION.SDK_INT >= 26) startForegroundService(intent);
             else startService(intent);
             if (webView != null) webView.evaluateJavascript(
-                    "if(typeof status==='function')status('Listening · private offline voice input','listening')", null);
-            Toast.makeText(this, "JARVIS microphone ready. Speak your command.", Toast.LENGTH_SHORT).show();
+                    "if(typeof status==='function')status('Starting microphone…','thinking');if(document.getElementById('hint'))document.getElementById('hint').textContent='Loading the offline speech engine and opening the microphone…'", null);
         } catch (RuntimeException error) {
             Toast.makeText(this, "JARVIS could not start its private microphone. Please try again.", Toast.LENGTH_LONG).show();
         }
@@ -814,6 +907,32 @@ public class MainActivity extends Activity {
         if (requestCode == REQUEST_AUDIO_INPUT) {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) startOfflineDictation();
             else Toast.makeText(this, "Microphone permission is needed for private JARVIS voice input.", Toast.LENGTH_LONG).show();
+            return;
+        }
+        if (requestCode == REQUEST_CONTACTS) {
+            String contactName = pendingContactCall;
+            pendingContactCall = null;
+            boolean granted = grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED;
+            if (granted && contactName != null) {
+                String result = jarvisBridge == null ? "ERROR:Phone controls are unavailable." : jarvisBridge.resolveContactForCall(contactName);
+                if (result.startsWith("CALL_STARTING:")) {
+                    if (webView != null) webView.evaluateJavascript("if(typeof speak==='function')speak('Certainly, Sir.')", null);
+                } else {
+                    Toast.makeText(this, result.replaceFirst("^[A-Z_]+:", ""), Toast.LENGTH_LONG).show();
+                }
+            } else {
+                Toast.makeText(this, "Contacts access was not granted. No call was started, Sir.", Toast.LENGTH_LONG).show();
+            }
+            return;
+        }
+        if (requestCode == REQUEST_CALL_PHONE) {
+            boolean granted = grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED;
+            if (granted && jarvisBridge != null) jarvisBridge.placePendingCall();
+            else {
+                pendingCallName = null;
+                pendingCallNumber = null;
+                Toast.makeText(this, "Phone-call permission was denied. No call was placed, Sir.", Toast.LENGTH_LONG).show();
+            }
             return;
         }
         if (requestCode == REQUEST_LOCATION && pendingGeoCallback != null) {
@@ -922,8 +1041,11 @@ public class MainActivity extends Activity {
     }
 
     @Override protected void onStop() {
-        stopService(new Intent(this, WakeWordService.class));
-        getSharedPreferences("jarvis_wake_word", MODE_PRIVATE).edit().putBoolean("enabled", false).apply();
+        // The foreground microphone service must outlive this Activity when the owner
+        // explicitly enabled wake-word listening. Tap-to-speak remains self-terminating.
+        boolean wakeWordEnabled = getSharedPreferences("jarvis_wake_word", MODE_PRIVATE)
+                .getBoolean("enabled", false);
+        if (!wakeWordEnabled) stopService(new Intent(this, WakeWordService.class));
         super.onStop();
     }
 
