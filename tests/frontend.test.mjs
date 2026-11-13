@@ -104,13 +104,13 @@ test("four voice camera phrases use native camera, capture, selfie and latest-ph
 test("YouTube Music voice commands use the native playback bridge or search fallback", async () => {
   const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
   assert.ok(html.includes("const openYoutubeMusicOnly="));
-  assert.ok(html.includes("window.AndroidJarvis.playYoutubeMusic(searchQuery)"));
-  assert.ok(html.includes("window.AndroidJarvis.openApp('youtube music')"));
+  assert.ok(html.includes("window.AndroidJarvis.playYoutubeMusic(videoId)"));
+  assert.ok(html.includes("window.AndroidJarvis.playYoutubeMusic(videoId)"));
   assert.ok(html.includes("const hasNativeMusicBridge=window.AndroidJarvis&&typeof window.AndroidJarvis.playYoutubeMusic==='function'"));
   assert.ok(html.includes("else window.location.href='https://music.youtube.com/'"));
-  assert.ok(html.includes("window.AndroidJarvis.playYoutubeMusic(searchQuery)"));
+  assert.ok(html.includes("window.AndroidJarvis.playYoutubeMusic(videoId)"));
   assert.ok(html.includes("JARVIS_API+'/music-search'"));
-  assert.ok(html.includes("music.youtube.com/watch?v='+encodeURIComponent(track.videoId)"));
+  assert.ok(html.includes("music.youtube.com/watch?v='+encodeURIComponent(videoId)"));
   assert.ok(html.includes("Finding your music, Sir…"));
   assert.ok(html.includes("const acknowledgement='Certainly, Sir.'"));
   assert.ok(html.includes("await acknowledgementFinished"));
@@ -305,8 +305,8 @@ test("live app answers exact greetings locally and routes YouTube Music commands
   const instantReply = vm.runInNewContext(html.slice(start, end) + "\ninstantReply", { Date, Intl });
   assert.match(instantReply("Good morning"), /Good morning, Sir/);
   assert.equal(instantReply("Good morning, explain this to me"), null);
-  assert.ok(html.includes("window.AndroidJarvis.playYoutubeMusic(searchQuery)"));
-  assert.ok(html.includes("window.AndroidJarvis.playYoutubeMusic(searchQuery)"));
+  assert.ok(html.includes("window.AndroidJarvis.playYoutubeMusic(videoId)"));
+  assert.ok(html.includes("window.AndroidJarvis.playYoutubeMusic(videoId)"));
 });
 
 test("Algieba voice starts after a short pre-buffer while the audio stream is still arriving", async () => {
@@ -329,4 +329,15 @@ test("installed-app inventory and arbitrary app names use the native Android bri
   assert.ok(html.includes("installedAppsRequest"));
   assert.ok(html.includes("AndroidJarvis.getInstalledApps()"));
   assert.ok(html.includes("appAliases[requestedApp.toLowerCase()]||requestedApp"));
+});
+
+
+test("always-on microphone is disabled while tap-to-speak remains available", async () => {
+ const source = await readFile(new URL("../app/src/main/java/com/hrishikesh/jarvis/MainActivity.java", import.meta.url), "utf8");
+ const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+ assert.ok(source.includes('putBoolean("enabled", false)'));
+ assert.ok(source.includes('stopService(new Intent(this, WakeWordService.class))'));
+ assert.ok(html.includes("$('wakeWordButton').hidden=true"));
+ assert.ok(html.includes("Tap the microphone button when you want to speak"));
+ assert.ok(source.includes("startOfflineDictation()"));
 });
