@@ -287,12 +287,14 @@ public final class MainActivity extends Activity {
                 }
                 break;
             case GREETING:
-                speak("Always here, Sir.");
-                setStatus("JARVIS ONLINE");
+                speak(PersonaEngine.respond(raw, memory == null ? null : memory.recent(12)));
+                setStatus("JARVIS ONLINE • ALFRED PERSONA ACTIVE");
                 break;
             default:
-                speak("I heard you, Sir. That command is not supported yet.");
-                setStatus("COMMAND RECEIVED • ACTION NOT IMPLEMENTED");
+                String reply = PersonaEngine.respond(raw, memory == null ? null : memory.recent(12));
+                if (transcript != null) transcript.setText("“" + raw + "”\n\n" + reply);
+                speak(reply);
+                setStatus("ALFRED PERSONA • OFFLINE RESPONSE");
                 break;
         }
     }
