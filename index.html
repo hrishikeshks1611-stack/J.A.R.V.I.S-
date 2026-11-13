@@ -523,10 +523,10 @@ if(instant){
  $('hint').textContent='Ready when you are.';status('System ready');speak(instant);return;
 }
 // Handle a chained native command locally instead of sending it to the AI chat model.
-const multiAppMusic=message.match(/^\\s*(?:jarvis[, ]+)?(?:please\\s+)?(?:open|launch|start)\\s+(whatsapp|chrome|gmail|instagram|facebook|telegram)\\s+and\\s+(?:then\\s+)?(?:play|listen to)\\s+(.+?)(?:\\s+(?:on|in)\\s+youtube\\s+music)?[.!?]*\\s*$/i);
+const multiAppMusic=message.match(/^\s*(?:jarvis[, ]+)?(?:please\s+)?(?:open|launch|start)\s+(whatsapp|chrome|gmail|instagram|facebook|telegram)\s+and\s+(?:then\s+)?(?:play|listen to)\s+(.+?)(?:\s+(?:on|in)\s+youtube\s+music)?[.!?]*\s*$/i);
 if(multiAppMusic && window.AndroidJarvis && typeof window.AndroidJarvis.openApp==='function' && typeof window.AndroidJarvis.playYoutubeMusic==='function'){
  const appName=multiAppMusic[1].toLowerCase();
- const songQuery=multiAppMusic[2].trim().replace(/\\s+(?:on|in)\\s+youtube\\s+music$/i,'').trim();
+ const songQuery=multiAppMusic[2].trim().replace(/\s+(?:on|in)\s+youtube\s+music$/i,'').trim();
  const appReply=window.AndroidJarvis.openApp(appName);
  const musicReply=songQuery?window.AndroidJarvis.playYoutubeMusic(songQuery):'ERROR:No song title was recognised.';
  let spokenReply;
