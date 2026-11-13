@@ -3,7 +3,7 @@ name: Build complete JARVIS Android and TV APKs
 on:
   workflow_dispatch:
   push:
-    branches: [ main ]
+    branches: [ main, jarvis-master-brain ]
     paths:
       - 'app/**'
       - '*.gradle'
