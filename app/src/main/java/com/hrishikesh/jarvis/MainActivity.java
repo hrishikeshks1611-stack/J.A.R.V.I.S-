@@ -788,6 +788,8 @@ public class MainActivity extends Activity {
             // PackageInstaller has copied the session contents by the time commit is called.
             if (apk != null && apk.exists()) apk.delete();
         }
+    }
+
     private void startOfflineDictation() {
         try {
             Intent intent = new Intent(this, WakeWordService.class).setAction(WakeWordService.ACTION_DICTATION);
