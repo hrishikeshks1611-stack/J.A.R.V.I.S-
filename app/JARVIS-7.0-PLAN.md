@@ -10,6 +10,12 @@ JARVIS 7.0 is a separate Android application. It must not replace, update, unins
 - Existing 6.0.0 package identity remains unchanged.
 - Shared account and cloud memory are intentional; local app data and installation identity remain separate.
 
+## Core assistant personality and playback — must-pass basics
+- Alfred-like butler personality: composed, courteous, quietly witty when appropriate, calls the owner "Sir", speaks naturally and concisely, and never sounds like a generic chatbot.
+- Voice responses must use the selected JARVIS voice/TTS path; test spoken responses, interruption/stop behaviour, and fallback when TTS is unavailable.
+- Music playback is a first-class feature, not merely a link or search result: voice/text requests should find and play the requested track through the supported YouTube Music integration, with play/pause, resume, skip/next and now-playing/media controls where the Android player exposes them.
+- Test playback with YouTube Music installed and unavailable; report clearly when the app cannot play a track rather than pretending playback started.
+
 ## Carry-forward feature inventory
 - Core assistant, AI backend, Alfred-style voice and conversation
 - Shared memory, backup, device pairing and owner recovery
@@ -40,7 +46,7 @@ JARVIS 7.0 is a separate Android application. It must not replace, update, unins
 4. Sign in / pair to the same owner account and confirm cloud memory continuity.
 5. Run the full Node engine and API test suite.
 6. Verify Office, Tutor, Medical, Mentalist and emotional availability in the app.
-7. Physical-device tests: microphone, wake-word, background operation, camera, contact calling, YouTube Music/media controls, alarms, clock, calendar and reminders.
+7. Physical-device tests: microphone, wake-word, background operation, Alfred-style voice/personality, spoken responses, actual YouTube Music playback and media controls, camera, contact calling, alarms, clock, calendar and reminders.
 8. Verify Android permissions are requested only when needed and denied permissions fail safely.
 9. Verify data isolation: deleting 6.0.0 after acceptance must not delete the shared cloud account or 7.0's local data.
 
