@@ -86,3 +86,16 @@ test("Camera smoke launcher is debug-only while the production camera activity s
   assert.ok(launcher.includes("new Intent(this, CameraCaptureActivity.class)"));
   assert.ok(productionManifest.includes('android:name=".CameraCaptureActivity" android:exported="false"'));
 });
+
+
+test("offline speech fallback refuses every voice not explicitly identified as British male", async () => {
+  const source = await readFile(new URL("../app/src/main/java/com/hrishikesh/jarvis/MainActivity.java", import.meta.url), "utf8");
+  const start = source.indexOf("if (chosen == null && textToSpeech.getVoices() != null)");
+  const end = source.indexOf("\n            }", start) + "\n            }".length;
+  assert.ok(start >= 0 && end > start);
+  const selection = source.slice(start, end);
+  assert.ok(selection.includes("!isExplicitlyMale(candidate)"));
+  assert.ok(selection.includes("candidate.isNetworkConnectionRequired()"));
+  assert.doesNotMatch(selection, /!isExplicitlyFemale\(candidate\)/);
+  assert.ok(source.includes("Never guess gender from an unlabelled voice"));
+});
