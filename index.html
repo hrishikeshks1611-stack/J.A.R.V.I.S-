@@ -1179,6 +1179,13 @@ async function checkJarvisUpdates(){
    $('hint').textContent='J.A.R.V.I.S. is up to date (installed build '+installedCode+').';
    return;
   }
+  // Never offer a native package until its in-place update compatibility has
+  // been explicitly verified for existing installations. A higher version
+  // number and matching package name are not sufficient on Android.
+  if(readMeta('JARVIS_UPDATE_COMPATIBLE')!=='true'){
+   $('hint').textContent='A newer JARVIS build exists, but its in-place update compatibility has not been verified. Your current installation and data have been left untouched, Sir.';
+   return;
+  }
   const accepted=confirm('J.A.R.V.I.S. '+versionName+' is available. Android will verify that it can update this installation. Your existing data is not cleared by this updater. Continue?');
   if(!accepted){$('hint').textContent='Update postponed. Your current JARVIS installation is unchanged, Sir.';return;}
   const result=window.AndroidJarvis.installJarvisUpdate(asset.browser_download_url,versionCode);
