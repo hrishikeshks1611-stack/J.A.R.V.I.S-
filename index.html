@@ -248,20 +248,27 @@ async function renderPairedDevices(){
  const data=await pairApi({action:'devices'}),list=$('deviceList');list.innerHTML='';
  (data.devices||[]).forEach(device=>{
   const row=document.createElement('div');row.className='sync-device';
-  const label=document.createElement('span');label.textContent=device.deviceName+(device.role==='owner'?' · Owner':'');
+  const label=document.createElement('span');
+  const shortId=String(device.deviceId||'').slice(-8);
+  const isCurrent=device.deviceId===sessionDeviceId;
+  label.textContent=device.deviceName+' · '+(device.role==='owner'?'CURRENT OWNER': 'DEVICE')+(isCurrent?' · THIS PHONE':'')+' · ID …'+shortId;
+  label.title='Full device ID: '+device.deviceId;
   row.appendChild(label);
   if(device.role!=='owner'){
-   const transfer=document.createElement('button');transfer.type='button';transfer.textContent='Make owner';
+   const transfer=document.createElement('button');transfer.type='button';transfer.textContent='Transfer owner here';
+   transfer.title='Transfer ownership to device ID '+device.deviceId;
    transfer.onclick=async()=>{
-    if(!confirm('Transfer JARVIS ownership to '+device.deviceName+'? This device will become a regular paired device.'))return;
+    const targetDescription=device.deviceName+' (device ID …'+shortId+')';
+    if(!confirm('TRANSFER JARVIS OWNERSHIP TO THIS DEVICE?\n\nTarget: '+targetDescription+'\nFull device ID: '+device.deviceId+'\n\nThe current owner will become a regular device. Shared conversations and saved memories will be preserved.'))return;
     try{
+     transfer.disabled=true;
      const result=await pairApi({action:'transfer-owner',deviceId:device.deviceId});
-     sessionRole='device';$('ownerArea').hidden=true;$('syncStatus').textContent=result.message+' Use the new owner device to create pairing codes or transfer ownership again.';
-    }catch(e){$('syncStatus').textContent=e.message}
+     sessionRole='device';$('ownerArea').hidden=true;$('syncStatus').textContent=result.message+' The new owner is device ID …'+shortId+'.';
+    }catch(e){$('syncStatus').textContent=e.message;transfer.disabled=false}
    };
    row.appendChild(transfer);
    const revoke=document.createElement('button');revoke.type='button';revoke.textContent='Revoke';
-   revoke.onclick=async()=>{if(!confirm('Revoke access for '+device.deviceName+'?'))return;try{await pairApi({action:'revoke',deviceId:device.deviceId});await renderPairedDevices()}catch(e){$('syncStatus').textContent=e.message}};
+   revoke.onclick=async()=>{if(!confirm('Revoke access for '+device.deviceName+' (device ID …'+shortId+')?'))return;try{await pairApi({action:'revoke',deviceId:device.deviceId});await renderPairedDevices()}catch(e){$('syncStatus').textContent=e.message}};
    row.appendChild(revoke);
   }
   list.appendChild(row);
