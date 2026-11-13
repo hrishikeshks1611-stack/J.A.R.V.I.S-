@@ -266,7 +266,7 @@ public class WakeWordService extends Service implements RecognitionListener {
                             active = true;
                             if (dictationMode) {
                                 dictationTimeoutHandler.removeCallbacks(dictationTimeout);
-                                dictationTimeoutHandler.postDelayed(dictationTimeout, 20000);
+                                dictationTimeoutHandler.postDelayed(dictationTimeout, 60000);
                                 updateNotification("JARVIS voice input · microphone active · speak now");
                             } else {
                                 updateNotification("Microphone ON · offline wake-word detection active");
