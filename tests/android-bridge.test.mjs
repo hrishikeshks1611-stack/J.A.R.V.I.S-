@@ -112,7 +112,7 @@ test("Android camera bridge supports camera launch, automatic photo, selfie and 
   assert.match(html, /cameraAction==='show'/);
 });
 
-test("in-app updater validates package and version before Android PackageInstaller handoff", async () => {
+test("native installer remains guarded while the web-only interface exposes no APK updater", async () => {
   const source = await readFile(new URL("../app/src/main/java/com/hrishikesh/jarvis/MainActivity.java", import.meta.url), "utf8");
   const receiver = await readFile(new URL("../app/src/main/java/com/hrishikesh/jarvis/UpdateInstallReceiver.java", import.meta.url), "utf8");
   const manifest = await readFile(new URL("../app/src/main/AndroidManifest.xml", import.meta.url), "utf8");
@@ -127,8 +127,8 @@ test("in-app updater validates package and version before Android PackageInstall
   assert.match(receiver, /STATUS_SUCCESS/);
   assert.match(manifest, /REQUEST_INSTALL_PACKAGES/);
   assert.match(manifest, /UpdateInstallReceiver/);
-  assert.match(html, /checkJarvisUpdates/);
-  assert.match(html, /api\.github\.com\/repos\/hrishikeshks1611-stack/);
+  assert.doesNotMatch(html, /checkJarvisUpdates/);
+  assert.doesNotMatch(html, /id="updateButton"/);
 });
 
 
