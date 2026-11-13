@@ -118,7 +118,7 @@ jobs:
           done
           test -x "$ANDROID_HOME/emulator/emulator"
           test -d "$ANDROID_HOME/system-images/android-29/google_apis/x86_64"
-      - name: Smoke-test foreground microphone service on Android 10
+      - name: Smoke-test rear/front camera and foreground microphone service on Android 10
         shell: bash
         run: |
           set -euo pipefail
