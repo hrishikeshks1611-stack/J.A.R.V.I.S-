@@ -12,6 +12,9 @@ import android.content.ClipData;
 import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.provider.MediaStore;
+import android.media.AudioManager;
+import android.view.KeyEvent;
+import android.os.SystemClock;
 import android.provider.AlarmClock;
 import android.provider.CalendarContract;
 import android.util.Base64;
@@ -345,6 +348,45 @@ public class MainActivity extends Activity {
         }
 
 
+        // Route standard media-button events through Android's active media-key consumer.
+        // This avoids querying other apps' sessions or requesting notification-listener access.
+        private void dispatchMediaKey(int keyCode) {
+            AudioManager audioManager = (AudioManager) getSystemService(AUDIO_SERVICE);
+            if (audioManager == null) return;
+            long downTime = SystemClock.uptimeMillis();
+            audioManager.dispatchMediaKeyEvent(new KeyEvent(downTime, downTime,
+                    KeyEvent.ACTION_DOWN, keyCode, 0));
+            audioManager.dispatchMediaKeyEvent(new KeyEvent(downTime, downTime + 1,
+                    KeyEvent.ACTION_UP, keyCode, 0));
+        }
+
+        @JavascriptInterface public String controlMusic(String requestedAction) {
+            String action = requestedAction == null ? "" : requestedAction.trim().toLowerCase(Locale.ROOT);
+            final int keyCode;
+            switch (action) {
+                case "play":
+                case "resume":
+                    keyCode = KeyEvent.KEYCODE_MEDIA_PLAY;
+                    break;
+                case "pause":
+                case "stop":
+                    keyCode = KeyEvent.KEYCODE_MEDIA_PAUSE;
+                    break;
+                case "next":
+                case "skip":
+                    keyCode = KeyEvent.KEYCODE_MEDIA_NEXT;
+                    break;
+                case "previous":
+                case "back":
+                    keyCode = KeyEvent.KEYCODE_MEDIA_PREVIOUS;
+                    break;
+                default:
+                    return "ERROR:Unknown music control, Sir.";
+            }
+            runOnUiThread(() -> dispatchMediaKey(keyCode));
+            return "MEDIA_KEY_SENT:" + action + "; Android has been asked to route this media button to the active player.";
+        }
+
         @JavascriptInterface public String playYoutubeMusic(String requested) {
             final String query = requested == null ? "" : requested.trim();
             if (query.isEmpty() || query.length() > 200) {
@@ -353,9 +395,6 @@ public class MainActivity extends Activity {
 
             Intent play = new Intent(MediaStore.INTENT_ACTION_MEDIA_PLAY_FROM_SEARCH);
             play.setPackage("com.google.android.apps.youtube.music");
-            // Use Android's song-specific play contract, not a generic search.
-            // The receiving music app needs both the song focus and title to
-            // attempt playback rather than merely showing an unstructured result list.
             play.putExtra(MediaStore.EXTRA_MEDIA_FOCUS, "vnd.android.cursor.item/audio");
             play.putExtra(MediaStore.EXTRA_MEDIA_TITLE, query);
             play.putExtra(SearchManager.QUERY, query);
@@ -364,7 +403,13 @@ public class MainActivity extends Activity {
             if (play.resolveActivity(getPackageManager()) != null) {
                 try {
                     startActivity(play);
-                    return "APP_OPENED_UNCONFIRMED:Opened YouTube Music with a play-from-search request for " + query + "; playback state is not available.";
+                    // Some versions of YouTube Music open results but do not honour
+                    // MEDIA_PLAY_FROM_SEARCH. Follow with a standard PLAY key event.
+                    // KEYCODE_MEDIA_PLAY is idempotent (unlike PLAY_PAUSE), so it will
+                    // not pause a track that the intent already started.
+                    new android.os.Handler(android.os.Looper.getMainLooper())
+                            .postDelayed(() -> dispatchMediaKey(KeyEvent.KEYCODE_MEDIA_PLAY), 1800);
+                    return "PLAY_REQUESTED_UNCONFIRMED:Sent YouTube Music a song-play intent and a follow-up Android PLAY media key for " + query + ".";
                 } catch (ActivityNotFoundException | SecurityException e) {
                     runOnUiThread(() -> openYoutubeMusicSearchFallback(query));
                     return "SEARCH_FALLBACK:YouTube Music rejected the play request; opened search results instead.";
