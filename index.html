@@ -37,7 +37,7 @@ footer{text-align:center;color:#577c99;font-size:10px;letter-spacing:.12em;paddi
 <header><div class="brand">J.A.R.V.I.S.<small>PERSONAL INTELLIGENCE SYSTEM</small></div><div class="status" id="status">● SYSTEM READY</div></header>
 <main><div class="core-wrap"><div class="core" id="core"><div class="ring"></div><div class="ring two"></div><div class="reactor"><div class="reactor-cross"></div><div class="reactor-core"></div></div></div></div>
 <div class="greeting"><h1>AT YOUR SERVICE, SIR.</h1><p id="hint">Your personal assistant is standing by. Tap the microphone button when you want to speak.</p></div>
-<div class="controls"><select id="mode" aria-label="Personality mode"><option value="professional">Professional</option><option value="witty">Witty</option><option value="philosophical">Philosophical</option><option value="alfred" selected>Alfred · British butler</option></select><button class="control" id="testVoice">Test Alfred voice</button><button class="control" id="voiceToggle">Voice: On</button><button class="control" id="wakeWordButton" type="button">Wake-word microphone</button><button class="control" id="locationEnable">Enable precise location</button><button class="control" id="syncButton">Devices &amp; Sync</button><button class="control" id="memoryButton" type="button">Saved Memory</button><button class="control" id="missionButton" type="button">Mission Control</button><button class="control" id="updateButton" type="button">Check for updates</button><button class="control" id="castButton" type="button" aria-label="Open Android Cast settings">📺 Cast</button><button class="control" id="clear">Clear conversation</button></div>
+<div class="controls"><select id="mode" aria-label="Personality mode"><option value="professional">Professional</option><option value="witty">Witty</option><option value="philosophical">Philosophical</option><option value="alfred" selected>Alfred · British butler</option></select><button class="control" id="testVoice">Test Alfred voice</button><button class="control" id="voiceToggle">Voice: On</button><button class="control" id="wakeWordButton" type="button">Wake-word microphone</button><button class="control" id="locationEnable">Enable precise location</button><button class="control" id="syncButton">Devices &amp; Sync</button><button class="control" id="memoryButton" type="button">Saved Memory</button><button class="control" id="missionButton" type="button">Mission Control</button><button class="control" id="castButton" type="button" aria-label="Open Android Cast settings">📺 Cast</button><button class="control" id="clear">Clear conversation</button></div>
 <section class="chat"><div class="messages" id="messages" aria-live="polite"><div class="msg jarvis">Good evening, Sir. J.A.R.V.I.S. is online. How may I assist?</div></div><div id="attachmentChip" class="attachment-chip" hidden></div><form class="composer" id="form"><button class="mic" type="button" id="mic" aria-label="Speak">🎙</button><button class="attach-btn" type="button" id="attach" aria-label="Attach a file" title="Attach a file">＋</button><button class="attach-btn" type="button" id="camera" aria-label="Take a photo" title="Take a photo">▣</button><input id="prompt" autocomplete="off" placeholder="Ask me anything, Sir…" maxlength="12000"><button class="send" type="submit">SEND</button></form><input id="fileInput" type="file" accept="image/*,application/pdf,text/plain,text/csv,application/json,text/markdown" hidden><input id="cameraInput" type="file" accept="image/*" capture="environment" hidden></section>
 </main><footer>J.A.R.V.I.S. · PERSONAL AI · VOICE-FIRST INTERFACE</footer></div>
 <section class="sync-panel" id="syncPanel" hidden aria-modal="true" role="dialog" aria-labelledby="syncTitle">
@@ -1169,9 +1169,30 @@ document.addEventListener('visibilitychange',()=>{
  if(!browserWakeEnabled)return;
  if(document.visibilityState==='hidden'){
   if(browserWakeRecognition){try{browserWakeRecognition.stop()}catch{}browserWakeRecognition=null;}
- }else if(!browserWakeCommandCapture)scheduleBrowserWakeRestart(500);
+  $('wakeWordButton').textContent='Wake-word mic: paused';
+  $('hint').textContent='Wake-word listening pauses while this browser tab is in the background. Return to JARVIS to resume, Sir.';
+  status('Wake-word paused');
+ }else if(!browserWakeCommandCapture){
+  $('wakeWordButton').textContent='Wake-word mic: On';
+  scheduleBrowserWakeRestart(500);
+ }
 });
-$('mic').onclick=()=>{if(window.AndroidJarvis){window.AndroidJarvis.startVoiceRecognition();return;}const SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(!SR){add('Voice recognition is not supported by this browser, Sir.','jarvis');return}const rec=new SR();rec.lang='en-GB';rec.interimResults=false;rec.onstart=()=>status('Listening','listening');rec.onresult=e=>{$('prompt').value=e.results[0][0].transcript;$('form').requestSubmit()};rec.onerror=()=>status('System ready');rec.onend=()=>{if(!$('prompt').value)status('System ready')};rec.start()};
+$('mic').onclick=()=>{
+ if(chatBusy){$('hint').textContent='I am finishing the current request, Sir. Please wait a moment.';return;}
+ if(window.AndroidJarvis&&typeof window.AndroidJarvis.startVoiceRecognition==='function'){window.AndroidJarvis.startVoiceRecognition();return;}
+ const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+ if(!SR){add('Voice recognition is not supported by this browser, Sir.','jarvis');$('hint').textContent='This browser does not provide speech recognition. You can still type your request.';return;}
+ const rec=new SR();rec.lang='en-GB';rec.continuous=false;rec.interimResults=true;rec.maxAlternatives=1;
+ rec.onstart=()=>{status('Listening','listening');$('hint').textContent='Listening, Sir. Speak now.';};
+ rec.onresult=e=>{const result=e.results[e.results.length-1];if(result&&result[0]){$('prompt').value=result[0].transcript;if(result.isFinal)$('form').requestSubmit();}};
+ rec.onerror=e=>{
+  const messages={'not-allowed':'Microphone permission is blocked. Allow microphone access for this site in your browser settings, Sir.','service-not-allowed':'Your browser speech service is unavailable. Check microphone and speech permissions, Sir.','audio-capture':'No working microphone was found. Check the phone microphone and try again, Sir.','network':'The browser speech service needs an internet connection, Sir.','no-speech':'I did not hear anything. Tap the microphone and try again, Sir.'};
+  $('hint').textContent=messages[e.error]||('Voice input stopped: '+e.error+'. You can try again or type your request, Sir.');
+  status('Voice input stopped');
+ };
+ rec.onend=()=>{if(!chatBusy&&statusText!=='Thinking')status('System ready');};
+ try{rec.start();}catch(error){$('hint').textContent='The microphone could not start. Please try again, Sir.';status('Microphone unavailable');}
+};
 
 // Mission Control: truthful, local diagnostics and explicitly local routines.
 function detectJarvisDevice(){const ua=navigator.userAgent||'';if(/Android/i.test(ua)&&/TV|BRAVIA|MiTV|AFT/i.test(ua))return 'Android TV';if(/Android/i.test(ua))return 'Android phone/tablet';if(/iPhone|iPad/i.test(ua))return 'iPhone/iPad';if(/Windows/i.test(ua))return 'Windows PC';if(/Macintosh|Mac OS/i.test(ua))return 'Mac';return 'Browser / desktop';}
@@ -1246,54 +1267,6 @@ $('saveCustomRoutine').onclick=()=>{
 };
 
 
-async function checkJarvisUpdates(){
- const button=$('updateButton');
- if(!window.AndroidJarvis||typeof window.AndroidJarvis.getInstalledVersionCode!=='function'||typeof window.AndroidJarvis.installJarvisUpdate!=='function'){
-  $('hint').textContent='The in-app updater requires the JARVIS Android app. Open this screen inside JARVIS, Sir.';
-  return;
- }
- button.disabled=true;button.textContent='Checking…';
- try{
-  const installedCode=Number(window.AndroidJarvis.getInstalledVersionCode());
-  const response=await fetch('https://api.github.com/repos/hrishikeshks1611-stack/J.A.R.V.I.S-/releases/tags/jarvis-latest',{cache:'no-store',headers:{'Accept':'application/vnd.github+json'}});
-  if(response.status===404){$('hint').textContent='No JARVIS update has been published yet. Your installed app has not been changed, Sir.';return;}
-  if(!response.ok)throw new Error('GitHub update service returned HTTP '+response.status+'.');
-  const release=await response.json();
-  const body=String(release.body||'');
-  const readMeta=key=>{const match=body.match(new RegExp('(?:^|\\n)'+key+'=([^\\r\\n]+)','i'));return match?match[1].trim():'';};
-  const packageName=readMeta('JARVIS_PACKAGE');
-  const versionCode=Number(readMeta('JARVIS_VERSION_CODE'));
-  const versionName=readMeta('JARVIS_VERSION_NAME');
-  const asset=(release.assets||[]).find(item=>item.name==='app-phone-debug.apk'||item.name==='JARVIS-phone.apk');
-  if(packageName!=='com.hrishikesh.jarvis.next'||!Number.isSafeInteger(versionCode)||!asset||!/^https:\/\/github\.com\//i.test(asset.browser_download_url||'')){
-   throw new Error('The published update information is incomplete or does not identify the official JARVIS phone app.');
-  }
-  if(versionCode<=installedCode){
-   $('hint').textContent='J.A.R.V.I.S. is up to date (installed build '+installedCode+').';
-   return;
-  }
-  // Never offer a native package until its in-place update compatibility has
-  // been explicitly verified for existing installations. A higher version
-  // number and matching package name are not sufficient on Android.
-  if(readMeta('JARVIS_UPDATE_COMPATIBLE')!=='true'){
-   $('hint').textContent='A newer JARVIS build exists, but its in-place update compatibility has not been verified. Your current installation and data have been left untouched, Sir.';
-   return;
-  }
-  const accepted=confirm('J.A.R.V.I.S. '+versionName+' is available. Android will verify that it can update this installation. Your existing data is not cleared by this updater. Continue?');
-  if(!accepted){$('hint').textContent='Update postponed. Your current JARVIS installation is unchanged, Sir.';return;}
-  const result=window.AndroidJarvis.installJarvisUpdate(asset.browser_download_url,versionCode);
-  if(result==='ALLOW_INSTALL')$('hint').textContent='Allow JARVIS to request app installs in Android Settings, then return and tap Check for updates again, Sir.';
-  else if(result==='DOWNLOAD_STARTED')$('hint').textContent='Downloading the update. Android will verify compatibility and ask for confirmation before installing, Sir.';
-  else $('hint').textContent=String(result||'The update could not be started.');
- }catch(error){
-  $('hint').textContent='Update check failed: '+(error.message||'Please try again later.')+' Your installed JARVIS app is unchanged.';
- }finally{
-  button.disabled=false;button.textContent='Check for updates';
- }
-}
-$('updateButton').onclick=checkJarvisUpdates;
-
-if(window.AndroidJarvis&&typeof window.AndroidJarvis.getInstalledVersionCode==='function')setTimeout(checkJarvisUpdates,2500);
 
 if('serviceWorker'in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('./sw.js').catch(()=>{});
 </script></body></html>
