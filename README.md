@@ -40,3 +40,11 @@ The encrypted conversation database starts empty on a fresh install. Android app
 - JARVIS will not intentionally fall back to a female or unclassified TTS voice. If the phone's installed TTS engine does not expose a qualifying UK male voice, JARVIS remains silent and reports that the Alfred voice is unavailable. The exact Alfred timbre and phrasing cannot be guaranteed by Android TTS alone.
 - Office engine, Education engine, and document-attachment ingestion are not present in this source branch; they are not included in this APK.
 - Launcher icon and splash use a circular multi-ring ARC reactor design, with no triangular centrepiece.
+
+
+## Alfred conversational persona (1.0.13)
+- Offline conversational response layer is active for greetings, identity, thanks, philosophical prompts, relationship topics, opinions, follow-up requests, and unsupported action requests.
+- Replies use a courteous professional register, dry British-style wit, and address the owner as Sir.
+- Responses can use recent encrypted conversation history for follow-up context.
+- Unsupported actions are explicitly identified; the persona does not claim that an unimplemented task has been completed.
+- This is a deterministic on-device persona layer, not unrestricted generative AI. A genuinely open-ended conversational model requires a separately configured inference service or on-device model.
