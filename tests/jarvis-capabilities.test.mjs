@@ -16,6 +16,8 @@ test("capability catalogue has unique stable identifiers", () => {
   assert.ok(ids.includes("offline_wake_word"));
   assert.ok(ids.includes("youtube_music_exact_track"));
   assert.ok(ids.includes("holographic_command_station"));
+  assert.ok(ids.includes("education_engine"));
+  assert.ok(ids.includes("study_plan_builder"));
 });
 
 test("prototype and planned features are not advertised as available", () => {
@@ -23,6 +25,8 @@ test("prototype and planned features are not advertised as available", () => {
   assert.equal(isJarvisCapabilityAvailable("durable_reminders_and_schedules", "android"), false);
   assert.equal(isJarvisCapabilityAvailable("conversation", "android"), true);
   assert.equal(isJarvisCapabilityAvailable("conversation", "desktop"), false);
+  assert.equal(isJarvisCapabilityAvailable("education_engine", "backend"), false);
+  assert.equal(isJarvisCapabilityAvailable("study_plan_builder", "backend"), true);
 });
 
 test("capability queries filter by area, status and surface", () => {
