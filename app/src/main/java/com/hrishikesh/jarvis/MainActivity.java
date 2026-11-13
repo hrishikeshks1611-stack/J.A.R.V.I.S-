@@ -35,8 +35,8 @@ public final class MainActivity extends Activity {
     private final int cyan = Color.rgb(75, 210, 255);
 
     @Override protected void onCreate(Bundle state) {
-        super.onCreate(state);
         setTheme(R.style.AppTheme);
+        super.onCreate(state);
         try {
             buildInterface();
             initialiseSpeech();
@@ -115,6 +115,7 @@ public final class MainActivity extends Activity {
     }
 
     private void initialiseSpeech() {
+        try {
         if (!SpeechRecognizer.isRecognitionAvailable(this)) {
             setStatus("VOICE RECOGNITION UNAVAILABLE ON THIS DEVICE");
         } else {
@@ -138,6 +139,11 @@ public final class MainActivity extends Activity {
                 public void onEvent(int t, Bundle p) { }
             });
         }
+        } catch (Throwable speechError) {
+            recognizer = null;
+            setStatus("VOICE SERVICE UNAVAILABLE • APP CORE STILL READY");
+        }
+        try {
         tts = new TextToSpeech(this, result -> {
             if (result == TextToSpeech.SUCCESS) {
                 ttsReady = true;
@@ -145,6 +151,10 @@ public final class MainActivity extends Activity {
                 speak("At your service, Sir.");
             }
         });
+        } catch (Throwable ttsError) {
+            tts = null;
+            ttsReady = false;
+        }
     }
 
     private void configureVoice() {
@@ -273,8 +283,8 @@ public final class MainActivity extends Activity {
         } else setStatus("PERMISSION DENIED • FEATURE UNAVAILABLE");
     }
     @Override protected void onDestroy() {
-        if (recognizer != null) { recognizer.destroy(); recognizer = null; }
-        if (tts != null) { tts.stop(); tts.shutdown(); }
+        if (recognizer != null) { try { recognizer.destroy(); } catch (Exception ignored) { } recognizer = null; }
+        if (tts != null) { try { tts.stop(); tts.shutdown(); } catch (Exception ignored) { } tts = null; }
         super.onDestroy();
     }
 }
