@@ -170,7 +170,7 @@ public class MainActivity extends Activity {
         setContentView(webView);
         webView.requestFocus();
         if (BuildConfig.JARVIS_TV) applyTvImmersiveMode();
-        webView.loadUrl("https://hrishikeshks1611-stack.github.io/J.A.R.V.I.S-/");
+        webView.loadUrl("https://hrishikeshks1611-stack.github.io/J.A.R.V.I.S-/7.0/");
     }
 
 
