@@ -109,17 +109,17 @@ test("wake phrase is handled on partial recognition without duplicate final disp
   assert.ok(service.includes("broadcast(ACTION_COMMAND, command)"));
 });
 
-test("safe-install Rebirth uses a distinct phone and TV package without replacing existing installs", async () => {
+test("full recovery keeps the installed JARVIS package and advances its version", async () => {
   const gradle = await read("../app/build.gradle");
   const manifest = await read("../app/src/main/AndroidManifest.xml");
   const workflow = await read("../.github/workflows/android-apk.yml");
 
-  assert.ok(gradle.includes("applicationId 'com.hrishikesh.jarvis.rebirth'"));
-  assert.ok(gradle.includes("applicationIdSuffix '.safe'"));
-  assert.ok(gradle.includes("applicationIdSuffix '.tv.safe'"));
-  assert.ok(manifest.includes('android:label="J.A.R.V.I.S. Rebirth (Safe Install)"'));
-  assert.ok(workflow.includes("gh run download 43349538678"));
-  assert.ok(workflow.includes("pm path com.hrishikesh.jarvis.rebirth"));
-  assert.ok(workflow.includes("pm path com.hrishikesh.jarvis.rebirth.safe"));
-  assert.ok(workflow.includes("Both old Rebirth and new safe-install Rebirth are installed side by side."));
+  assert.ok(gradle.includes("applicationId 'com.hrishikesh.jarvis.fresh'"));
+  assert.ok(gradle.includes("versionCode 116"));
+  assert.ok(gradle.includes("versionName '1.1.0'"));
+  assert.ok(!gradle.includes("applicationIdSuffix '.safe'"));
+  assert.ok(!gradle.includes("applicationIdSuffix '.tv.safe'"));
+  assert.ok(manifest.includes('android:label="J.A.R.V.I.S."'));
+  assert.ok(workflow.includes("pm path com.hrishikesh.jarvis.fresh"));
+  assert.ok(workflow.includes("Installing the full-recovery JARVIS APK"));
 });
