@@ -36,10 +36,14 @@ jobs:
           "$AAPT" dump resources "$APK" > /tmp/jarvis-resources.txt
           grep -q 'jarvis_reactor' /tmp/jarvis-resources.txt
           grep -q 'jarvis_splash' /tmp/jarvis-resources.txt
-          unzip -p "$APK" res/mipmap-anydpi-v26/ic_launcher.xml | grep -q 'jarvis_reactor'
-          unzip -p "$APK" res/mipmap-anydpi-v26/ic_launcher_round.xml | grep -q 'jarvis_reactor'
-          unzip -p "$APK" res/drawable/jarvis_splash.xml | grep -q 'jarvis_reactor'
-          unzip -p "$APK" res/drawable/jarvis_reactor.xml | grep -q 'A49,49'
+          grep -q 'android:drawable="@drawable/jarvis_reactor"' app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
+          grep -q 'android:drawable="@drawable/jarvis_reactor"' app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml
+          grep -q 'android:drawable="@drawable/jarvis_reactor"' app/src/main/res/drawable/jarvis_splash.xml
+          grep -q 'A49,49' app/src/main/res/drawable/jarvis_reactor.xml
+          unzip -l "$APK" | grep -q 'res/mipmap-anydpi-v26/ic_launcher.xml'
+          unzip -l "$APK" | grep -q 'res/mipmap-anydpi-v26/ic_launcher_round.xml'
+          unzip -l "$APK" | grep -q 'res/drawable/jarvis_splash.xml'
+          unzip -l "$APK" | grep -q 'res/drawable/jarvis_reactor.xml'
           unzip -t "$APK"
           unzip -l "$APK" | grep -E 'classes([0-9]+)?[.]dex'
           mkdir -p release
