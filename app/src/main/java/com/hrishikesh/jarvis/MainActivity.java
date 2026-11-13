@@ -287,11 +287,11 @@ public final class MainActivity extends Activity {
                 }
                 break;
             case GREETING:
-                speak(PersonaEngine.respond(raw, memory == null ? null : memory.recent(12)));
+                speak(PersonalityEngine.respond(raw, memory == null ? null : memory.recent(12)));
                 setStatus("JARVIS ONLINE • ALFRED PERSONA ACTIVE");
                 break;
             default:
-                String reply = PersonaEngine.respond(raw, memory == null ? null : memory.recent(12));
+                String reply = PersonalityEngine.respond(raw, memory == null ? null : memory.recent(12));
                 if (transcript != null) transcript.setText("“" + raw + "”\n\n" + reply);
                 speak(reply);
                 setStatus("ALFRED PERSONA • OFFLINE RESPONSE");
