@@ -51,6 +51,7 @@ public class WakeWordService extends Service implements RecognitionListener {
     private volatile boolean dictationMode = false;
     private volatile boolean wakeDetectedInUtterance = false;
     private volatile boolean preparing = false;
+    private volatile boolean readyBroadcasted = false;
     private final Handler commandTimeoutHandler = new Handler(Looper.getMainLooper());
     private final Handler dictationTimeoutHandler = new Handler(Looper.getMainLooper());
     private final Runnable dictationTimeout = () -> {
@@ -76,7 +77,6 @@ public class WakeWordService extends Service implements RecognitionListener {
     private Recognizer recognizer;
     private volatile AudioRecord audioRecord;
     private volatile boolean recording = false;
-    private volatile boolean readyBroadcasted = false;
     private Thread audioThread;
     private NoiseSuppressor noiseSuppressor;
     private AcousticEchoCanceler echoCanceler;
