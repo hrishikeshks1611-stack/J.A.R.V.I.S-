@@ -43,7 +43,7 @@ test("device sync identifies this device and exposes the authenticated owner tra
 
 test("service worker cache version is bumped and script parses", async () => {
   const source = await readFile(new URL("../sw.js", import.meta.url), "utf8");
-  assert.ok(source.includes('const CACHE="jarvis-shell-v31"'));
+  assert.ok(source.includes('const CACHE="jarvis-shell-v32"'));
   assert.ok(source.includes('fetch(request, {cache:"no-store"})'));
   assert.doesNotThrow(() => new Function(source));
 });
@@ -301,4 +301,11 @@ test("Algieba voice starts after a short pre-buffer while the audio stream is st
   assert.match(player, /parts\.push\(chunk\.slice\(\)\);deliverChunk\(chunk\)/);
   assert.ok(player.includes("Playback begins after a short pre-buffer"));
   assert.ok(!player.includes("Buffer the complete PCM response before playback"));
+});
+
+test("installed-app inventory and arbitrary app names use the native Android bridge", async () => {
+  const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+  assert.ok(html.includes("installedAppsRequest"));
+  assert.ok(html.includes("AndroidJarvis.getInstalledApps()"));
+  assert.ok(html.includes("appAliases[requestedApp.toLowerCase()]||requestedApp"));
 });
