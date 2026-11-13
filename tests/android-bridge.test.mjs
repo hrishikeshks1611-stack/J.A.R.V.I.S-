@@ -24,18 +24,18 @@ test("native bridge exposes confirmation-based Clock and Calendar actions", asyn
   assert.ok(manifest.includes('com.android.alarm.permission.SET_ALARM'));
 });
 
-test("Android update metadata advances production JARVIS from 5.0.2 to 5.0.3", async () => {
+test("new JARVIS 6.0.0 has a separate package identity from legacy 5.0.2", async () => {
   const gradle = await readFile(new URL("../app/build.gradle", import.meta.url), "utf8");
   assert.match(gradle, /applicationId\s+'com\.hrishikesh\.jarvis'/);
   assert.match(gradle, /versionCode\s+503/);
   assert.match(gradle, /versionName\s+'5\.0\.3'/);
 });
 
-test("APK workflow keeps debug builds as verification artifacts and never publishes them as updates", async () => {
+test("APK workflow verifies separate-install builds and never publishes debug APKs as releases", async () => {
   const workflow = await readFile(new URL("../.github/workflows/android-apk.yml", import.meta.url), "utf8");
   assert.match(workflow, /contents:\s*read/);
   assert.doesNotMatch(workflow, /gh release create|action-gh-release|Publish phone APK/);
-  assert.match(workflow, /debug-verification/);
+  assert.match(workflow, /separate-install/);\n  assert.match(workflow, /com\\.hrishikesh\\.jarvis\\.next/);\n  assert.match(workflow, /com\\.hrishikesh\\.jarvis\\.next\\.tv/);
 });
 
 
