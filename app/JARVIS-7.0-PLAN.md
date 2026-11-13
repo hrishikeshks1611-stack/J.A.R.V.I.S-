@@ -52,3 +52,11 @@ JARVIS 7.0 is a separate Android application. It must not replace, update, unins
 
 ## Release gate
 A successful CI build is not proof of device functionality. Do not call 7.0 complete or distribute it as a release until the above tests are passed and the owner approves the result.
+
+## Response speed — mandatory must-pass requirement
+- Fast response is a core requirement, not an optional setting or a trade-off to negotiate.
+- For ordinary voice and text requests, begin a useful response promptly; avoid unnecessary delays, verbose preambles, repeated acknowledgements, and needless confirmation questions.
+- Handle lightweight commands locally and immediately where possible (for example clock, opening supported screens, playback controls, and organiser actions); do not wait for a full AI round-trip when a safe native action can be performed directly.
+- For longer AI, Tutor, Office, or research tasks, acknowledge promptly, show that work has started, and stream or progressively present useful results rather than leaving the user waiting in silence.
+- Keep speech concise and interruptible. Measure command-to-first-response latency and command-to-action latency in tests; set and enforce explicit performance budgets for local commands and ordinary assistant replies.
+- Test on the target Android 10 device class under normal network conditions and weak/slow network conditions. A successful build alone does not satisfy this requirement.
