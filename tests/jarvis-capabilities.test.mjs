@@ -27,7 +27,9 @@ test("prototype and planned features are not advertised as available", () => {
   assert.equal(isJarvisCapabilityAvailable("durable_reminders_and_schedules", "android"), false);
   assert.equal(isJarvisCapabilityAvailable("conversation", "android"), true);
   assert.equal(isJarvisCapabilityAvailable("conversation", "desktop"), false);
-  assert.equal(isJarvisCapabilityAvailable("education_engine", "backend"), false);
+  assert.equal(isJarvisCapabilityAvailable("education_engine", "backend"), true);
+  assert.equal(isJarvisCapabilityAvailable("medical_assistant_engine", "backend"), true);
+  assert.equal(isJarvisCapabilityAvailable("emergency_triage_guidance", "backend"), true);
   assert.equal(isJarvisCapabilityAvailable("study_plan_builder", "backend"), true);
 });
 
@@ -70,6 +72,7 @@ test("capability catalogue answers capability questions from verified build meta
   assert.equal(isJarvisCapabilityAvailable("contact_calling", "pwa"), false);
   const android = buildJarvisCapabilitiesReply("Android phone/tablet");
   assert.match(android, /initiate a phone call/i);
+  assert.match(android, /tap-to-speak voice input/i);
   assert.match(android, /structured study plan/i);
   assert.match(android, /PDF, DOCX, XLSX, PPTX, CSV, TXT and Markdown/i);
   assert.match(android, /wake-word detection is experimental/i);
