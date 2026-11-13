@@ -30,6 +30,7 @@ public final class MainActivity extends Activity {
     private static final int REQ_AUDIO = 41, REQ_CAMERA = 42, REQ_SPEECH = 43;
     private TextToSpeech tts;
     private ConversationStore memory;
+    private ArcReactorView reactorView;
     private SpeechRecognizer recognizer;
     private TextView status, transcript;
     private boolean ttsReady = false;
@@ -67,16 +68,10 @@ public final class MainActivity extends Activity {
         title.setGravity(Gravity.CENTER);
         root.addView(title, matchWrap());
 
-        ImageView reactor = new ImageView(this);
-        reactor.setImageResource(R.drawable.jarvis_reactor);
-        reactor.setScaleType(ImageView.ScaleType.FIT_CENTER);
-        LinearLayout.LayoutParams rp = new LinearLayout.LayoutParams(dp(220), dp(220));
-        rp.setMargins(0, dp(18), 0, dp(12));
-        root.addView(reactor, rp);
-        RotateAnimation rotation = new RotateAnimation(0, 360, Animation.RELATIVE_TO_SELF, .5f, Animation.RELATIVE_TO_SELF, .5f);
-        rotation.setDuration(18000);
-        rotation.setRepeatCount(Animation.INFINITE);
-        reactor.startAnimation(rotation);
+        reactorView = new ArcReactorView(this);
+        LinearLayout.LayoutParams rp = new LinearLayout.LayoutParams(dp(260), dp(260));
+        rp.setMargins(0, dp(10), 0, dp(10));
+        root.addView(reactorView, rp);
 
         status = new TextView(this);
         status.setTextColor(Color.rgb(142, 213, 240));
@@ -364,6 +359,8 @@ public final class MainActivity extends Activity {
             else if (request == REQ_CAMERA) openCamera();
         } else setStatus("PERMISSION DENIED • FEATURE UNAVAILABLE");
     }
+    @Override protected void onResume() { super.onResume(); if (reactorView != null) reactorView.onResume(); }
+    @Override protected void onPause() { if (reactorView != null) reactorView.onPause(); super.onPause(); }
     @Override protected void onDestroy() {
         if (recognizer != null) { try { recognizer.destroy(); } catch (Exception ignored) { } recognizer = null; }
         if (tts != null) { try { tts.stop(); tts.shutdown(); } catch (Exception ignored) { } tts = null; }
