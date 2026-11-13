@@ -1007,6 +1007,7 @@ window.jarvisNative={
  },
  onAttachment:(raw)=>{try{const a=typeof raw==='string'?JSON.parse(raw):raw;pendingAttachment=a;renderAttachment();$('hint').textContent='Attachment ready, Sir. Add a question or send it as it is.'}catch(e){$('hint').textContent='I could not load that attachment, Sir.'}}
 };
+$('wakeWordButton').hidden=true;
 $('wakeWordButton').onclick=()=>{
  if(window.AndroidJarvis&&typeof window.AndroidJarvis.openWakeWordSettings==='function'){
   window.AndroidJarvis.openWakeWordSettings();return;
