@@ -7,11 +7,11 @@ android {
         buildConfig true
     }
     defaultConfig {
-        applicationId 'com.hrishikesh.jarvis.rebirth'
+        applicationId 'com.hrishikesh.jarvis.fresh'
         minSdk 23
         targetSdk 35
-        versionCode 601
-        versionName '6.0.1'
+        versionCode 116
+        versionName '1.1.0'
         buildConfigField 'boolean', 'JARVIS_TV', 'false'
         buildConfigField 'String', 'ASSISTANT_NAME', '"J.A.R.V.I.S."'
     }
@@ -19,12 +19,10 @@ android {
     productFlavors {
         phone {
             dimension 'device'
-            // Side-by-side safe install: leave existing JARVIS apps untouched.
-            applicationIdSuffix '.safe'
         }
         tv {
             dimension 'device'
-            applicationIdSuffix '.tv.safe'
+            applicationIdSuffix '.tv'
             versionNameSuffix '-tv'
             buildConfigField 'boolean', 'JARVIS_TV', 'true'
         }
