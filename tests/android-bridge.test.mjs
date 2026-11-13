@@ -75,3 +75,13 @@ test("CameraX capture activity is lifecycle-aware and requests camera permission
   assert.ok(activity.includes("bindToLifecycle(this"));
   assert.ok(activity.includes("requestPermissions(new String[]{Manifest.permission.CAMERA}"));
 });
+
+test("Camera smoke launcher is debug-only while the production camera activity stays private", async () => {
+  const debugManifest = await readFile(new URL("../app/src/debug/AndroidManifest.xml", import.meta.url), "utf8");
+  const launcher = await readFile(new URL("../app/src/debug/java/com/hrishikesh/jarvis/CameraCaptureTestActivity.java", import.meta.url), "utf8");
+  const productionManifest = await readFile(new URL("../app/src/main/AndroidManifest.xml", import.meta.url), "utf8");
+  assert.ok(debugManifest.includes(".CameraCaptureTestActivity"));
+  assert.ok(debugManifest.includes('android:permission="android.permission.DUMP"'));
+  assert.ok(launcher.includes("new Intent(this, CameraCaptureActivity.class)"));
+  assert.ok(productionManifest.includes('android:name=".CameraCaptureActivity" android:exported="false"'));
+});
