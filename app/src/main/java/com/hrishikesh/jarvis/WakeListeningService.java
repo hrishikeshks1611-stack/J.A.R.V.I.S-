@@ -90,21 +90,33 @@ public final class WakeListeningService extends Service {
         try {
             tts = new TextToSpeech(this, status -> {
                 if (status == TextToSpeech.SUCCESS) {
-                    ready = true;
-                    try {
-                        tts.setLanguage(Locale.UK);
-                        Voice algieba = null;
-                        Set<Voice> voices = tts.getVoices();
-                        if (voices != null) for (Voice voice : voices) {
-                            if (voice.getName().toLowerCase(Locale.ROOT).contains("algieba")) {
-                                algieba = voice; break;
-                            }
-                        }
-                        if (algieba != null) tts.setVoice(algieba);
-                    } catch (Exception ignored) { }
+                    ready = configureAlfredVoice();
+                    if (!ready) updateNotification("Alfred UK male voice unavailable • speech output muted");
                 }
             });
         } catch (Throwable ignored) { ready = false; }
+    }
+
+    private boolean configureAlfredVoice() {
+        try {
+            Set<Voice> voices = tts.getVoices();
+            if (voices == null) return false;
+            Voice chosen = null;
+            for (Voice voice : voices) {
+                String name = voice.getName().toLowerCase(Locale.ROOT);
+                Locale locale = voice.getLocale();
+                if (!"en".equals(locale.getLanguage()) || !"GB".equalsIgnoreCase(locale.getCountry())) continue;
+                if (name.contains("female")) continue;
+                if (name.contains("algieba") || name.contains("male") || name.contains("masculine")) {
+                    chosen = voice;
+                    if (name.contains("algieba")) break;
+                }
+            }
+            if (chosen == null) return false;
+            int language = tts.setLanguage(Locale.UK);
+            if (language == TextToSpeech.LANG_MISSING_DATA || language == TextToSpeech.LANG_NOT_SUPPORTED) return false;
+            return tts.setVoice(chosen) == TextToSpeech.SUCCESS;
+        } catch (Exception ignored) { return false; }
     }
 
     private void beginRecognition() {
