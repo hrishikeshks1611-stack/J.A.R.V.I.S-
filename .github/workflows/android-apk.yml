@@ -1,8 +1,8 @@
-name: Build JARVIS 7.0 Android phone and TV packages
+name: Build J.A.R.V.I.S Android phone and TV packages
 on:
   workflow_dispatch:
   push:
-    branches: [ jarvis-7.0-new-app ]
+    branches: [ jarvis-clean-brand-build ]
     paths:
       - 'app/**'
       - '*.gradle'
@@ -54,26 +54,39 @@ jobs:
           test -s "$TV_APK"
           PHONE_BADGING="$("$AAPT" dump badging "$PHONE_APK")"
           TV_BADGING="$("$AAPT" dump badging "$TV_APK")"
-          echo "$PHONE_BADGING" | grep -Fq "package: name='com.hrishikesh.jarvis.seven.release' versionCode='701' versionName='7.0'"
-          echo "$TV_BADGING" | grep -Fq "package: name='com.hrishikesh.jarvis.seven.release.tv' versionCode='701' versionName='7.0-tv'"
+          echo "$PHONE_BADGING" | grep -Fq "package: name='com.hrishikesh.jarvis.eight.release' versionCode='801' versionName='8.0'"
+          echo "$TV_BADGING" | grep -Fq "package: name='com.hrishikesh.jarvis.eight.release.tv' versionCode='801' versionName='8.0-tv'"
           if echo "$PHONE_BADGING" | grep -Eq "package: name='com.hrishikesh.jarvis(\.next)?'"; then
-            echo "ERROR: JARVIS 7.0 package collides with an earlier JARVIS app"
+            echo "ERROR: J.A.R.V.I.S package collides with an earlier JARVIS app"
             exit 1
           fi
           sha256sum "$PHONE_APK" "$TV_APK"
-          echo "Verified independent phone package: com.hrishikesh.jarvis.seven.release"
-          echo "Verified independent TV package: com.hrishikesh.jarvis.seven.release.tv"
+          echo "$PHONE_BADGING" | grep -Fq "application-label:'J.A.R.V.I.S'"
+          echo "$TV_BADGING" | grep -Fq "application-label:'J.A.R.V.I.S'"
+          unzip -l "$PHONE_APK" | grep -Fq "res/drawable/ic_jarvis_launcher.xml"
+          echo "Verified exact J.A.R.V.I.S launcher label and packaged ARC reactor icon."
+          echo "Verified independent phone package: com.hrishikesh.jarvis.eight.release"
+          echo "Verified independent TV package: com.hrishikesh.jarvis.eight.release.tv"
+      - name: Install and launch on Android 10 emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 29
+          target: default
+          arch: x86_64
+          profile: Pixel_2
+          disable-animations: true
+          script: gradle --no-daemon connectedPhoneDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.hrishikesh.jarvis.MainActivityLaunchTest
       - name: Upload phone build artifact for QA
         uses: actions/upload-artifact@v4
         with:
-          name: JARVIS-7.0-Android-phone-QA
+          name: J.A.R.V.I.S-Android-phone-QA
           path: app/build/outputs/apk/phone/debug/app-phone-debug.apk
           if-no-files-found: error
           retention-days: 30
       - name: Upload Android TV build artifact for QA
         uses: actions/upload-artifact@v4
         with:
-          name: JARVIS-7.0-Android-TV-QA
+          name: J.A.R.V.I.S-Android-TV-QA
           path: app/build/outputs/apk/tv/debug/app-tv-debug.apk
           if-no-files-found: error
           retention-days: 30
