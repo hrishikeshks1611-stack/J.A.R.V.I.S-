@@ -341,3 +341,19 @@ test("always-on microphone is disabled while tap-to-speak remains available", as
  assert.ok(html.includes("Tap the microphone button when you want to speak"));
  assert.ok(source.includes("startOfflineDictation()"));
 });
+
+
+test("Alfred mode is selectable and the Android voice test exercises British pronunciation", async () => {
+  const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+  assert.ok(html.includes('<option value="alfred">Alfred · British butler</option>'));
+  assert.ok(html.includes("The car is parked near the garden. The water is rather warm"));
+  assert.ok(html.includes("jarvis-alfred-male-british-v3|gemini-3.1-flash-tts-preview"));
+});
+
+test("Alfred speech endpoint pins Algieba and en-GB and requests non-rhotic British pronunciation", async () => {
+  const speech = await readFile(new URL("../api/speech.js", import.meta.url), "utf8");
+  assert.ok(speech.includes('voiceName: "Algieba"'));
+  assert.ok(speech.includes('languageCode: "en-GB"'));
+  assert.match(speech, /non-rhotic British pronunciation/i);
+  assert.match(speech, /ACCENT CHECK WORDS/);
+});
