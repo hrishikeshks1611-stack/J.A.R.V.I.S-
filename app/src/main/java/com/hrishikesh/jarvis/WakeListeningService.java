@@ -157,9 +157,9 @@ public final class WakeListeningService extends Service {
         switch (command.action) {
             case OPEN_APP: launchApp(command.argument); break;
             case OPEN_CAMERA:
-                Intent camera = new Intent("android.media.action.IMAGE_CAPTURE");
+                Intent camera = new Intent(this, CameraActivity.class);
                 camera.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                if (camera.resolveActivity(getPackageManager()) != null) startActivity(camera);
+                startActivity(camera);
                 break;
             case PLAY_MUSIC:
                 Intent music = new Intent(Intent.ACTION_VIEW,

@@ -114,7 +114,7 @@ public final class MainActivity extends Activity {
         root.addView(music, matchWrap());
 
         TextView note = new TextView(this);
-        note.setText("VOICE INPUT • APP LAUNCH • CAMERA • MEDIA INTENTS\nWake-word background listening and device pairing are not enabled yet.");
+        note.setText("VOICE INPUT • FOREGROUND WAKE LISTENER • APP LAUNCH • IN-APP CAMERA • MEDIA SEARCH\nEncrypted pairing, shared memory and full media-session control are still in development.");
         note.setTextColor(Color.rgb(105, 145, 170));
         note.setTextSize(11);
         note.setGravity(Gravity.CENTER);
@@ -272,9 +272,10 @@ public final class MainActivity extends Activity {
         if (checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
             requestPermissions(new String[]{Manifest.permission.CAMERA}, REQ_CAMERA); return;
         }
-        Intent i = new Intent("android.media.action.IMAGE_CAPTURE");
-        if (i.resolveActivity(getPackageManager()) != null) startActivity(i);
-        else { setStatus("NO CAMERA APP FOUND"); speak("No camera application is available, Sir."); }
+        try {
+            startActivity(new Intent(this, CameraActivity.class));
+            setStatus("OPENING JARVIS CAMERA");
+        } catch (Exception e) { setStatus("CAMERA COULD NOT BE OPENED"); speak("I could not open the camera, Sir."); }
     }
 
     private void playMusic(String query) {
