@@ -729,7 +729,7 @@ if(multiAppMusic && window.AndroidJarvis && typeof window.AndroidJarvis.openApp=
  try{
   const track=await lookupYoutubeMusicTrack(songQuery);
   openYoutubeMusicTrack(track);
-  spokenReply=appReply+' Opening '+track.title+' by '+track.artist+' in YouTube Music, Sir.');
+  spokenReply=appReply+' Opening '+track.title+' by '+track.artist+' in YouTube Music, Sir.';
   $('hint').textContent='Opened the selected track in YouTube Music.';
  }catch(error){
   spokenReply=appReply+' Sir, I could not open that song in YouTube Music: '+error.message;
