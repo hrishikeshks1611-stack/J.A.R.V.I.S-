@@ -43,7 +43,7 @@ test("device sync identifies this device and exposes the authenticated owner tra
 
 test("service worker cache version is bumped and script parses", async () => {
   const source = await readFile(new URL("../sw.js", import.meta.url), "utf8");
-  assert.ok(source.includes('const CACHE="jarvis-shell-v37"'));
+  assert.ok(source.includes('const CACHE="jarvis-shell-v38"'));
   assert.ok(source.includes('fetch(request, {cache:"no-store"})'));
   assert.doesNotThrow(() => new Function(source));
 });
