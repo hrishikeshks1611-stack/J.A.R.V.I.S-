@@ -515,6 +515,24 @@ function instantReply(text){
  if(/^(?:what is the date|what is today'?s date|what day is it|today'?s date)$/.test(q))return 'Today is '+new Date().toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long',year:'numeric'})+', Sir.';
  return null;
 }
+async function requestYoutubeMusicPlayback(query){
+ const response=await fetch(JARVIS_API+'/music-search',{
+  method:'POST',
+  headers:{'Content-Type':'application/json','Authorization':'Bearer '+sessionToken},
+  body:JSON.stringify({query})
+ });
+ const raw=await response.text();let data={};try{data=JSON.parse(raw)}catch{}
+ if(!response.ok)throw new Error(data.error||'YouTube Music could not find that track.');
+ const track=data.selected||(Array.isArray(data.items)?data.items[0]:null);
+ if(!track||!track.videoId)throw new Error('YouTube Music did not return a playable track.');
+ if(window.AndroidJarvis&&typeof window.AndroidJarvis.playYoutubeMusic==='function'){
+  const result=window.AndroidJarvis.playYoutubeMusic(track.videoId)||'';
+  if(!result.startsWith('TRACK_OPENED_UNCONFIRMED:'))throw new Error(result.replace(/^ERROR:/,'')||'Android could not open the selected YouTube Music track.');
+ }else{
+  window.location.href=track.url||('https://music.youtube.com/watch?v='+encodeURIComponent(track.videoId));
+ }
+ return track;
+}
 $('form').onsubmit=async e=>{e.preventDefault();if(!sessionToken){openSyncPanel();$('syncStatus').textContent='Pair this device before sending messages.';return;}const message=$('prompt').value.trim();if(!message&&!pendingAttachment)return;$('prompt').value='';const attachment=pendingAttachment;pendingAttachment=null;renderAttachment();add(message||'Please examine this attachment, Sir.', 'user',attachment);history.push({role:'user',text:message||'Please examine the attached file.'});const fileRequest=detectFileRequest(message);if(fileRequest){await createOfficeFile(message,fileRequest.format,attachment);return;}
 const instant=attachment?null:instantReply(message);
 if(instant){
@@ -524,24 +542,21 @@ if(instant){
 }
 // Handle a chained native command locally instead of sending it to the AI chat model.
 const multiAppMusic=message.match(/^\s*(?:jarvis[, ]+)?(?:please\s+)?(?:open|launch|start)\s+(whatsapp|chrome|gmail|instagram|facebook|telegram)\s+and\s+(?:then\s+)?(?:play|listen to)\s+(.+?)(?:\s+(?:on|in)\s+youtube\s+music)?[.!?]*\s*$/i);
-if(multiAppMusic && window.AndroidJarvis && typeof window.AndroidJarvis.openApp==='function' && typeof window.AndroidJarvis.playYoutubeMusic==='function'){
+if(multiAppMusic && window.AndroidJarvis && typeof window.AndroidJarvis.openApp==='function'){
  const appName=multiAppMusic[1].toLowerCase();
  const songQuery=multiAppMusic[2].trim().replace(/\s+(?:on|in)\s+youtube\s+music$/i,'').trim();
  const appReply=window.AndroidJarvis.openApp(appName);
- const musicReply=songQuery?window.AndroidJarvis.playYoutubeMusic(songQuery):'ERROR:No song title was recognised.';
  let spokenReply;
- if(!appReply || /does not appear to be installed|do not have a launch command|could not/i.test(appReply)){
-  spokenReply=appReply||'I could not open '+appName+', Sir.';
- }else if(typeof musicReply==='string'&&musicReply.startsWith('APP_OPENED_UNCONFIRMED:')){
-  spokenReply=appReply+' I have also sent a play request for '+songQuery+' to YouTube Music, Sir. Playback is not confirmed.';
- }else if(typeof musicReply==='string'&&musicReply.startsWith('SEARCH_FALLBACK:')){
-  spokenReply=appReply+' YouTube Music could only open search results for '+songQuery+'. Please select the track to start playback.';
- }else{
-  spokenReply=appReply+' '+(musicReply.startsWith('ERROR:')?musicReply.slice(6):musicReply);
+ try{
+  const track=await requestYoutubeMusicPlayback(songQuery);
+  spokenReply=appReply+' Opening '+track.title+' by '+track.artist+' in YouTube Music, Sir.';
+  $('hint').textContent='Selected a YouTube Music track and opened its direct link.';
+ }catch(error){
+  spokenReply=appReply+' Sir, I could not start the YouTube Music request: '+error.message;
+  $('hint').textContent='YouTube Music track lookup or launch failed.';
  }
  add(spokenReply,'jarvis');history.push({role:'model',text:spokenReply});history=history.slice(-20);
  pairApi({action:'append-local',message,reply:spokenReply}).catch(()=>{});
- $('hint').textContent='Native multi-action command processed; music playback may need confirmation.';
  status('System ready');speak(spokenReply);return;
 }
 const openYoutubeMusicOnly=/^\s*(?:jarvis[, ]+)?(?:please\s+)?(?:open|launch|start)\s+youtube\s+music(?:\s+app)?[.!?]*\s*$/i.test(message);
@@ -570,52 +585,21 @@ if(openYoutubeMusicOnly){
 if(musicCommand&&(explicitMusicCommand||/^\s*(?:jarvis[, ]+)?(?:please\s+)?play\s+/i.test(message))){
  const songQuery=musicCommand[1].trim().replace(/\s+(?:on|in)\s+youtube\s+music$/i,'').trim();
  if(songQuery){
-  const reply='Requesting playback of '+songQuery+' in YouTube Music, Sir.';
-  add(reply,'jarvis');history.push({role:'model',text:reply});history=history.slice(-20);
-  pairApi({action:'append-local',message,reply}).catch(()=>{});
-  if(window.AndroidJarvis&&typeof window.AndroidJarvis.playYoutubeMusic==='function'){
-   const nativeReply=window.AndroidJarvis.playYoutubeMusic(songQuery)||'';
-   let spokenReply=reply;
-   if(typeof nativeReply==='string'&&nativeReply.startsWith('ACCESS_REQUIRED:')){
-    spokenReply='Sir, Android has opened Notification Access settings. Please enable JARVIS YouTube Music Control, return here, and repeat your song request.';
-    $('hint').textContent='Enable JARVIS YouTube Music Control in Android settings.';
-   }else if(typeof nativeReply==='string'&&nativeReply.startsWith('PLAYBACK_QUEUED:')){
-    spokenReply='Opening YouTube Music and sending a direct playback command for '+songQuery+', Sir. I will verify whether it actually starts.';
-    $('hint').textContent='Waiting for YouTube Music playback confirmation.';
-    let musicChecks=0;
-    const checkMusicPlayback=()=>{
-     if(!window.AndroidJarvis||typeof window.AndroidJarvis.getYoutubeMusicPlaybackStatus!=='function')return;
-     const playback=window.AndroidJarvis.getYoutubeMusicPlaybackStatus()||'';
-     if(playback.startsWith('PLAYING:')){
-      const track=playback.slice(8);
-      $('hint').textContent='YouTube Music confirmed playback: '+track;
-      status('YouTube Music playing');
-      speak('Now playing '+track+', Sir.');
-     }else if(playback.startsWith('NOT_PLAYING:')||playback.startsWith('SESSION_NOT_FOUND:')||playback.startsWith('ACCESS_ERROR')){
-      $('hint').textContent='YouTube Music did not confirm playback. Status: '+playback;
-      status('Playback not confirmed');
-      speak('Sir, YouTube Music did not confirm that playback started. Please check the app.');
-     }else if(musicChecks++<12){
-      setTimeout(checkMusicPlayback,900);
-     }
-    };
-    setTimeout(checkMusicPlayback,1800);
-   }else if(typeof nativeReply==='string'&&(nativeReply.startsWith('APP_OPENED_UNCONFIRMED:')||nativeReply.startsWith('PLAY_REQUESTED:'))){
-    spokenReply='I opened YouTube Music with a song request for '+songQuery+', Sir, but playback is not confirmed. If it shows search results, please select the track.';
-    $('hint').textContent='YouTube Music opened; playback is unverified.';
-   }else if(typeof nativeReply==='string'&&nativeReply.startsWith('SEARCH_FALLBACK:')){
-    spokenReply='YouTube Music did not accept the direct play command, Sir. I could only open search results for '+songQuery+'. Please select a track to start playback.';
-    $('hint').textContent='Search opened; playback was not confirmed.';
-   }else if(typeof nativeReply==='string'&&nativeReply.startsWith('ERROR:')){
-    spokenReply=nativeReply.slice(6);
-    $('hint').textContent='YouTube Music playback request failed.';
-   }
-   status('YouTube Music requested');speak(spokenReply);
-  }else{
-   const fallback='Native YouTube Music control is unavailable in this app build, Sir. I can only open search results.';
-   $('hint').textContent='Opening YouTube Music search; direct playback needs the updated Android bridge.';
-   status('YouTube Music search');speak(fallback);
-   window.location.href='https://music.youtube.com/search?q='+encodeURIComponent(songQuery);
+  status('Searching YouTube Music','thinking');
+  $('hint').textContent='Finding the exact track in YouTube Music…';
+  try{
+   const track=await requestYoutubeMusicPlayback(songQuery);
+   const spokenReply='Opening '+track.title+' by '+track.artist+' in YouTube Music, Sir.';
+   add(spokenReply,'jarvis');history.push({role:'model',text:spokenReply});history=history.slice(-20);
+   pairApi({action:'append-local',message,reply:spokenReply}).catch(()=>{});
+   $('hint').textContent='Opened '+track.title+' in YouTube Music. The app handles playback from this track link.';
+   status('YouTube Music opened');speak(spokenReply);
+  }catch(error){
+   const spokenReply='Sir, I could not open that song in YouTube Music: '+error.message;
+   add(spokenReply,'jarvis');history.push({role:'model',text:spokenReply});history=history.slice(-20);
+   pairApi({action:'append-local',message,reply:spokenReply}).catch(()=>{});
+   $('hint').textContent='YouTube Music track lookup or launch failed.';
+   status('Music request failed');speak(spokenReply);
   }
   return;
  }
