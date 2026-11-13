@@ -148,7 +148,7 @@ jobs:
             exit 1
           fi
           mark "Starting emulator with hardware acceleration enabled."
-          "$ANDROID_HOME/emulator/emulator" -avd jarvis-api29 -no-window -no-audio -no-boot-anim -no-snapshot -gpu swiftshader_indirect -accel auto -memory 2048 -cores 2 > "$RUNNER_TEMP/emulator.log" 2>&1 &
+          "$ANDROID_HOME/emulator/emulator" -avd jarvis-api29 -no-window -no-audio -no-boot-anim -no-snapshot -gpu swiftshader_indirect -accel auto -memory 2048 -cores 2 -camera-back emulated -camera-front emulated > "$RUNNER_TEMP/emulator.log" 2>&1 &
           EMULATOR_PID=$!
           cleanup() {
             timeout 8s adb emu kill >/dev/null 2>&1 || true
@@ -237,8 +237,35 @@ jobs:
             mark "Both old Rebirth and new safe-install Rebirth are installed side by side."
           fi
           adb_bounded 15 shell pm path com.hrishikesh.jarvis.rebirth.safe | grep -q "package:"
-          mark "Granting microphone permission."
-          adb_bounded 60 shell pm grant com.hrishikesh.jarvis.rebirth.safe android.permission.RECORD_AUDIO
+          mark "Granting camera permission for CameraX capture verification."
+          adb_bounded 60 shell pm grant com.hrishikesh.jarvis.rebirth.safe android.permission.CAMERA
+          mark "Testing rear-camera capture through CameraCaptureActivity."
+          adb_bounded 20 shell am start -n com.hrishikesh.jarvis.rebirth.safe/com.hrishikesh.jarvis.CameraCaptureActivity --ez camera_selfie false
+          photo_count=0
+          for attempt in $(seq 1 25); do
+            photo_count="$(adb_bounded 10 shell ls /sdcard/Pictures/JARVIS 2>/dev/null | tr -d '\r' | grep -c '^JARVIS_' || true)"
+            if [ "$photo_count" -ge 1 ]; then break; fi
+            sleep 1
+          done
+          if [ "$photo_count" -lt 1 ]; then
+            mark "Rear-camera photo was not saved. Collecting CameraX diagnostics."
+            adb_bounded 20 logcat -d -v threadtime | grep -E "CameraX|Camera2|CameraCaptureActivity|AndroidRuntime|Permission" | tail -n 180 || true
+            exit 1
+          fi
+          mark "Rear-camera photo saved; testing front-camera selfie capture."
+          adb_bounded 20 shell am start -n com.hrishikesh.jarvis.rebirth.safe/com.hrishikesh.jarvis.CameraCaptureActivity --ez camera_selfie true
+          photo_count=0
+          for attempt in $(seq 1 25); do
+            photo_count="$(adb_bounded 10 shell ls /sdcard/Pictures/JARVIS 2>/dev/null | tr -d '\r' | grep -c '^JARVIS_' || true)"
+            if [ "$photo_count" -ge 2 ]; then break; fi
+            sleep 1
+          done
+          if [ "$photo_count" -lt 2 ]; then
+            mark "Front-camera selfie was not saved. Collecting CameraX diagnostics."
+            adb_bounded 20 logcat -d -v threadtime | grep -E "CameraX|Camera2|CameraCaptureActivity|AndroidRuntime|Permission" | tail -n 180 || true
+            exit 1
+          fi
+          mark "Rear and front CameraX captures were saved successfully."
           mark "Microphone permission granted; clearing emulator logs."
           adb_bounded 30 logcat -c
 
