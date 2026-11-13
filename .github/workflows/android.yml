@@ -31,7 +31,7 @@ jobs:
           test -s "$APK"
           AAPT="$ANDROID_HOME/build-tools/35.0.0/aapt"
           "$AAPT" dump badging "$APK" | tee /tmp/jarvis-badging.txt
-          grep -q "package: name='com.hrishikesh.jarvis.fresh' versionCode='114' versionName='1.0.14'" /tmp/jarvis-badging.txt
+          grep -q "package: name='com.hrishikesh.jarvis.fresh' versionCode='115' versionName='1.0.15'" /tmp/jarvis-badging.txt
           grep -q "application-icon-.*:.*res/" /tmp/jarvis-badging.txt
           "$AAPT" dump resources "$APK" > /tmp/jarvis-resources.txt
           grep -q 'jarvis_reactor' /tmp/jarvis-resources.txt
@@ -39,7 +39,10 @@ jobs:
           grep -q 'android:drawable="@drawable/jarvis_reactor"' app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
           grep -q 'android:drawable="@drawable/jarvis_reactor"' app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml
           grep -q 'android:drawable="@drawable/jarvis_reactor"' app/src/main/res/drawable/jarvis_splash.xml
-          grep -q 'A49,49' app/src/main/res/drawable/jarvis_reactor.xml
+          ! grep -q 'JarvisNotificationListener' app/src/main/AndroidManifest.xml
+          ! grep -q 'BIND_NOTIFICATION_LISTENER_SERVICE' app/src/main/AndroidManifest.xml
+          ! grep -q 'android.permission.INTERNET' app/src/main/AndroidManifest.xml
+          ! grep -R -q 'MediaSessionManager\|getActiveSessions\|NotificationListenerService' app/src/main/java
           unzip -l "$APK" | grep -q 'res/mipmap-anydpi-v26/ic_launcher.xml'
           unzip -l "$APK" | grep -q 'res/mipmap-anydpi-v26/ic_launcher_round.xml'
           unzip -l "$APK" | grep -q 'res/drawable/jarvis_splash.xml'
@@ -47,11 +50,11 @@ jobs:
           unzip -t "$APK"
           unzip -l "$APK" | grep -E 'classes([0-9]+)?[.]dex'
           mkdir -p release
-          cp "$APK" release/JARVIS-1.0.14-ALFRED-ARC.apk
+          cp "$APK" release/JARVIS-1.0.15-SECURITY-REVIEW.apk
           sha256sum release/JARVIS-1.0.14-ALFRED-ARC.apk | tee release/SHA256SUMS.txt
       - uses: actions/upload-artifact@v4
         with:
-          name: JARVIS-1.0.14-ALFRED-ARC-APK
+          name: JARVIS-1.0.15-SECURITY-REVIEW-APK
           path: |
             release/JARVIS-1.0.14-ALFRED-ARC.apk
             release/SHA256SUMS.txt
