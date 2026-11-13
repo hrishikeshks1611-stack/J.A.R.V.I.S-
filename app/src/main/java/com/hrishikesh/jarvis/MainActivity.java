@@ -31,7 +31,8 @@ import java.io.OutputStream;
 import java.io.IOException;
 
 public final class MainActivity extends Activity {
-    private static final int REQ_AUDIO = 41, REQ_CAMERA = 42, REQ_SPEECH = 43, REQ_SAVE_OFFICE = 44;\n    private File pendingOfficeFile;
+    private static final int REQ_AUDIO = 41, REQ_CAMERA = 42, REQ_SPEECH = 43, REQ_SAVE_OFFICE = 44, REQ_OPEN_ATTACHMENT = 45;
+    private String importedText = "";\n    private File pendingOfficeFile;
     private TextToSpeech tts;
     private ConversationStore memory;
     private ArcReactorView reactorView;
@@ -125,7 +126,11 @@ public final class MainActivity extends Activity {
         music.setOnClickListener(v -> playMusic("Back in Black"));
         devicePanel.addView(music, matchWrap());
 
-        LinearLayout officePanel = addPanel(root, "OFFICE & EDUCATION STUDIO");\n        Button office = makeButton("CREATE WORD / POWERPOINT / EXCEL / PDF");\n        office.setOnClickListener(v -> showOfficeComposer());\n        officePanel.addView(office, matchWrap());\n\n        Button study = makeButton("BUILD STUDY REVISION PACK");\n        study.setOnClickListener(v -> showStudyComposer());\n        officePanel.addView(study, matchWrap());\n\n        LinearLayout memoryPanel = addPanel(root, "PRIVATE MEMORY");
+        LinearLayout officePanel = addPanel(root, "OFFICE & EDUCATION STUDIO");\n        Button office = makeButton("CREATE WORD / POWERPOINT / EXCEL / PDF");\n        office.setOnClickListener(v -> showOfficeComposer());\n        officePanel.addView(office, matchWrap());\n\n        Button importFile = makeButton("IMPORT TXT / DOCX / PPTX / XLSX");
+        importFile.setOnClickListener(v -> importAttachment());
+        officePanel.addView(importFile, matchWrap());
+
+        Button study = makeButton("BUILD STUDY REVISION PACK");\n        study.setOnClickListener(v -> showStudyComposer());\n        officePanel.addView(study, matchWrap());\n\n        LinearLayout memoryPanel = addPanel(root, "PRIVATE MEMORY");
         Button viewMemory = makeButton("VIEW RECENT MEMORY");
         viewMemory.setOnClickListener(v -> showMemory());
         memoryPanel.addView(viewMemory, matchWrap());
@@ -349,6 +354,37 @@ public final class MainActivity extends Activity {
     }
 
 
+
+    private void importAttachment() {
+        Intent pick = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+        pick.addCategory(Intent.CATEGORY_OPENABLE);
+        pick.setType("*/*");
+        pick.putExtra(Intent.EXTRA_MIME_TYPES, new String[]{"text/plain","text/csv","text/markdown",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"});
+        startActivityForResult(pick, REQ_OPEN_ATTACHMENT);
+    }
+
+    private void readAttachment(android.net.Uri uri) {
+        String displayName = uri.getLastPathSegment();
+        android.database.Cursor cursor = null;
+        try {
+            cursor = getContentResolver().query(uri, new String[]{android.provider.OpenableColumns.DISPLAY_NAME}, null, null, null);
+            if (cursor != null && cursor.moveToFirst()) displayName = cursor.getString(0);
+            try (java.io.InputStream in = getContentResolver().openInputStream(uri)) {
+                importedText = OfficeReader.read(in, displayName);
+            }
+            transcript.setText("ATTACHMENT LOADED\n" + displayName + "\n\n" +
+                (importedText.length() > 2500 ? importedText.substring(0,2500) + "\n…" : importedText));
+            setStatus("ATTACHMENT TEXT EXTRACTED • READY FOR STUDY PACK");
+            speak("Attachment loaded, Sir.");
+        } catch (Exception e) {
+            importedText = "";
+            setStatus("ATTACHMENT READ FAILED: " + e.getMessage());
+        } finally { if (cursor != null) cursor.close(); }
+    }
+
     private void showOfficeComposer() {
         LinearLayout form = new LinearLayout(this);
         form.setOrientation(LinearLayout.VERTICAL);
@@ -397,6 +433,7 @@ public final class MainActivity extends Activity {
         notes.setHint("Paste your notes or source material here");
         notes.setMinLines(6);
         notes.setGravity(Gravity.TOP);
+        if (!importedText.isEmpty()) notes.setText(importedText);
         form.addView(topic, matchWrap());
         form.addView(notes, matchWrap());
         new android.app.AlertDialog.Builder(this).setTitle("STUDY REVISION PACK")
@@ -441,6 +478,10 @@ public final class MainActivity extends Activity {
 
     @Override protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQ_OPEN_ATTACHMENT) {
+            if (resultCode == RESULT_OK && data != null && data.getData() != null) readAttachment(data.getData());
+            return;
+        }
         if (requestCode == REQ_SAVE_OFFICE) {
             if (resultCode == RESULT_OK && data != null && data.getData() != null && pendingOfficeFile != null) {
                 try (FileInputStream in = new FileInputStream(pendingOfficeFile);
