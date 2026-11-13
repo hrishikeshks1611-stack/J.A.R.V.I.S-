@@ -23,8 +23,19 @@ jobs:
         run: gradle --no-daemon testDebugUnitTest
       - name: Assemble fresh phone APK
         run: gradle --no-daemon assembleDebug
-      - name: Verify APK
-        run: test -s app/build/outputs/apk/debug/app-debug.apk
+      - name: Verify APK package, icon resources and archive integrity
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK=app/build/outputs/apk/debug/app-debug.apk
+          test -s "$APK"
+          unzip -t "$APK"
+          aapt dump badging "$APK" | tee /tmp/jarvis-badging.txt
+          grep -F "package: name='com.hrishikesh.jarvis.fresh' versionCode='111' versionName='1.0.11'" /tmp/jarvis-badging.txt
+          aapt dump xmltree "$APK" AndroidManifest.xml | grep -E 'ic_launcher|jarvis_splash|SplashTheme'
+          unzip -l "$APK" | grep -F 'res/drawable/jarvis_reactor.xml'
+          unzip -l "$APK" | grep -F 'res/drawable/jarvis_splash.xml'
+          unzip -l "$APK" | grep -F 'res/mipmap-anydpi-v26/ic_launcher.xml'
       - uses: actions/upload-artifact@v4
         with:
           name: JARVIS-Fresh-Android
