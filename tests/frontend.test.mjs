@@ -31,30 +31,21 @@ test("service worker cache version is bumped and script parses", async () => {
   assert.doesNotThrow(() => new Function(source));
 });
 
-test("YouTube Music song commands use the active media session and verify actual playback", async () => {
+test("YouTube Music commands resolve a catalogue result and open its direct app link", async () => {
   const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
   const java = await readFile(new URL("../app/src/main/java/com/hrishikesh/jarvis/MainActivity.java", import.meta.url), "utf8");
   const manifest = await readFile(new URL("../app/src/main/AndroidManifest.xml", import.meta.url), "utf8");
-  const listener = await readFile(new URL("../app/src/main/java/com/hrishikesh/jarvis/JarvisNotificationListener.java", import.meta.url), "utf8");
-  assert.ok(html.includes("const musicCommand = message.match("));
-  assert.ok(html.includes("window.AndroidJarvis.playYoutubeMusic(songQuery)"));
-  assert.ok(html.includes("startsWith('PLAYBACK_QUEUED:')"));
-  assert.ok(html.includes("getYoutubeMusicPlaybackStatus"));
-  assert.ok(html.includes("YouTube Music confirmed playback:"));
-  assert.ok(html.includes("Enable JARVIS YouTube Music Control"));
-  assert.ok(java.includes("@JavascriptInterface public String playYoutubeMusic(String requested)"));
-  assert.ok(java.includes("MediaStore.INTENT_ACTION_MEDIA_PLAY_FROM_SEARCH"));
-  assert.ok(java.includes("controller.getTransportControls().playFromSearch(query, extras)"));
-  assert.ok(java.includes("getActiveSessions"));
-  assert.ok(java.includes("com.google.android.apps.youtube.music"));
-  assert.ok(java.includes("PlaybackState.STATE_PLAYING"));
-  assert.ok(java.includes("getYoutubeMusicPlaybackStatus"));
-  assert.ok(manifest.includes("BIND_NOTIFICATION_LISTENER_SERVICE"));
-  assert.ok(manifest.includes("JarvisNotificationListener"));
-  assert.ok(listener.includes("extends NotificationListenerService"));
-  assert.ok(listener.includes("Deliberately do not inspect notification content."));
-  assert.ok(java.includes("query.length() > 200"));
+  assert.ok(html.includes("async function requestYoutubeMusicPlayback(query)"));
+  assert.ok(html.includes("JARVIS_API+'/music-search'"));
+  assert.ok(html.includes("track.videoId"));
+  assert.ok(html.includes("window.AndroidJarvis.playYoutubeMusic(track.videoId)"));
+  assert.ok(java.includes("@JavascriptInterface public String playYoutubeMusic(String requestedVideoId)"));
+  assert.ok(java.includes("vnd.youtube.music://music.youtube.com/watch?v="));
+  assert.ok(java.includes("https://music.youtube.com/watch?v="));
+  assert.ok(java.includes("TRACK_OPENED_UNCONFIRMED:"));
+  assert.ok(java.includes("query.matches") === false);
   assert.ok(manifest.includes('<package android:name="com.google.android.apps.youtube.music" />'));
+  assert.doesNotMatch(manifest, /BIND_NOTIFICATION_LISTENER_SERVICE|NotificationListenerService/);
 });
 
 test("native app launch results are sent to shared conversation history", async () => {
