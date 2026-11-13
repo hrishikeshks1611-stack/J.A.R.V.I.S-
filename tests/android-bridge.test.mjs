@@ -39,13 +39,14 @@ test("APK workflow cannot publish debug-signed builds as downloadable releases",
 });
 
 
-test("live Android bridge sends YouTube Music play-from-search intents", async () => {
+test("live Android bridge opens the exact selected YouTube Music track", async () => {
   const source = await readFile(new URL("../app/src/main/java/com/hrishikesh/jarvis/MainActivity.java", import.meta.url), "utf8");
   const manifest = await readFile(new URL("../app/src/main/AndroidManifest.xml", import.meta.url), "utf8");
-  assert.ok(source.includes("public String playYoutubeMusic(String query)"));
-  assert.ok(source.includes("MediaStore.INTENT_ACTION_MEDIA_PLAY_FROM_SEARCH"));
-  assert.ok(source.includes('play.setPackage("com.google.android.apps.youtube.music")'));
-  assert.ok(source.includes('play.putExtra("query", cleanQuery)'));
+  assert.ok(source.includes("public String playYoutubeMusic(String videoId)"));
+  assert.ok(source.includes('id.matches("[A-Za-z0-9_-]{11}")'));
+  assert.ok(source.includes("https://music.youtube.com/watch?v="));
+  assert.ok(source.includes('playTrack.setPackage("com.google.android.apps.youtube.music")'));
+  assert.ok(source.includes("Intent.ACTION_VIEW, trackUri"));
   assert.ok(manifest.includes('com.google.android.apps.youtube.music'));
 });
 
