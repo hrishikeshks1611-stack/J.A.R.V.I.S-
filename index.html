@@ -756,8 +756,9 @@ if(musicTransport && window.AndroidJarvis && typeof window.AndroidJarvis.control
  status('Media control requested');speak(reply);return;
 }
 
-const musicCommand=message.match(/^\s*(?:jarvis[, ]+)?(?:please\s+)?(?:play|search(?:\s+for)?)\s+(.+?)(?:\s+(?:on|in)\s+youtube\s+music)?[.!?]*\s*$/i);
+const musicCommand=message.match(/^\s*(?:(?:hey\s+)?jarvis[, ]+)?(?:(?:please|could you|can you|would you|will you)\s+)*(?:play|search(?:\s+for)?|find|put on|listen to|i want to hear|i'd like to hear)\s+(.+?)(?:\s+(?:on|in)\s+youtube\s+music)?[.!?]*\s*$/i);
 const explicitMusicCommand=/\byoutube\s+music\b/i.test(message)&&musicCommand;
+const directMusicIntent=/^\s*(?:(?:hey\s+)?jarvis[, ]+)?(?:(?:please|could you|can you|would you|will you)\s+)*(?:play|put on|listen to|i want to hear|i'd like to hear)\b/i.test(message);
 if(openYoutubeMusicOnly){
  const hasNativeMusicBridge=window.AndroidJarvis&&typeof window.AndroidJarvis.playYoutubeMusic==='function';
  const reply=hasNativeMusicBridge
@@ -769,7 +770,7 @@ if(openYoutubeMusicOnly){
  else window.location.href='https://music.youtube.com/';
  return;
 }
-if(musicCommand&&(explicitMusicCommand||/^\s*(?:jarvis[, ]+)?(?:please\s+)?play\s+/i.test(message))){
+if(musicCommand&&(explicitMusicCommand||directMusicIntent)){
  const songQuery=musicCommand[1].trim().replace(/\s+(?:on|in)\s+youtube\s+music$/i,'').trim();
  if(songQuery){
   // A short acknowledgement is spoken immediately. Do not interrupt Algieba
