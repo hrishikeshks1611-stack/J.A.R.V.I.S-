@@ -27,7 +27,7 @@ test("saved-memory UI is explicit and has deletion controls", async () => {
 
 test("service worker cache version is bumped and script parses", async () => {
   const source = await readFile(new URL("../sw.js", import.meta.url), "utf8");
-  assert.ok(source.includes('const CACHE="jarvis-shell-v28"'));
+  assert.ok(source.includes('const CACHE="jarvis-shell-v29"'));
   assert.doesNotThrow(() => new Function(source));
 });
 
@@ -249,4 +249,11 @@ test("time-aware greetings use morning, afternoon, evening and overnight windows
   assert.equal(greeting(new Date(2026, 10, 12, 17, 0)), "Good evening, Sir");
   assert.equal(greeting(new Date(2026, 10, 12, 22, 0)), "Hello, Sir");
   assert.equal(greeting(new Date(2026, 10, 12, 3, 0)), "Hello, Sir");
+});
+
+test("voice commands list installed apps and launch arbitrary Android app names", async () => {
+  const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+  assert.ok(html.includes("installedAppsRequest"));
+  assert.ok(html.includes("AndroidJarvis.getInstalledApps()"));
+  assert.ok(html.includes("appAliases[requestedApp.toLowerCase()]||requestedApp"));
 });
