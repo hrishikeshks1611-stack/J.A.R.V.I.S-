@@ -17,7 +17,7 @@ test("native bridge exposes confirmation-based Clock and Calendar actions", asyn
   assert.ok(manifest.includes('com.android.alarm.permission.SET_ALARM'));
 });
 
-test("Android release metadata identifies JARVIS 6.0 and advances installed version", async () => {
+test("Android release metadata identifies full JARVIS 1.1 and advances the installed 1.0.15 app", async () => {
   const gradle = await readFile(new URL("../app/build.gradle", import.meta.url), "utf8");
   assert.match(gradle, /versionCode\s+601/);
   assert.match(gradle, /versionName\s+'6\.0\.1'/);
@@ -27,8 +27,8 @@ test("APK workflow uploads phone and TV CI artifacts without publishing GitHub r
   const workflow = await readFile(new URL("../.github/workflows/android-apk.yml", import.meta.url), "utf8");
   assert.match(workflow, /contents:\s*read/);
   assert.doesNotMatch(workflow, /gh release create/);
-  assert.match(workflow, /JARVIS-Rebirth-Android-phone/);
-  assert.match(workflow, /JARVIS-Rebirth-Android-TV/);
+  assert.match(workflow, /JARVIS-Full-Recovery-Android-phone/);
+  assert.match(workflow, /JARVIS-Full-Recovery-Android-TV/);
   assert.match(workflow, /actions\/upload-artifact@v4/);
 });
 
