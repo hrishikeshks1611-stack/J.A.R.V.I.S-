@@ -190,7 +190,7 @@ public class MainActivity extends Activity {
                     output.toString("UTF-8"),
                     "text/html",
                     "UTF-8",
-                    null
+                    JARVIS_WEB_BASE_URL
             );
         } catch (Exception error) {
             Toast.makeText(this, "J.A.R.V.I.S interface could not load. Please reinstall the app.", Toast.LENGTH_LONG).show();
