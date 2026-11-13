@@ -5,6 +5,7 @@ databases, or backups are imported.
 
 ## Implemented in source
 - ARC-reactor launcher artwork and an animated OpenGL ES 2.0 3D reactor with rotating torus rings and a luminous core.
+- Functional HUD-style panels grouping voice/system, device/media, and private-memory controls.
 - User-started foreground wake listener for four agreed wake phrases.
 - Command continuation for app launch, camera, music search, and media controls.
 - Native Camera2 preview, front/rear switching, and JPEG capture saved to the app's private Pictures folder.
