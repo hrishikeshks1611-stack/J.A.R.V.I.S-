@@ -50,6 +50,13 @@ footer{text-align:center;color:#577c99;font-size:10px;letter-spacing:.12em;paddi
    <input id="pairCode" autocomplete="off" maxlength="12" placeholder="8-character pairing code">
    <div class="sync-actions"><button class="sync-primary" id="pairDevice" type="button">Pair this device</button></div>
   </div>
+  <div id="recoveryArea" hidden>
+   <h3>Recover owner access</h3>
+   <p>Verify your one-time owner recovery code without consuming it. This check does not change your owner account or paired devices.</p>
+   <input id="recoveryCheckCode" type="password" autocomplete="off" spellcheck="false" placeholder="Owner recovery code">
+   <div class="sync-actions"><button class="sync-primary" id="checkRecoveryCode" type="button">Verify recovery code</button></div>
+   <p id="recoveryCheckStatus" class="sync-muted" aria-live="polite">Your code is checked privately against the JARVIS server.</p>
+  </div>
   <div id="ownerArea" hidden>
    <p>This is your owner device. Generate a temporary code to connect your other devices.</p>
    <div class="sync-actions"><button class="sync-primary" id="createPairCode" type="button">Generate pairing code</button></div>
@@ -79,7 +86,7 @@ footer{text-align:center;color:#577c99;font-size:10px;letter-spacing:.12em;paddi
 <section class="mission-panel" id="missionPanel" hidden aria-modal="true" role="dialog" aria-labelledby="missionTitle"><div class="mission-card"><h2 id="missionTitle">J.A.R.V.I.S. · MISSION CONTROL</h2><p id="missionSummary" class="mission-note">Live device diagnostics. Values are read from this device and browser.</p><div class="mission-grid"><div class="mission-tile"><strong>LOCAL TIME</strong><span id="mcTime">—</span></div><div class="mission-tile"><strong>DEVICE</strong><span id="mcDevice">—</span></div><div class="mission-tile"><strong>NETWORK</strong><span id="mcNetwork">—</span></div><div class="mission-tile"><strong>BATTERY</strong><span id="mcBattery">Checking…</span></div><div class="mission-tile"><strong>SHARED BRAIN</strong><span id="mcPair">Checking…</span></div><div class="mission-tile"><strong>BACKEND CHECK</strong><span id="mcBackend">Checking…</span></div><div class="mission-tile"><strong>PAIRED DEVICES</strong><span id="mcDevices">Checking…</span></div><div class="mission-tile"><strong>VOICE</strong><span id="mcVoice">—</span></div></div><h3>Daily Briefing</h3><p id="dailyBrief" class="mission-note">Generate a local briefing using the device clock and available system status.</p><div class="mission-actions"><button id="runBriefing" type="button">Prepare briefing</button><button id="refreshMission" type="button">Refresh diagnostics</button></div><h3>Smart Routines · Local controls</h3><p class="mission-note">These routines change JARVIS interface and voice settings on this device only. They do not run background jobs or control other devices.</p><div class="mission-actions"><button id="focusRoutine" type="button">Focus mode</button><button id="nightRoutine" type="button">Good night</button><button id="normalRoutine" type="button">Normal mode</button></div><h3>Custom routines</h3><p class="mission-note">Create up to eight named routines using these safe, on-device modes. They are saved only in this browser and do not trigger background actions.</p><div class="mission-actions"><input id="customRoutineName" maxlength="32" placeholder="Routine name" aria-label="Routine name"><select id="customRoutineMode" aria-label="Routine mode"><option value="focus">Focus</option><option value="night">Good night</option><option value="normal">Normal</option></select><button id="saveCustomRoutine" type="button">Save routine</button></div><div id="customRoutineList" class="mission-actions" aria-live="polite"></div><div class="mission-actions"><button id="closeMission" type="button">Close</button></div></div></section>
 <script>
 const $=id=>document.getElementById(id), core=$('core'), messages=$('messages');let history=[],voiceOn=true,pendingAttachment=null,deviceLocation=null,currentAudio=null;
-const JARVIS_API='https://jarvis-sigma-one-92.vercel.app/api';
+const JARVIS_API='https://jarvis-sigma-one-92.vercel.app/api';\nconst JARVIS_RECOVERY_API='https://jarvis-6-0-yys5.onrender.com/api';
 const JARVIS_AUX_API='https://jarvis-5-0-staging.onrender.com/api';
 let sessionToken=localStorage.getItem('jarvisSessionToken')||'',sessionRole='',sessionDeviceId='',chatBusy=false,lastSharedHistorySignature='';
 let editingMemoryId=null;
@@ -238,22 +245,39 @@ async function renderPairedDevices(){
  });
 }
 async function openSyncPanel(){
- $('syncPanel').hidden=false;$('setupArea').hidden=true;$('pairArea').hidden=true;$('ownerArea').hidden=true;
+ $('syncPanel').hidden=false;$('setupArea').hidden=true;$('pairArea').hidden=true;$('ownerArea').hidden=true;$('recoveryArea').hidden=true;$('recoveryCheckStatus').textContent='Your code is checked privately against the JARVIS server.';
  try{
   if(sessionToken){
    const v=await pairApi({action:'verify'});sessionRole=v.role;sessionDeviceId=v.deviceId;
    $('syncStatus').textContent='Connected as '+v.deviceName+'. Shared conversation sync is active.';
    if(v.role==='owner'){$('ownerArea').hidden=false;await renderPairedDevices();}
-   else $('pairArea').hidden=true;
+   else {$('pairArea').hidden=true;$('recoveryArea').hidden=false;}
    return;
   }
   const statusData=await pairApi({action:'status'});
   $('syncStatus').textContent=statusData.ownerClaimed?'This JARVIS system already has an owner. Pair this device using a code from the owner device.':'This is the first device. Claim it as the owner to initialise your private JARVIS memory.';
   $('setupArea').hidden=statusData.ownerClaimed;
   $('pairArea').hidden=!statusData.ownerClaimed;
+  $('recoveryArea').hidden=!statusData.ownerClaimed;
  }catch(e){$('syncStatus').textContent=e.message}
 }
 $('syncButton').onclick=openSyncPanel;
+$('checkRecoveryCode').onclick=async()=>{
+ const code=$('recoveryCheckCode').value;
+ if(!code){$('recoveryCheckStatus').textContent='Enter your recovery code first.';return;}
+ const button=$('checkRecoveryCode');button.disabled=true;button.textContent='Checking…';
+ $('recoveryCheckStatus').textContent='Checking code without using it. Please wait, Sir.';
+ try{
+  const response=await fetch(JARVIS_RECOVERY_API+'/pair',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'check-recovery',recoveryCode:code})});
+  const data=await response.json().catch(()=>({}));
+  if(!response.ok)throw new Error(data.error||'Recovery check returned HTTP '+response.status+'.');
+  if(!data.configured)$('recoveryCheckStatus').textContent='Owner recovery is not configured on this server. Your code was not consumed.';
+  else if(!data.ownerExists)$('recoveryCheckStatus').textContent='No owner record was found. No changes were made.';
+  else if(data.valid)$('recoveryCheckStatus').textContent='✓ Recovery code is valid. It has NOT been used. Your owner account is unchanged.';
+  else $('recoveryCheckStatus').textContent='That code does not match the configured recovery code. It has NOT been consumed.';
+ }catch(error){$('recoveryCheckStatus').textContent='Could not verify the code: '+error.message+' No recovery action was performed.';}
+ finally{button.disabled=false;button.textContent='Verify recovery code';}
+};
 $('closeSync').onclick=()=>{if(sessionToken)$('syncPanel').hidden=true};
 $('claimDevice').onclick=async()=>{
  try{const data=await pairApi({action:'claim',setupCode:$('setupCode').value,deviceName:currentDeviceName()});storeSession(data);await restoreSharedHistory();$('hint').textContent=data.message+' Shared memory is ready, Sir.';}
