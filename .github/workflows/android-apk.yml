@@ -219,7 +219,7 @@ jobs:
           adb_bounded 30 logcat -c
 
           mark "Launching debug wake-word test activity directly (MainActivity is not required for this service test)."
-          adb_bounded 20 shell am start -n com.hrishikesh.jarvis.rebirth/.WakeWordTestActivity
+          adb_bounded 20 shell am start -n com.hrishikesh.jarvis.rebirth/com.hrishikesh.jarvis.WakeWordTestActivity
           ready=0
           service_failed=0
           mark "Waiting up to 180 seconds for WakeWordService READY; each poll uses one bounded logcat read."
@@ -273,7 +273,7 @@ jobs:
           fi
 
           mark "Requesting clean wake-word service stop."
-          adb_bounded 10 shell am start -n com.hrishikesh.jarvis.rebirth/.WakeWordTestActivity -a com.hrishikesh.jarvis.rebirth.TEST_STOP_WAKE
+          adb_bounded 10 shell am start -n com.hrishikesh.jarvis.rebirth/com.hrishikesh.jarvis.WakeWordTestActivity -a com.hrishikesh.jarvis.rebirth.TEST_STOP_WAKE
           mark "Stop request dispatched; verifying service termination independently."
           sleep 3
           if adb_bounded 20 shell dumpsys activity services com.hrishikesh.jarvis.rebirth | grep -q WakeWordService; then
