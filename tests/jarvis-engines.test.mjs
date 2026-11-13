@@ -26,6 +26,7 @@ test("exam revision planner distributes syllabus topics and validates dates and 
 
 test("Medical Assistant recognises health requests and prioritises acute red flags", () => {
   assert.equal(isMedicalRequest("What are common causes of fever?"), true);
+  assert.equal(isMedicalRequest("I have a headache"), true);
   assert.equal(detectMedicalEmergency("My father is having chest pain right now"), true);
   assert.equal(detectMedicalEmergency("Someone is not breathing, help"), true);
   assert.equal(detectMedicalEmergency("Explain the symptoms of stroke for my exam"), false);
