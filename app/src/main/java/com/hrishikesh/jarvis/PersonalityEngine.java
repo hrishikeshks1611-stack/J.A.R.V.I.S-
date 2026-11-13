@@ -32,7 +32,7 @@ public final class PersonalityEngine {
             return "To make the complicated manageable, the routine less tedious, and the occasional impossible at least properly investigated, Sir.";
         if (containsAny(text, "do you have feelings", "are you alive", "are you conscious"))
             return "I can recognise and respond to what you tell me, Sir, but I do not experience feelings or consciousness. I would rather be candid than theatrically mysterious.";
-        if (containsAny(text, "i am sad", "im sad", "feeling sad", "i feel low", "i am upset", "im upset"))
+        if (containsAny(text, "i am sad", "im sad", "i feel sad", "feeling sad", "i feel low", "i am upset", "im upset"))
             return "I am sorry it is a difficult moment, Sir. You need not dress it up for my benefit. Would you care to tell me what happened?";
         if (containsAny(text, "i am happy", "im happy", "feeling great", "good news"))
             return "Excellent news, Sir. A rare occasion when the universe appears to have read the briefing.";
