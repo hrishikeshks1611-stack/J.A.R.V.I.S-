@@ -13,9 +13,10 @@ dependencies {
 }
 
 // Bundle the exact web client used by this build so the Android app never opens a stale or missing Pages route.
+def jarvisWebAssetsDir = "$buildDir/generated/jarvisAssets"
 tasks.register('copyJarvisWebClient', Copy) {
     from(rootProject.file('index.html'))
-    into("$projectDir/src/main/assets")
+    into(jarvisWebAssetsDir)
     rename { 'jarvis.html' }
 }
 tasks.named('preBuild').configure {
@@ -23,6 +24,11 @@ tasks.named('preBuild').configure {
 }
 
 android {
+    sourceSets {
+        main {
+            assets.srcDir(jarvisWebAssetsDir)
+        }
+    }
     namespace 'com.hrishikesh.jarvis'
     compileSdk 35
     buildFeatures { buildConfig true }
