@@ -43,3 +43,10 @@ jobs:
         run: gradle --no-daemon assemblePhoneDebug assembleTvDebug
       - name: Run offline wake phrase unit tests
         run: gradle --no-daemon testPhoneDebugUnitTest
+      - name: Publish APK build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: jarvis-7.0-debug-apks
+          path: app/build/outputs/apk/**/*.apk
+          if-no-files-found: error
+          retention-days: 14
