@@ -40,6 +40,9 @@ public class WakeWordService extends Service implements RecognitionListener {
     private volatile boolean stopped = false;
     private volatile boolean awaitingCommand = false;
     private volatile boolean preparing = false;
+    // Partial Vosk hypotheses arrive before endpointing; remember a wake already
+    // dispatched so the matching final result cannot dispatch it twice.
+    private volatile boolean wakeHandledInUtterance = false;
     private final Handler commandTimeoutHandler = new Handler(Looper.getMainLooper());
     private final Runnable commandTimeout = () -> {
         awaitingCommand = false;
@@ -258,24 +261,40 @@ public class WakeWordService extends Service implements RecognitionListener {
     // onFinalResult is only emitted when the audio stream ends, so handling only
     // that callback would make a continuously-running wake word appear unresponsive.
     @Override public void onResult(String hypothesis) {
-        handleRecognizedPhrase(hypothesis);
+        handleRecognizedPhrase(hypothesis, false);
     }
 
-    @Override public void onPartialResult(String hypothesis) { }
+    // Do not wait for Vosk's end-of-utterance silence timeout to wake JARVIS.
+    // This is important when the user says the wake phrase and immediately
+    // continues with a command.
+    @Override public void onPartialResult(String hypothesis) {
+        handleRecognizedPhrase(hypothesis, true);
+    }
 
     @Override public void onFinalResult(String hypothesis) {
-        handleRecognizedPhrase(hypothesis);
+        handleRecognizedPhrase(hypothesis, false);
     }
 
-    private void handleRecognizedPhrase(String hypothesis) {
+    private void handleRecognizedPhrase(String hypothesis, boolean partial) {
         String text = transcript(hypothesis).toLowerCase(Locale.ROOT)
                 .replaceAll("[^a-z0-9 ]", " ").replaceAll("\\s+", " ").trim();
-        if (text.isEmpty()) return;
+        if (text.isEmpty()) {
+            if (!partial) wakeHandledInUtterance = false;
+            return;
+        }
+
+        // A partial hypothesis can grow over several callbacks. Once it has
+        // dispatched a wake/command, ignore the corresponding final result.
+        if (!partial && wakeHandledInUtterance) {
+            wakeHandledInUtterance = false;
+            return;
+        }
 
         if (awaitingCommand) {
             commandTimeoutHandler.removeCallbacks(commandTimeout);
             awaitingCommand = false;
             broadcast(ACTION_COMMAND, text);
+            if (partial) wakeHandledInUtterance = true;
             updateNotification("Microphone ON · offline wake-word detection active");
             return;
         }
@@ -295,9 +314,11 @@ public class WakeWordService extends Service implements RecognitionListener {
                 commandTimeoutHandler.removeCallbacks(commandTimeout);
                 commandTimeoutHandler.postDelayed(commandTimeout, 8000);
                 broadcast(ACTION_WAKE, null);
+                if (partial) wakeHandledInUtterance = true;
                 updateNotification("JARVIS awake · listening for your command");
             } else {
                 broadcast(ACTION_COMMAND, command);
+                if (partial) wakeHandledInUtterance = true;
                 updateNotification("Microphone ON · offline wake-word detection active");
             }
         }
