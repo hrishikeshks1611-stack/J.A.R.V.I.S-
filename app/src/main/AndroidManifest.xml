@@ -52,14 +52,14 @@
     <application
         android:allowBackup="false"
         android:icon="@drawable/ic_jarvis_launcher"
-        android:label="J.A.R.V.I.S. 7.0"
+        android:label="J.A.R.V.I.S"
         android:theme="@android:style/Theme.Material.NoActionBar"
         android:usesCleartextTraffic="false">
         <receiver android:name=".UpdateInstallReceiver" android:exported="false" />
         <activity android:name=".WakeWordActivity" android:exported="false" />
         <activity android:name=".CameraCaptureActivity" android:exported="false" android:screenOrientation="portrait" />
         <service android:name=".WakeWordService" android:exported="false" android:foregroundServiceType="microphone" />
-        <service android:name=".JarvisMediaNotificationListener" android:label="J.A.R.V.I.S. 7.0 media controls" android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE" android:exported="true">
+        <service android:name=".JarvisMediaNotificationListener" android:label="J.A.R.V.I.S media controls" android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE" android:exported="true">
             <intent-filter>
                 <action android:name="android.service.notification.NotificationListenerService" />
             </intent-filter>
