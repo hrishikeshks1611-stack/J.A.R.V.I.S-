@@ -68,3 +68,14 @@ test("Android camera bridge supports camera launch, automatic photo, selfie and 
   assert.ok(html.includes("window.AndroidJarvis.capturePhoto(false)"));
   assert.match(html, /cameraAction==='show'/);
 });
+
+test("Android bridge can discover and launch installed launcher apps on Android 11+", async () => {
+  const source = await readFile(new URL("../app/src/main/java/com/hrishikesh/jarvis/MainActivity.java", import.meta.url), "utf8");
+  const manifest = await readFile(new URL("../app/src/main/AndroidManifest.xml", import.meta.url), "utf8");
+  assert.ok(source.includes("public String getInstalledApps()"));
+  assert.ok(source.includes("queryIntentActivities(launcher, 0)"));
+  assert.ok(source.includes("findLaunchableApp(name)"));
+  assert.ok(manifest.includes('android:name="android.intent.action.MAIN"'));
+  assert.ok(manifest.includes('android:name="android.intent.category.LAUNCHER"'));
+  assert.doesNotMatch(manifest, /QUERY_ALL_PACKAGES/);
+});
