@@ -252,9 +252,18 @@ public class WakeWordService extends Service implements RecognitionListener {
         sendBroadcast(intent);
     }
 
-    private String transcript(String json) {
-        try { return new JSONObject(json).optString("text", "").trim(); }
-        catch (Exception ignored) { return ""; }
+    private String transcript(String json, boolean partial) {
+        try {
+            JSONObject result = new JSONObject(json);
+            // Vosk uses "partial" for interim hypotheses and "text" for
+            // completed phrases. Fall back to the other key for compatibility.
+            String value = partial
+                    ? result.optString("partial", result.optString("text", ""))
+                    : result.optString("text", result.optString("partial", ""));
+            return value.trim();
+        } catch (Exception ignored) {
+            return "";
+        }
     }
 
     // Vosk emits each completed phrase through onResult when silence is detected.
@@ -276,41 +285,68 @@ public class WakeWordService extends Service implements RecognitionListener {
     }
 
     private void handleRecognizedPhrase(String hypothesis, boolean partial) {
-        String text = transcript(hypothesis).toLowerCase(Locale.ROOT)
+        String text = transcript(hypothesis, partial).toLowerCase(Locale.ROOT)
                 .replaceAll("[^a-z0-9 ]", " ").replaceAll("\\s+", " ").trim();
         if (text.isEmpty()) {
             if (!partial) wakeHandledInUtterance = false;
             return;
         }
 
-        // A partial hypothesis can grow over several callbacks. Once it has
-        // dispatched a wake/command, ignore later partials and its final result
-        // until the recognizer closes that utterance.
+        // If the wake phrase and command are spoken in one breath, Vosk's
+        // final phrase contains both. Do not let the duplicate-wake guard
+        // discard that command after an earlier partial wake notification.
+        if (awaitingCommand) {
+            java.util.regex.Matcher wakeInCommand = java.util.regex.Pattern
+                    .compile("\\bjarvis\\b").matcher(text);
+            String command = text;
+            boolean includedWakePhrase = false;
+            while (wakeInCommand.find()) {
+                command = text.substring(wakeInCommand.end()).trim();
+                includedWakePhrase = true;
+            }
+
+            // Wait for a stable completed phrase before dispatching a command.
+            // Partial hypotheses can grow word-by-word ("open" -> "open WhatsApp").
+            if (partial) return;
+
+            if (!command.isEmpty()) {
+                commandTimeoutHandler.removeCallbacks(commandTimeout);
+                awaitingCommand = false;
+                wakeHandledInUtterance = false;
+                broadcast(ACTION_COMMAND, command);
+                updateNotification("Microphone ON · offline wake-word detection active");
+                return;
+            }
+
+            // The final result was only the wake phrase; keep the command
+            // window open for the next utterance.
+            if (includedWakePhrase) {
+                wakeHandledInUtterance = false;
+                return;
+            }
+            // A separate completed utterance is the requested command.
+            commandTimeoutHandler.removeCallbacks(commandTimeout);
+            awaitingCommand = false;
+            wakeHandledInUtterance = false;
+            broadcast(ACTION_COMMAND, text);
+            updateNotification("Microphone ON · offline wake-word detection active");
+            return;
+        }
+
+        // Ignore later partials after a direct command dispatch, and ignore
+        // the final copy of a wake-only partial already announced to JARVIS.
         if (partial && wakeHandledInUtterance) return;
         if (!partial && wakeHandledInUtterance) {
             wakeHandledInUtterance = false;
             return;
         }
 
-        if (awaitingCommand) {
-            commandTimeoutHandler.removeCallbacks(commandTimeout);
-            awaitingCommand = false;
-            broadcast(ACTION_COMMAND, text);
-            if (partial) wakeHandledInUtterance = true;
-            updateNotification("Microphone ON · offline wake-word detection active");
-            return;
-        }
-
-        // Match "jarvis" as a complete spoken token, never as a substring
-        // inside another word. Vosk is general speech recognition, not a
-        // dedicated keyword model, so this reduces (but cannot eliminate)
-        // false activations.
         java.util.regex.Matcher wakeMatcher = java.util.regex.Pattern
                 .compile("\\bjarvis\\b").matcher(text);
-        int wake = -1;
-        while (wakeMatcher.find()) wake = wakeMatcher.start();
-        if (wake >= 0) {
-            String command = text.substring(wake + "jarvis".length()).trim();
+        int wakeEnd = -1;
+        while (wakeMatcher.find()) wakeEnd = wakeMatcher.end();
+        if (wakeEnd >= 0) {
+            String command = text.substring(wakeEnd).trim();
             if (command.isEmpty()) {
                 awaitingCommand = true;
                 commandTimeoutHandler.removeCallbacks(commandTimeout);
@@ -318,14 +354,21 @@ public class WakeWordService extends Service implements RecognitionListener {
                 broadcast(ACTION_WAKE, null);
                 if (partial) wakeHandledInUtterance = true;
                 updateNotification("JARVIS awake · listening for your command");
+            } else if (partial) {
+                // Announce the wake immediately, but wait for Vosk's completed
+                // phrase before sending the command so it is not truncated.
+                awaitingCommand = true;
+                commandTimeoutHandler.removeCallbacks(commandTimeout);
+                commandTimeoutHandler.postDelayed(commandTimeout, 8000);
+                broadcast(ACTION_WAKE, null);
+                wakeHandledInUtterance = true;
+                updateNotification("JARVIS awake · listening for your command");
             } else {
                 broadcast(ACTION_COMMAND, command);
-                if (partial) wakeHandledInUtterance = true;
                 updateNotification("Microphone ON · offline wake-word detection active");
             }
         }
     }
-
     @Override public void onError(Exception exception) {
         Log.e("WakeWordService", "Offline speech recognition error", exception);
         updateNotification("Offline microphone error. Open JARVIS to turn it OFF.");
