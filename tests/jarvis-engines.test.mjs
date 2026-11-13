@@ -6,6 +6,7 @@ import { isMedicalRequest, detectMedicalEmergency, buildMedicalEmergencyReply, b
 test("Tutor Engine recognises learning and exam requests and has an exam-focused teaching contract", () => {
   assert.equal(isTutorRequest("Teach me accounting for my exam"), true);
   assert.equal(isTutorRequest("Quiz me on business law"), true);
+  assert.equal(isTutorRequest("Explain accounting"), true);
   assert.equal(isTutorRequest("What time is it?"), false);
   const instruction = buildTutorSystemInstruction();
   assert.match(instruction, /active-recall/i);
@@ -29,6 +30,7 @@ test("Medical Assistant recognises health requests and prioritises acute red fla
   assert.equal(isMedicalRequest("I have a headache"), true);
   assert.equal(detectMedicalEmergency("My father is having chest pain right now"), true);
   assert.equal(detectMedicalEmergency("Someone is not breathing, help"), true);
+  assert.equal(detectMedicalEmergency("My dad cannot breathe"), true);
   assert.equal(detectMedicalEmergency("Explain the symptoms of stroke for my exam"), false);
   assert.equal(detectMedicalEmergency("What is chest pain?"), false);
   const reply = buildMedicalEmergencyReply();
