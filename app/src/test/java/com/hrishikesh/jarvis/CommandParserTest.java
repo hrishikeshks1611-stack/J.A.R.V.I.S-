@@ -28,6 +28,13 @@ public class CommandParserTest {
         assertEquals(CommandParser.Action.GREETING, CommandParser.parse("JARVIS, are you there?").action);
     }
 
+    @Test public void recognisesMediaSessionCommands() {
+        assertEquals(CommandParser.Action.PAUSE_MEDIA, CommandParser.parse("pause music").action);
+        assertEquals(CommandParser.Action.RESUME_MEDIA, CommandParser.parse("resume music").action);
+        assertEquals(CommandParser.Action.NEXT_TRACK, CommandParser.parse("next song").action);
+        assertEquals(CommandParser.Action.PREVIOUS_TRACK, CommandParser.parse("previous track").action);
+    }
+
     @Test public void unknownAndEmptyCommandsAreSafe() {
         assertEquals(CommandParser.Action.UNKNOWN, CommandParser.parse(null).action);
         assertEquals(CommandParser.Action.UNKNOWN, CommandParser.parse("   ").action);

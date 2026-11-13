@@ -109,6 +109,13 @@ public final class MainActivity extends Activity {
         apps.setOnClickListener(v -> showApps());
         root.addView(apps, matchWrap());
 
+        Button mediaAccess = makeButton("ENABLE MEDIA CONTROLS");
+        mediaAccess.setOnClickListener(v -> {
+            if (MediaControl.hasAccess(this)) setStatus("MEDIA SESSION ACCESS ENABLED");
+            else MediaControl.openAccessSettings(this);
+        });
+        root.addView(mediaAccess, matchWrap());
+
         Button music = makeButton("PLAY MUSIC");
         music.setOnClickListener(v -> playMusic("Back in Black"));
         root.addView(music, matchWrap());
@@ -228,6 +235,17 @@ public final class MainActivity extends Activity {
                 break;
             case PLAY_MUSIC:
                 playMusic(command.argument.isEmpty() ? "music" : command.argument);
+                break;
+            case PAUSE_MEDIA:
+            case RESUME_MEDIA:
+            case NEXT_TRACK:
+            case PREVIOUS_TRACK:
+                if (MediaControl.execute(this, command.action)) {
+                    speak("As you wish, Sir."); setStatus("MEDIA COMMAND SENT");
+                } else {
+                    speak("Media access is unavailable, Sir. Please enable JARVIS media controls.");
+                    setStatus("ENABLE MEDIA CONTROLS IN SETTINGS");
+                }
                 break;
             case GREETING:
                 speak("Always here, Sir.");

@@ -24,6 +24,14 @@
             </intent-filter>
         </activity>
         <activity android:name=".CameraActivity" android:exported="false" android:screenOrientation="portrait"/>
+        <service android:name=".JarvisNotificationListener"
+            android:label="J.A.R.V.I.S. media controls"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService"/>
+            </intent-filter>
+        </service>
         <service
             android:name=".WakeListeningService"
             android:exported="false"

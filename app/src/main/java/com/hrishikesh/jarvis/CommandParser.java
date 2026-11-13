@@ -4,7 +4,7 @@ import java.util.Locale;
 
 /** Deterministic command parsing kept separate so command routing can be tested without Android. */
 public final class CommandParser {
-    public enum Action { OPEN_CAMERA, OPEN_APP, PLAY_MUSIC, GREETING, UNKNOWN }
+    public enum Action { OPEN_CAMERA, OPEN_APP, PLAY_MUSIC, PAUSE_MEDIA, RESUME_MEDIA, NEXT_TRACK, PREVIOUS_TRACK, GREETING, UNKNOWN }
 
     public static final class Command {
         public final Action action;
@@ -21,6 +21,14 @@ public final class CommandParser {
         if (raw == null) return new Command(Action.UNKNOWN, "");
         String text = raw.toLowerCase(Locale.ROOT).trim().replaceAll("\\s+", " ");
         if (text.isEmpty()) return new Command(Action.UNKNOWN, "");
+        if (text.contains("pause music") || text.equals("pause") || text.contains("stop music"))
+            return new Command(Action.PAUSE_MEDIA, "");
+        if (text.contains("resume music") || text.contains("continue music") || text.equals("resume"))
+            return new Command(Action.RESUME_MEDIA, "");
+        if (text.contains("next track") || text.contains("next song") || text.equals("next"))
+            return new Command(Action.NEXT_TRACK, "");
+        if (text.contains("previous track") || text.contains("previous song") || text.equals("previous") || text.equals("go back"))
+            return new Command(Action.PREVIOUS_TRACK, "");
         if (text.contains("open camera") || text.contains("take a photo")
                 || text.contains("take photo") || text.contains("selfie")) {
             return new Command(Action.OPEN_CAMERA, "");

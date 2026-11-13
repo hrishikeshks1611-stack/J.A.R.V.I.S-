@@ -168,6 +168,13 @@ public final class WakeListeningService extends Service {
                 music.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                 startActivity(music);
                 break;
+            case PAUSE_MEDIA:
+            case RESUME_MEDIA:
+            case NEXT_TRACK:
+            case PREVIOUS_TRACK:
+                if (MediaControl.execute(this, command.action)) speak("As you wish, Sir.");
+                else speak("Media controls are unavailable. Please enable JARVIS notification access, Sir.");
+                break;
             default: speak("I am listening, Sir. Please give me a command."); break;
         }
     }
