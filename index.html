@@ -1177,7 +1177,7 @@ async function checkJarvisUpdates(){
   const versionCode=Number(readMeta('JARVIS_VERSION_CODE'));
   const versionName=readMeta('JARVIS_VERSION_NAME');
   const asset=(release.assets||[]).find(item=>item.name==='app-phone-debug.apk'||item.name==='JARVIS-phone.apk');
-  if(packageName!=='com.hrishikesh.jarvis'||!Number.isSafeInteger(versionCode)||!asset||!/^https:\/\/github\.com\//i.test(asset.browser_download_url||'')){
+  if(packageName!=='com.hrishikesh.jarvis.next'||!Number.isSafeInteger(versionCode)||!asset||!/^https:\/\/github\.com\//i.test(asset.browser_download_url||'')){
    throw new Error('The published update information is incomplete or does not identify the official JARVIS phone app.');
   }
   if(versionCode<=installedCode){
