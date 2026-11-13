@@ -98,6 +98,8 @@ export default async function handler(req, res) {
       // Create a new session on this phone; no existing phone session is required.
       const recovered = await createSession(deviceName(body.deviceName || "Phone"), "device");
       const currentHash = hashToken(recovered.token);
+      // Consume each recovery credential once, rather than permanently locking all future recovery codes.
+      const recoveryUseKey = JARVIS_PREFIX + "owner:recovery:used:" + hashToken(recoveryCode);
       const script = [
         "if redis.call('GET', KEYS[1]) ~= '1' then return cjson.encode({ ok = false, reason = 'owner_missing' }) end",
         "if redis.call('EXISTS', KEYS[3]) == 1 then return cjson.encode({ ok = false, reason = 'already_used' }) end",
@@ -132,7 +134,7 @@ export default async function handler(req, res) {
       ].join("\n");
       let raw;
       try {
-        raw = await redisCommand("EVAL", script, "6", JARVIS_PREFIX + "owner:claimed", JARVIS_PREFIX + "owner:token-hash", JARVIS_PREFIX + "owner:recovery:used", JARVIS_PREFIX + "session:" + currentHash, JARVIS_PREFIX + "device:" + recovered.deviceId, JARVIS_PREFIX + "devices", currentHash, recovered.deviceId, String(JARVIS_SESSION_TTL), JARVIS_PREFIX);
+        raw = await redisCommand("EVAL", script, "6", JARVIS_PREFIX + "owner:claimed", JARVIS_PREFIX + "owner:token-hash", recoveryUseKey, JARVIS_PREFIX + "session:" + currentHash, JARVIS_PREFIX + "device:" + recovered.deviceId, JARVIS_PREFIX + "devices", currentHash, recovered.deviceId, String(JARVIS_SESSION_TTL), JARVIS_PREFIX);
       } catch (error) {
         await redisCommand("DEL", JARVIS_PREFIX + "session:" + currentHash).catch(() => {});
         await redisCommand("DEL", JARVIS_PREFIX + "device:" + recovered.deviceId).catch(() => {});
