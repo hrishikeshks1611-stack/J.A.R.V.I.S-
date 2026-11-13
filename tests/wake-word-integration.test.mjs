@@ -120,8 +120,7 @@ test("full recovery keeps the installed JARVIS package and advances its version"
   assert.ok(!gradle.includes("applicationIdSuffix '.safe'"));
   assert.ok(!gradle.includes("applicationIdSuffix '.tv.safe'"));
   assert.ok(manifest.includes('android:label="J.A.R.V.I.S."'));
-  assert.ok(manifest.includes("BIND_NOTIFICATION_LISTENER_SERVICE"));
-  assert.ok(manifest.includes("JarvisNotificationListener"));
+  assert.doesNotMatch(manifest, /BIND_NOTIFICATION_LISTENER_SERVICE|NotificationListenerService/);
   assert.ok(workflow.includes("pm path com.hrishikesh.jarvis.fresh"));
   assert.ok(workflow.includes("Installing the full-recovery JARVIS APK"));
 });
