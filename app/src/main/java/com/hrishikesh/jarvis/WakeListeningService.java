@@ -204,8 +204,7 @@ public final class WakeListeningService extends Service {
             case RESUME_MEDIA:
             case NEXT_TRACK:
             case PREVIOUS_TRACK:
-                if (MediaControl.execute(this, command.action)) speak("As you wish, Sir.");
-                else speak("Media controls are unavailable. Please enable JARVIS notification access, Sir.");
+                speak("Direct controls of other apps are not available in this security-focused build, Sir.");
                 break;
             default: speak("I am listening, Sir. Please give me a command."); break;
         }
