@@ -1,0 +1,16 @@
+<resources>
+    <style name="AppTheme" parent="android:style/Theme.Material.NoActionBar">
+        <item name="android:fontFamily">sans</item>
+        <item name="android:colorAccent">@color/jarvis_blue</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:statusBarColor">#030914</item>
+        <item name="android:navigationBarColor">#030914</item>
+        <item name="android:windowBackground">#030914</item>
+    </style>
+    <style name="SplashTheme" parent="android:style/Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@drawable/jarvis_splash</item>
+        <item name="android:statusBarColor">#030914</item>
+        <item name="android:navigationBarColor">#030914</item>
+        <item name="android:windowActionModeOverlay">true</item>
+    </style>
+</resources>
