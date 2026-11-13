@@ -111,7 +111,7 @@ public final class WakeListeningService extends Service {
                 recognizer = SpeechRecognizer.createSpeechRecognizer(this);
                 recognizer.setRecognitionListener(new RecognitionListener() {
                     @Override public void onReadyForSpeech(Bundle params) {
-                        listening = true; updateNotification("Listening for Hey JARVIS / Wake up, JARVIS / Hello JARVIS");
+                        listening = true; updateNotification("Listening for all four JARVIS wake phrases");
                     }
                     @Override public void onBeginningOfSpeech() { }
                     @Override public void onRmsChanged(float rmsdB) { }
