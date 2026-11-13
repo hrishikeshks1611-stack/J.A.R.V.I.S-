@@ -551,6 +551,46 @@ public class MainActivity extends Activity {
             return "Opening Clock so you can review and confirm that alarm, Sir.";
         }
 
+        @JavascriptInterface public String showAlarms() {
+            Intent intent = new Intent(AlarmClock.ACTION_SHOW_ALARMS);
+            runOnUiThread(() -> {
+                try { startActivity(intent); }
+                catch (ActivityNotFoundException error) {
+                    Toast.makeText(MainActivity.this, "No compatible Clock app can show alarms on this device, Sir.", Toast.LENGTH_LONG).show();
+                }
+            });
+            return "Opening your Clock app's alarm list, Sir. Android does not let third-party apps read every saved alarm directly.";
+        }
+
+        @JavascriptInterface public String dismissAlarm(String label) {
+            String alarmLabel = label == null ? "" : label.trim();
+            if (alarmLabel.length() > 100) return "That alarm label is too long, Sir.";
+            Intent intent = new Intent(AlarmClock.ACTION_DISMISS_ALARM);
+            if (!alarmLabel.isEmpty()) intent.putExtra(AlarmClock.EXTRA_MESSAGE, alarmLabel);
+            runOnUiThread(() -> {
+                try { startActivity(intent); }
+                catch (ActivityNotFoundException error) {
+                    Toast.makeText(MainActivity.this, "Your Clock app does not support dismissing alarms through Android intents, Sir.", Toast.LENGTH_LONG).show();
+                }
+            });
+            return alarmLabel.isEmpty()
+                    ? "Asking your Clock app to dismiss its next ringing alarm, Sir."
+                    : "Asking your Clock app to dismiss the alarm labelled " + alarmLabel + ", Sir.";
+        }
+
+        @JavascriptInterface public String snoozeAlarm(int minutes) {
+            if (minutes < 1 || minutes > 60) return "Snooze duration must be between 1 and 60 minutes, Sir.";
+            Intent intent = new Intent(AlarmClock.ACTION_SNOOZE_ALARM);
+            intent.putExtra(AlarmClock.EXTRA_LENGTH, minutes);
+            runOnUiThread(() -> {
+                try { startActivity(intent); }
+                catch (ActivityNotFoundException error) {
+                    Toast.makeText(MainActivity.this, "Your Clock app does not support snoozing through Android intents, Sir.", Toast.LENGTH_LONG).show();
+                }
+            });
+            return "Asking your Clock app to snooze the ringing alarm for " + minutes + " minutes, Sir.";
+        }
+
         @JavascriptInterface public String createCalendarEvent(String title, long beginMillis, long endMillis, String description) {
             String eventTitle = title == null ? "" : title.trim();
             if (eventTitle.isEmpty() || beginMillis <= 0 || endMillis <= beginMillis) {
