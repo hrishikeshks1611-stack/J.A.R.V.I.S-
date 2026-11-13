@@ -53,7 +53,7 @@ jobs:
         with:
           name: JARVIS-1.0.12-ALFRED-ARC-APK
           path: |
-            release/JARVIS-1.0.11-ARC-REACTOR.apk
+            release/JARVIS-1.0.12-ALFRED-ARC.apk
             release/SHA256SUMS.txt
           if-no-files-found: error
           retention-days: 30
