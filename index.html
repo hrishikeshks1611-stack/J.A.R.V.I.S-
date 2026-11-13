@@ -252,19 +252,19 @@ async function renderPairedDevices(){
   const label=document.createElement('span');
   const shortId=String(device.deviceId||'').slice(-8);
   const isCurrent=device.deviceId===sessionDeviceId;
-  label.textContent=device.deviceName+' · '+(device.role==='owner'?'CURRENT OWNER': 'DEVICE')+(isCurrent?' · THIS PHONE':'')+' · ID …'+shortId;
-  label.title='Full device ID: '+device.deviceId;
+  label.textContent=device.deviceName+' · '+(device.role==='owner'?'CURRENT OWNER': 'DEVICE')+(isCurrent?' · THIS PHONE':'')+' · FULL ID '+device.deviceId;
+  label.title='Exact device identity: '+device.deviceId;
   row.appendChild(label);
   if(device.role!=='owner'){
    const transfer=document.createElement('button');transfer.type='button';transfer.textContent='Transfer owner here';
    transfer.title='Transfer ownership to device ID '+device.deviceId;
    transfer.onclick=async()=>{
-    const targetDescription=device.deviceName+' (device ID …'+shortId+')';
+    const targetDescription=device.deviceName+' (FULL DEVICE ID '+device.deviceId+')';
     if(!confirm('TRANSFER JARVIS OWNERSHIP TO THIS DEVICE?\n\nTarget: '+targetDescription+'\nFull device ID: '+device.deviceId+'\n\nThe current owner will become a regular device. Shared conversations and saved memories will be preserved.'))return;
     try{
      transfer.disabled=true;
      const result=await pairApi({action:'transfer-owner',deviceId:device.deviceId});
-     sessionRole='device';$('ownerArea').hidden=true;$('syncStatus').textContent=result.message+' The new owner is device ID …'+shortId+'.';
+     sessionRole='device';$('ownerArea').hidden=true;$('syncStatus').textContent=result.message+' New owner full device ID: '+device.deviceId+'. Re-open Devices & Sync on the target device and verify it says OWNER.';
     }catch(e){$('syncStatus').textContent=e.message;transfer.disabled=false}
    };
    row.appendChild(transfer);
@@ -281,7 +281,7 @@ async function openSyncPanel(){
   if(sessionToken){
    const v=await pairApi({action:'verify'});sessionRole=v.role;sessionDeviceId=v.deviceId;
    $('syncStatus').textContent='Connected as '+v.deviceName+'. Shared conversation sync is active.';
-   $('deviceIdentity').textContent='THIS DEVICE: '+(v.role==='owner'?'OWNER':'DEVICE')+' · ID '+v.deviceId;
+   $('deviceIdentity').textContent='THIS DEVICE: '+(v.role==='owner'?'OWNER':'DEVICE')+' · '+v.deviceName+' · FULL DEVICE ID '+v.deviceId;
    if(v.role==='owner'){$('ownerArea').hidden=false;await renderPairedDevices();}
    else {$('deviceArea').hidden=false;}
    return;
