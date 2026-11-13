@@ -338,12 +338,13 @@ public final class MainActivity extends Activity {
 
     private void showMemory() {
         if (memory == null) return;
-        StringBuilder output = new StringBuilder("ENCRYPTED LOCAL MEMORY\\n");
+        StringBuilder output = new StringBuilder("ENCRYPTED LOCAL MEMORY");
+        output.append((char) 10);
         java.util.List<ConversationStore.Entry> entries = memory.recent(20);
         if (entries.isEmpty()) output.append("No saved conversation yet.");
         for (ConversationStore.Entry entry : entries) {
             output.append(entry.role.equals("user") ? "YOU: " : "JARVIS: ")
-                    .append(entry.text).append("\\n");
+                    .append(entry.text).append((char) 10);
         }
         transcript.setText(output.toString());
         setStatus(entries.size() + " RECENT ENTRIES");
