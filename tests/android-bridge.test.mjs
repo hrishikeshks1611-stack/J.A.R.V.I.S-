@@ -31,6 +31,25 @@ test("J.A.R.V.I.S uses the exact launcher name and a fresh independent package i
   assert.match(gradle, /versionName\s+'8\.0'/);
 });
 
+test("Android bundles the exact J.A.R.V.I.S web interface with Alfred and the moving 3D ARC reactor", async () => {
+  const gradle = await readFile(new URL("../app/build.gradle", import.meta.url), "utf8");
+  const activity = await readFile(new URL("../app/src/main/java/com/hrishikesh/jarvis/MainActivity.java", import.meta.url), "utf8");
+  const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+  assert.match(gradle, /copyJarvisWebClient/);
+  assert.match(gradle, /rootProject\.file\('index\.html'\)/);
+  assert.match(activity, /getAssets\(\)\.open\("jarvis\.html"\)/);
+  assert.match(activity, /loadDataWithBaseURL\(/);
+  assert.match(activity, /JARVIS_WEB_BASE_URL/);
+  assert.match(html, /<title>J\.A\.R\.V\.I\.S<\/title>/);
+  assert.match(html, /<option value="alfred"/);
+  assert.match(html, /perspective:900px/);
+  assert.match(html, /transform-style:preserve-3d/);
+  assert.match(html, /id="wakeWordButton"/);
+  assert.match(html, /lookupYoutubeMusicTrack/);
+  assert.doesNotMatch(html, /id="updateButton"/);
+});
+
+
 test("APK workflow verifies separate-install builds and never publishes debug APKs as releases", async () => {
   const workflow = await readFile(new URL("../.github/workflows/android-apk.yml", import.meta.url), "utf8");
   assert.match(workflow, /contents:\s*read/);
