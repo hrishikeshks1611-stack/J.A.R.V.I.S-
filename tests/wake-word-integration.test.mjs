@@ -115,8 +115,8 @@ test("full recovery keeps the installed JARVIS package and advances its version"
   const workflow = await read("../.github/workflows/android-apk.yml");
 
   assert.ok(gradle.includes("applicationId 'com.hrishikesh.jarvis.fresh'"));
-  assert.ok(gradle.includes("versionCode 117"));
-  assert.ok(gradle.includes("versionName '1.1.1'"));
+  assert.ok(gradle.includes("versionCode 118"));
+  assert.ok(gradle.includes("versionName '1.1.2'"));
   assert.ok(!gradle.includes("applicationIdSuffix '.safe'"));
   assert.ok(!gradle.includes("applicationIdSuffix '.tv.safe'"));
   assert.ok(manifest.includes('android:label="J.A.R.V.I.S."'));
