@@ -21,7 +21,7 @@ test("calculator enforces input and result bounds", () => {
 
 test("tool registry exposes only the approved six tools", () => {
   const names = JARVIS_TOOL_DECLARATIONS[0].function_declarations.map(item => item.name);
-  assert.deepEqual(names, ["calculate", "get_device_status", "request_alarm", "request_calendar_event", "search_saved_memories", "search_conversation"]);
+  assert.deepEqual(names, ["calculate", "get_device_status", "request_alarm", "request_calendar_event", "search_saved_memories", "create_study_plan", "search_conversation"]);
 });
 
 test("device status reports only fields explicitly supplied by the app", async () => {
@@ -81,4 +81,28 @@ test("calendar tool requires future timezone-aware dates and caps event duration
   await assert.rejects(() => executeJarvisTool("request_calendar_event", {
     title: "Meeting", startIso: "2099-04-10T10:00:00Z", endIso: "2099-04-10T11:00:00Z"
   }, { userMessage: "How do I create a calendar event?" }));
+});
+
+
+test("education engine builds a bounded weekly study plan with spaced review", async () => {
+  const result = await executeJarvisTool("create_study_plan", {
+    subject: "Mathematics",
+    goal: "Understand differentiation and solve basic problems",
+    daysPerWeek: 4,
+    minutesPerSession: 50,
+    level: "beginner"
+  }, { userMessage: "Create a study plan for Mathematics." });
+  assert.equal(result.ok, true);
+  assert.equal(result.totalMinutesPerWeek, 200);
+  assert.equal(result.sessions.length, 4);
+  for (const session of result.sessions) {
+    assert.equal(session.activities.reduce((sum, item) => sum + item.minutes, 0), 50);
+  }
+  assert.deepEqual(result.spacedReview.map(item => item.afterDays), [1, 3, 7]);
+  await assert.rejects(() => executeJarvisTool("create_study_plan", {
+    subject: "Maths", goal: "Pass", daysPerWeek: 8
+  }, { userMessage: "Create a study plan for Maths." }), /1 and 7/);
+  await assert.rejects(() => executeJarvisTool("create_study_plan", {
+    subject: "Maths", goal: "Pass"
+  }, { userMessage: "How do I create a study plan?" }), /explicitly asks/);
 });
