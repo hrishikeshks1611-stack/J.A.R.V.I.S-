@@ -2,6 +2,7 @@
 import { getSession, readHistory, readMemories, appendConversationTurn } from "../lib/jarvis-store.js";
 import { JARVIS_TOOL_DECLARATIONS, executeJarvisTool } from "../lib/jarvis-tools.js";
 import { buildJarvisSystemInstruction } from "../lib/jarvis-personality.js";
+import { buildJarvisCapabilitiesReply, isJarvisCapabilitiesQuestion } from "../lib/jarvis-capabilities.js";
 
 export default async function handler(req, res) {
   const origin = req.headers.origin || "";
@@ -37,11 +38,6 @@ export default async function handler(req, res) {
   }
 
   const apiKey = process.env.JARVIS || process.env.GEMINI_API_KEY;
-  if (!apiKey) {
-    return res.status(503).json({
-      error: "No Gemini API key is configured. Add GEMINI_API_KEY (or JARVIS) in this Vercel project's Environment Variables, then redeploy."
-    });
-  }
 
   try {
     const body = req.body || {};
@@ -49,6 +45,21 @@ export default async function handler(req, res) {
     const message = String(body.message || (attachment ? "Please examine the attached file." : "")).trim().slice(0, 12000);
     const mode = String(body.mode || "witty").toLowerCase();
     if (!message) return res.status(400).json({ error: "Please enter a request." });
+
+    // Capability questions use the code-backed catalogue, not a model guess.
+    // The answer is scoped to the client surface and explicitly labels partial features.
+    if (isJarvisCapabilitiesQuestion(message)) {
+      const deviceType = String(body.deviceContext?.deviceType || "Browser / desktop");
+      const reply = buildJarvisCapabilitiesReply(deviceType);
+      await appendConversationTurn(message, reply);
+      return res.status(200).json({ reply, deviceId: session.deviceId, toolCalls: [], pendingActions: [], capabilityCatalogue: true });
+    }
+
+    if (!apiKey) {
+      return res.status(503).json({
+        error: "No Gemini API key is configured. Add GEMINI_API_KEY (or JARVIS) in this Vercel project's Environment Variables, then redeploy."
+      });
+    }
 
     const system = buildJarvisSystemInstruction(mode);
 
