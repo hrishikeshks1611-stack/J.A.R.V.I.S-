@@ -30,7 +30,8 @@ test("task steps cannot bypass dependencies or claim completion without evidence
   assert.throws(() => updateTaskStep(plan, { stepId: "collect", status: "completed", evidence: "Collected 12 verified entries from the source dataset.", evidenceRef: "invented-reference" }), /evidence reference/i);
   assert.throws(() => updateTaskStep(plan, { stepId: "collect", status: "completed", evidence: "done", evidenceRef: attached.evidence.id }), /evidence/i);
   plan = updateTaskStep(plan, { stepId: "collect", status: "completed", evidence: "Collected 12 verified entries from the source dataset.", evidenceRef: attached.evidence.id });
-  plan = updateTaskStep(plan, { stepId: "write", status: "completed", evidence: "Report generated and checked against all 12 source entries.", evidenceRef: attached.evidence.id });
+  const draftEvidence = attachTaskEvidence(plan, { tool: "create_study_plan", summary: "The draft report content was generated and returned by the approved planning tool." });
+  plan = updateTaskStep(draftEvidence.plan, { stepId: "write", status: "completed", evidence: "Report generated and checked against all 12 source entries.", evidenceRef: draftEvidence.evidence.id });
   assert.equal(plan.status, "completed");
   assert.deepEqual(taskProgress(plan), { completed: 2, total: 2, percent: 100 });
 });
