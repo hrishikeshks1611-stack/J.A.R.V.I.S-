@@ -19,7 +19,7 @@ android {
     defaultConfig {
         // A fresh application ID avoids colliding with previously installed JARVIS packages.
         // Keep the existing installation untouched; this is a separately installable 7.0 release.
-        applicationId 'com.hrishikesh.jarvis.seven.release'
+        applicationId 'com.hrishikesh.jarvis.fourteen.release'
         minSdk 23
         targetSdk 35
         versionCode 701
