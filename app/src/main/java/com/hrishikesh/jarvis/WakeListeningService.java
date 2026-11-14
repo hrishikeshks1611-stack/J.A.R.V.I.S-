@@ -90,7 +90,7 @@ public final class WakeListeningService extends Service {
         try {
             tts = new TextToSpeech(this, status -> {
                 if (status == TextToSpeech.SUCCESS) {
-                    ready = configureJ.A.R.V.I.SVoice();
+                    ready = configureJarvisVoice();
                     if (ready) { tts.setSpeechRate(0.92f); tts.setPitch(0.84f); }
                     else updateNotification("No male English voice installed • select one in Android TTS settings");
                 }
@@ -104,13 +104,6 @@ public final class WakeListeningService extends Service {
             Set<Voice> voices = tts.getVoices();
             Voice chosen = null;
             if (voices != null) {
-                for (Voice voice : voices) {
-                    Locale locale = voice.getLocale();
-                    if ("en".equals(locale.getLanguage()) && "GB".equalsIgnoreCase(locale.getCountry())
-                            && voice.getName().toLowerCase(Locale.ROOT).contains("algieba")) {
-                        chosen = voice; break;
-                    }
-                }
                 if (chosen == null) for (Voice voice : voices) {
                     Locale locale = voice.getLocale();
                     String name = voice.getName().toLowerCase(Locale.ROOT);
