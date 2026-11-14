@@ -309,6 +309,7 @@ public final class MainActivity extends Activity {
 
     private void restoreConversation() {
         if (memory == null || chatMessages == null) return;
+        chatMessages.removeAllViews();
         java.util.List<ConversationStore.Entry> entries = memory.recent(30);
         if (entries.isEmpty()) {
             addChatLine("ALFRED", "Good day, Sir. J.A.R.V.I.S is online. How may I assist?", false);
