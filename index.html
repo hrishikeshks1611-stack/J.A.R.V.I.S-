@@ -1023,28 +1023,39 @@ function handleCalendarOrAlarmCommand(text){
  if(!window.AndroidJarvis)return null;
  const reminder=text.match(/^\s*(?:jarvis[, ]+)?(?:please\s+)?remind me to (.+?) at (\d{1,2})(?::(\d{2}))?\s*(am|pm)\s*[.!?]*\s*$/i);
  const alarm=text.match(/^\s*(?:jarvis[, ]+)?(?:please\s+)?(?:set|create)\s+(?:an?\s+)?alarm\s+(?:for|at)\s+(\d{1,2})(?::(\d{2}))?\s*(am|pm)?(?:\s+(?:called|named|labelled)\s+(.+?))?[.!?]*\s*$/i);
- const match=reminder||alarm;
- if(match){
-  if(typeof window.AndroidJarvis.setAlarm!=='function')return 'Sir, this installed JARVIS version does not include native Clock controls yet. Please open the Clock app to set that alarm.';
-  let hour=Number(reminder?match[2]:match[1]),minute=Number(reminder?match[3]||0:match[2]||0);
-  const period=reminder?match[4]?.toLowerCase():match[3]?.toLowerCase();
+ if(reminder){
+  if(typeof window.AndroidJarvis.setReminder!=='function')return 'Sir, this installed J.A.R.V.I.S. version does not include native reminder notifications yet.';
+  let hour=Number(reminder[2]),minute=Number(reminder[3]||0),period=reminder[4].toLowerCase();
+  if(minute>59||hour<1||hour>12)return 'That reminder time is invalid, Sir.';
+  hour=hour%12;if(period==='pm')hour+=12;
+  const trigger=new Date();trigger.setHours(hour,minute,0,0);
+  if(trigger.getTime()<=Date.now())trigger.setDate(trigger.getDate()+1);
+  return window.AndroidJarvis.setReminder(trigger.getTime(),reminder[1].trim());
+ }
+ if(alarm){
+  if(typeof window.AndroidJarvis.setAlarm!=='function')return 'Sir, this installed J.A.R.V.I.S. version does not include native Clock controls yet. Please open the Clock app to set that alarm.';
+  let hour=Number(alarm[1]),minute=Number(alarm[2]||0);
+  const period=alarm[3]?.toLowerCase();
   if(minute>59||(period&&(hour<1||hour>12))||(!period&&(hour<0||hour>23)))return 'That alarm time is invalid, Sir.';
   if(period){hour=hour%12;if(period==='pm')hour+=12;}
   else if(hour<=12)return null;
-  const label=reminder?'Reminder: '+match[1].trim():(match[4]||'JARVIS alarm').trim();
+  const label=(alarm[4]||'JARVIS alarm').trim();
   return window.AndroidJarvis.setAlarm(hour,minute,label);
  }
  const event=text.match(/^\s*(?:jarvis[, ]+)?(?:please\s+)?(?:create|add|schedule)\s+(?:a\s+)?(?:calendar\s+)?event\s+(.+?)\s+(?:on|for)\s+(\d{4})-(\d{2})-(\d{2})\s+at\s+(\d{1,2}):(\d{2})\s*$/i);
  const datedReminder=text.match(/^\s*(?:jarvis[, ]+)?(?:please\s+)?remind me to (.+?) on (\d{4})-(\d{2})-(\d{2}) at (\d{1,2}):(\d{2})\s*$/i);
  const scheduled=event||datedReminder;
  if(scheduled){
-  if(typeof window.AndroidJarvis.createCalendarEvent!=='function')return 'Sir, this installed JARVIS version does not include native Calendar controls yet. Please open Calendar to add that event.';
-  const title=(datedReminder?'Reminder: ':'')+scheduled[1].trim();
   const year=Number(scheduled[2]),month=Number(scheduled[3]),day=Number(scheduled[4]),hour=Number(scheduled[5]),minute=Number(scheduled[6]);
   const start=new Date(year,month-1,day,hour,minute,0,0);
   if(start.getFullYear()!==year||start.getMonth()!==month-1||start.getDate()!==day||hour>23||minute>59)return 'That calendar date or time is invalid, Sir.';
   if(start.getTime()<=Date.now())return 'That date and time has already passed, Sir. Please choose a future time.';
-  return window.AndroidJarvis.createCalendarEvent(title,start.getTime(),start.getTime()+60*60*1000,'Created through J.A.R.V.I.S.');
+  if(datedReminder){
+   if(typeof window.AndroidJarvis.setReminder!=='function')return 'Sir, this installed J.A.R.V.I.S. version does not include native reminder notifications yet.';
+   return window.AndroidJarvis.setReminder(start.getTime(),scheduled[1].trim());
+  }
+  if(typeof window.AndroidJarvis.createCalendarEvent!=='function')return 'Sir, this installed J.A.R.V.I.S. version does not include native Calendar controls yet. Please open Calendar to add that event.';
+  return window.AndroidJarvis.createCalendarEvent(scheduled[1].trim(),start.getTime(),start.getTime()+60*60*1000,'Created through J.A.R.V.I.S.');
  }
  return null;
 }
