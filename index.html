@@ -630,6 +630,44 @@ async function playPcmStream(response,cacheKey){
 }
 let speechQuotaCooldownUntil=0;
 let speechQuotaCooldownReason='';
+function speechRetryDelay(attempt){
+ return new Promise(resolve=>setTimeout(resolve,attempt===0?350:900));
+}
+async function requestAlfredSpeech(spoken){
+ let lastError;
+ for(let attempt=0;attempt<2;attempt++){
+  try{
+   const response=await fetch(JARVIS_API+'/speech',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','Authorization':'Bearer '+sessionToken},
+    body:JSON.stringify({text:spoken})
+   });
+   if(response.ok)return response;
+   const raw=await response.text();let data={};try{data=JSON.parse(raw)}catch{}
+   const error=new Error(data.error||('Speech service returned HTTP '+response.status));
+   error.status=response.status;
+   if(response.status===429){
+    const retryAfter=Number(response.headers?.get?.('Retry-After')||0);
+    const isQuota=/quota|rate.?limit|resource.?exhausted|limit:\s*0|exceeded/i.test(error.message);
+    const cooldownMs=retryAfter>0?Math.min(retryAfter*1000,15*60*1000):(isQuota?5*60*1000:45*1000);
+    error.quota=isQuota;
+    speechQuotaCooldownUntil=Date.now()+cooldownMs;
+    speechQuotaCooldownReason=error.message;
+    throw error;
+   }
+   if(response.status>=500&&response.status<=599&&attempt===0){
+    lastError=error;await speechRetryDelay(attempt);continue;
+   }
+   throw error;
+  }catch(error){
+   if(error.status)throw error;
+   lastError=error;
+   if(attempt===0){await speechRetryDelay(attempt);continue;}
+   throw error;
+  }
+ }
+ throw lastError||new Error('Alfred speech could not be reached.');
+}
 function startOfflineFallback(spoken,error){
   // Alfred voice policy: fail silent. Never hand speech to Android's default TTS
   // engine, an unverified voice, or any female/unknown voice.
@@ -661,21 +699,8 @@ async function speak(text){
       cooldownError.quota=true;
       startOfflineFallback(spoken,cooldownError);return;
     }
-    status('Generating voice','thinking');
-    const response=await fetch(JARVIS_API+'/speech',{
-      method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+sessionToken},body:JSON.stringify({text:spoken})
-    });
-    if(!response.ok){
-      const raw=await response.text();let data={};try{data=JSON.parse(raw)}catch{}
-      const error=new Error(data.error||('Speech service returned HTTP '+response.status));
-      error.status=response.status;
-      if(response.status===429){
-        error.quota=/quota|rate.?limit|resource.?exhausted|limit:\s*0|exceeded/i.test(error.message);
-        speechQuotaCooldownUntil=Date.now()+(error.quota?5*60*1000:45*1000);
-        speechQuotaCooldownReason=error.message;
-      }
-      throw error;
-    }
+    status('Generating Algieba voice','thinking');
+    const response=await requestAlfredSpeech(spoken);
     await playPcmStream(response,cacheKey);
   }catch(error){
     if(currentAudio){try{currentAudio.pause();}catch(e){}currentAudio=null;}
