@@ -19,7 +19,7 @@ android {
     buildFeatures { buildConfig true }
     defaultConfig {
         // A fresh application ID avoids colliding with previously installed JARVIS packages.
-        // Keep the existing installation untouched; this is a separately installable 7.0 release.
+        // Keep existing installations untouched; this is a separately installable 14.0 release.
         applicationId 'com.hrishikesh.jarvis.fourteen.release'
         minSdk 23
         targetSdk 35
