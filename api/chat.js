@@ -1,5 +1,6 @@
 // J.A.R.V.I.S. server-side AI endpoint. Gemini credentials and shared history stay server-side.
-import { getSession, readConversationContext, appendConversationTurn } from "../lib/jarvis-store.js";
+import { getSession, readConversationContext, appendConversationTurn, saveTaskState } from "../lib/jarvis-store.js";
+import { attachTaskEvidence } from "../lib/jarvis-task-engine.js";
 import { JARVIS_TOOL_DECLARATIONS, executeJarvisTool } from "../lib/jarvis-tools.js";
 import { buildJarvisSystemInstruction } from "../lib/jarvis-personality.js";
 import { buildJarvisCapabilitiesReply, isJarvisCapabilitiesQuestion } from "../lib/jarvis-capabilities.js";
@@ -84,7 +85,7 @@ export default async function handler(req, res) {
     const tutorMode = isTutorRequest(message);
     const medicalMode = isMedicalRequest(message);
     const mentalistMode = isMentalistRequest(message);
-    const system = [buildJarvisSystemInstruction(mode), "You are emotionally available as described here: " + buildEmotionalAvailabilityInstruction(), "Response quality and speed contract: answer the actual question directly, avoid filler and repeated disclaimers, and keep simple answers concise. For complex requests, reason carefully, use the supplied tools when needed, and report uncertainty rather than guessing. For compound action requests, create a task plan before execution, update step status as work proceeds, and mark steps complete only with concrete verification evidence. Respect dependencies and confirmation gates. If a task remains active, include its task ID in the final response so a later request can resume it. Do not sacrifice correctness or safety for brevity.", tutorMode ? buildTutorSystemInstruction() : "", medicalMode ? buildMedicalSystemInstruction() : "", mentalistMode ? buildMentalistSystemInstruction() : ""].filter(Boolean).join(" ");
+    const system = [buildJarvisSystemInstruction(mode), "You are emotionally available as described here: " + buildEmotionalAvailabilityInstruction(), "Response quality and speed contract: answer the actual question directly, avoid filler and repeated disclaimers, and keep simple answers concise. For complex requests, reason carefully, use the supplied tools when needed, and report uncertainty rather than guessing. For compound action requests, create a task plan before execution, update step status as work proceeds, and mark a step completed only when you can cite an evidenceRef returned by a successful approved tool. Never invent an evidenceRef; if no suitable tool result exists, leave the step in progress and explain what verification is missing. Respect dependencies and confirmation gates. If a task remains active, include its task ID in the final response so a later request can resume it. Do not sacrifice correctness or safety for brevity.", tutorMode ? buildTutorSystemInstruction() : "", medicalMode ? buildMedicalSystemInstruction() : "", mentalistMode ? buildMentalistSystemInstruction() : ""].filter(Boolean).join(" ");
 
     // Select relevant shared context instead of blindly injecting only the newest
     // messages. Preserve chronological order so follow-up turns remain coherent.
@@ -310,7 +311,7 @@ export default async function handler(req, res) {
             return {
               name: call.name,
               result,
-              status: result?.requiresConfirmation ? "confirmation_required" : "success",
+              status: result?.ok === false ? "failed" : result?.requiresConfirmation ? "confirmation_required" : "success",
               pendingAction: result?.pendingAction || null
             };
           } catch (error) {
@@ -321,6 +322,20 @@ export default async function handler(req, res) {
             };
           }
         }));
+        // Bind task completion to evidence references minted only after an
+        // allow-listed tool has actually returned a successful result.
+        if (toolContext.taskPlan) {
+          let evidenceAdded = false;
+          for (const item of functionResults) {
+            if (item.status !== "success" || ["create_task_plan", "update_task_step"].includes(item.name)) continue;
+            const summary = JSON.stringify(item.result || {}).slice(0, 600);
+            const attached = attachTaskEvidence(toolContext.taskPlan, { tool: item.name, summary });
+            toolContext.taskPlan = attached.plan;
+            item.result = { ...item.result, evidenceRef: attached.evidence.id };
+            evidenceAdded = true;
+          }
+          if (evidenceAdded) await saveTaskState(toolContext.taskPlan);
+        }
         const functionResponses = functionResults.map(item => {
           if (item.pendingAction) pendingActions.push(item.pendingAction);
           toolTrace.push({ tool: item.name, status: item.status });
