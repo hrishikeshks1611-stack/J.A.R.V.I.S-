@@ -85,6 +85,25 @@ export default async function handler(req, res) {
       return res.status(200).json({ ...result, message: "This device is now paired with JARVIS." });
     }
 
+    if (action === "check-recovery") {
+      const recoveryCode = String(body.recoveryCode || "");
+      const expectedRecoveryCode = process.env.JARVIS_OWNER_RECOVERY_CODE || "";
+      if (expectedRecoveryCode.length < 32) {
+        return res.status(200).json({ configured: false, ownerExists: false, valid: false });
+      }
+      const attemptKey = JARVIS_PREFIX + "owner:recovery-attempts:" + hashToken(sourceMaterial);
+      const attempts = Number(await redisCommand("INCR", attemptKey));
+      if (attempts === 1) await redisCommand("EXPIRE", attemptKey, "3600");
+      if (attempts > 5) {
+        await audit("denied", { reason: "recovery_rate_limited" });
+        return res.status(429).json({ error: "Too many recovery attempts from this connection. Try again in one hour." });
+      }
+      const ownerExists = await redisCommand("GET", JARVIS_PREFIX + "owner:claimed") === "1";
+      const valid = ownerExists && safeEqual(recoveryCode, expectedRecoveryCode);
+      if (!valid) await audit("denied", { reason: ownerExists ? "invalid_owner_recovery_credential" : "owner_record_missing" });
+      return res.status(200).json({ configured: true, ownerExists, valid });
+    }
+
     if (action === "recover-owner") {
       const recoveryCode = String(body.recoveryCode || "");
       const expectedRecoveryCode = process.env.JARVIS_OWNER_RECOVERY_CODE || "";
