@@ -4,6 +4,12 @@ import vm from "node:vm";
 const files = ["index.html", "app/src/main/assets/index.html"];
 for (const file of files) {
   const html = await readFile(file, "utf8");
+  if (!/body:\s*JSON\.stringify\(\{[\s\S]*?stream:true/.test(html)) {
+    throw new Error(file + " chat requests must opt in to live SSE streaming.");
+  }
+  if (!html.includes("event==='progress'") || !html.includes("event==='delta'")) {
+    throw new Error(file + " must handle streamed progress and text-delta events.");
+  }
   const blocks = [...html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)]
     .map(match => match[1])
     .filter(source => source.trim().length > 0);
