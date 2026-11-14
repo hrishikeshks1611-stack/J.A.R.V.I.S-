@@ -19,9 +19,9 @@ test("calculator enforces input and result bounds", () => {
   assert.throws(() => calculateExpression("9999999999999999 * 9999999999999999"));
 });
 
-test("tool registry exposes only the approved six tools", () => {
+test("tool registry exposes only the approved seven tools", () => {
   const names = JARVIS_TOOL_DECLARATIONS[0].function_declarations.map(item => item.name);
-  assert.deepEqual(names, ["calculate", "get_device_status", "request_alarm", "request_calendar_event", "search_saved_memories", "search_conversation"]);
+  assert.deepEqual(names, ["calculate", "get_device_status", "request_open_app", "request_alarm", "request_calendar_event", "search_saved_memories", "search_conversation"]);
 });
 
 test("device status reports only fields explicitly supplied by the app", async () => {
@@ -81,4 +81,12 @@ test("calendar tool requires future timezone-aware dates and caps event duration
   await assert.rejects(() => executeJarvisTool("request_calendar_event", {
     title: "Meeting", startIso: "2099-04-10T10:00:00Z", endIso: "2099-04-10T11:00:00Z"
   }, { userMessage: "How do I create a calendar event?" }));
+});
+
+test("app launch tool only prepares explicit non-financial app requests", async () => {
+  const result = await executeJarvisTool("request_open_app", { appName: "YouTube" }, { userMessage: "Please open YouTube." });
+  assert.equal(result.requiresConfirmation, true);
+  assert.deepEqual(result.pendingAction, { type: "open_app", appName: "YouTube" });
+  await assert.rejects(() => executeJarvisTool("request_open_app", { appName: "YouTube" }, { userMessage: "How do I open YouTube?" }));
+  await assert.rejects(() => executeJarvisTool("request_open_app", { appName: "PhonePe" }, { userMessage: "Open PhonePe." }));
 });
