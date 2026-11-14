@@ -448,7 +448,13 @@ public class MainActivity extends Activity {
                     startActivity(intent);
                     outcome.set("SEARCH_OPENED:YouTube search opened for " + requested + ".");
                 } catch (ActivityNotFoundException error) {
-                    outcome.set("ERROR:No YouTube app or browser can open search results.");
+                    try {
+                        Intent browserIntent = new Intent(Intent.ACTION_VIEW, searchUri);
+                        startActivity(browserIntent);
+                        outcome.set("SEARCH_OPENED:YouTube search opened in the available browser.");
+                    } catch (ActivityNotFoundException noHandler) {
+                        outcome.set("ERROR:No YouTube app or browser can open search results.");
+                    }
                 } catch (RuntimeException error) {
                     outcome.set("ERROR:Android could not open YouTube search.");
                 } finally {
