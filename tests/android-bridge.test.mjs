@@ -15,8 +15,12 @@ test("native bridge exposes confirmation-based Clock and Calendar actions", asyn
   assert.ok(source.includes("public String openCastSettings()"));
   assert.ok(source.includes("Settings.ACTION_CAST_SETTINGS"));
   assert.ok(source.includes("public String setAlarm(int hour, int minute, String label)"));
-  assert.ok(source.includes("AlarmClock.ACTION_SET_ALARM"));
-  assert.ok(source.includes("AlarmClock.EXTRA_SKIP_UI, false"));
+  assert.ok(source.includes("AlarmIntentFactory.create(hour, minute, label)"));
+  const alarmFactory = await readFile(new URL("../app/src/main/java/com/hrishikesh/jarvis/AlarmIntentFactory.java", import.meta.url), "utf8");
+  assert.ok(alarmFactory.includes("AlarmClock.ACTION_SET_ALARM"));
+  assert.ok(alarmFactory.includes("AlarmClock.EXTRA_SKIP_UI, false"));
+  assert.ok(alarmFactory.includes("AlarmClock.EXTRA_HOUR"));
+  assert.ok(alarmFactory.includes("AlarmClock.EXTRA_MINUTES"));
   assert.ok(source.includes("public String createCalendarEvent(String title, long beginMillis, long endMillis, String description)"));
   assert.ok(source.includes("Intent.ACTION_INSERT"));
   assert.ok(source.includes("CalendarContract.EXTRA_EVENT_BEGIN_TIME"));
