@@ -173,7 +173,27 @@ public class MainActivity extends Activity {
         setContentView(webView);
         webView.requestFocus();
         if (BuildConfig.JARVIS_TV) applyTvImmersiveMode();
-        webView.loadUrl("https://hrishikeshks1611-stack.github.io/J.A.R.V.I.S-/v7/");
+        loadBundledInterface();
+    }
+
+    private void loadBundledInterface() {
+        try (InputStream input = getAssets().open("index.html");
+             ByteArrayOutputStream output = new ByteArrayOutputStream()) {
+            byte[] buffer = new byte[8192];
+            int count;
+            while ((count = input.read(buffer)) != -1) output.write(buffer, 0, count);
+            String html = output.toString("UTF-8");
+            // Keep the trusted GitHub Pages origin for existing read-only API calls,
+            // but render the exact UI shipped in this APK rather than a mutable remote page.
+            webView.loadDataWithBaseURL(
+                    "https://hrishikeshks1611-stack.github.io/J.A.R.V.I.S-/v7/",
+                    html, "text/html", "UTF-8", null);
+        } catch (Exception error) {
+            String fallback = "<html><body style='background:#050b18;color:#eaf7ff;font-family:sans-serif;padding:24px'>"
+                    + "<h2>J.A.R.V.I.S</h2><p>The bundled interface could not be loaded.</p></body></html>";
+            webView.loadDataWithBaseURL("https://hrishikeshks1611-stack.github.io/",
+                    fallback, "text/html", "UTF-8", null);
+        }
     }
 
 
