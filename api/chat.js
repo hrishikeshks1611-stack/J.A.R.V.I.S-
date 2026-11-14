@@ -231,25 +231,35 @@ export default async function handler(req, res) {
 
         // Preserve the model's function-call turn before returning tool results.
         modelContents.push(candidate.content);
-        const functionResponses = [];
-        for (const part of functionCalls) {
+        // The current allow-listed tools are read-only calculations/searches or
+        // confirmation-only proposals, so independent calls from one model turn
+        // can run concurrently without creating unapproved side effects.
+        const functionResults = await Promise.all(functionCalls.map(async (part, index) => {
           const call = part.functionCall;
-          let result;
-          if (toolTrace.length >= MAX_TOOL_CALLS || step === MAX_MODEL_STEPS - 1) {
-            result = { ok: false, error: "The safe tool-call limit was reached; this request was not executed." };
-            toolTrace.push({ tool: call.name, status: "blocked" });
-          } else {
-            try {
-              result = await executeJarvisTool(call.name, call.args || {}, toolContext);
-              if (result?.pendingAction) pendingActions.push(result.pendingAction);
-              toolTrace.push({ tool: call.name, status: result?.requiresConfirmation ? "confirmation_required" : "success" });
-            } catch (error) {
-              result = { ok: false, error: String(error?.message || "Tool execution failed.").slice(0, 240) };
-              toolTrace.push({ tool: call.name, status: "failed" });
-            }
+          if (toolTrace.length + index >= MAX_TOOL_CALLS || step === MAX_MODEL_STEPS - 1) {
+            return { name: call.name, result: { ok: false, error: "The safe tool-call limit was reached; this request was not executed." }, status: "blocked" };
           }
-          functionResponses.push({ functionResponse: { name: call.name, response: result } });
-        }
+          try {
+            const result = await executeJarvisTool(call.name, call.args || {}, toolContext);
+            return {
+              name: call.name,
+              result,
+              status: result?.requiresConfirmation ? "confirmation_required" : "success",
+              pendingAction: result?.pendingAction || null
+            };
+          } catch (error) {
+            return {
+              name: call.name,
+              result: { ok: false, error: String(error?.message || "Tool execution failed.").slice(0, 240) },
+              status: "failed"
+            };
+          }
+        }));
+        const functionResponses = functionResults.map(item => {
+          if (item.pendingAction) pendingActions.push(item.pendingAction);
+          toolTrace.push({ tool: item.name, status: item.status });
+          return { functionResponse: { name: item.name, response: item.result } };
+        });
 
         if (!functionResponses.length) {
           reply = "Sir, I reached the safe tool-call limit for this request. The tools already run are listed below; no further action was attempted.";
