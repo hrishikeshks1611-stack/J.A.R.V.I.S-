@@ -942,9 +942,10 @@ function handleCalendarOrAlarmCommand(text){
   const label=reminder?'Reminder: '+match[1].trim():(match[4]||'JARVIS alarm').trim();
   return window.AndroidJarvis.setAlarm(hour,minute,label);
  }
- const event=text.match(/^\s*(?:jarvis[, ]+)?(?:please\s+)?(?:create|add|schedule)\s+(?:a\s+)?(?:calendar\s+)?event\s+(.+?)\s+(?:on|for)\s+(\d{4})-(\d{2})-(\d{2})\s+at\s+(\d{1,2}):(\d{2})\s*$/i);
+ const event=text.match(/^\s*(?:jarvis[, ]+)?(?:please\s+)?(?:create|add|schedule|book)\s+(?:a\s+)?(?:calendar\s+)?event\s+(.+?)\s+(?:on|for)\s+(\d{4})-(\d{2})-(\d{2})\s+at\s+(\d{1,2}):(\d{2})\s*$/i);
+ const calendarNatural=text.match(/^\s*(?:jarvis[, ]+)?(?:please\s+)?(?:put|add|schedule)\s+(.+?)\s+(?:on|to)\s+(?:my\s+)?calendar\s+(?:on|for)\s+(\d{4})-(\d{2})-(\d{2})\s+at\s+(\d{1,2}):(\d{2})\s*$/i);
  const datedReminder=text.match(/^\s*(?:jarvis[, ]+)?(?:please\s+)?remind me to (.+?) on (\d{4})-(\d{2})-(\d{2}) at (\d{1,2}):(\d{2})\s*$/i);
- const scheduled=event||datedReminder;
+ const scheduled=event||datedReminder||calendarNatural;
  if(scheduled){
   if(typeof window.AndroidJarvis.createCalendarEvent!=='function')return 'Sir, this installed JARVIS version does not include native Calendar controls yet. Please open Calendar to add that event.';
   const title=(datedReminder?'Reminder: ':'')+scheduled[1].trim();
