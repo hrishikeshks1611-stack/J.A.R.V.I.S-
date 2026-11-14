@@ -26,6 +26,8 @@ jobs:
       - name: Check server and API JavaScript syntax
         run: |
           for file in server.js api/*.js lib/*.js; do node --check "$file"; done
+      - name: Check embedded JARVIS interface JavaScript syntax
+        run: node scripts/check-jarvis-html.mjs
       - name: Test shared-memory, agent, and office-file helpers
         run: node --test tests/*.test.mjs
       - name: Live YouTube Music catalogue smoke
