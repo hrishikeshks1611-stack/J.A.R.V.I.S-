@@ -211,7 +211,7 @@ export default async function handler(req, res) {
 
     const progressStreaming = body.stream === true && performancePolicy.tier === "full" && !attachment && typeof res.write === "function";
     if (progressStreaming) {
-      const sendEvent = (event, payload) => res.write("event: " + event + "\\ndata: " + JSON.stringify(payload) + "\\n\\n");
+      const sendEvent = (event, payload) => res.write("event: " + event + "\ndata: " + JSON.stringify(payload) + "\n\n");
       res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
       res.setHeader("Cache-Control", "no-cache, no-transform");
       res.setHeader("Connection", "keep-alive");
