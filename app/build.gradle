@@ -3,7 +3,7 @@ android {
     namespace 'com.hrishikesh.jarvis'
     compileSdk 35
     defaultConfig {
-        applicationId 'com.hrishikesh.jarvis.eight.release'
+        applicationId 'com.hrishikesh.jarvis.nine.release'
         minSdk 26
         targetSdk 35
         versionCode 900
