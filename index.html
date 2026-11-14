@@ -447,8 +447,8 @@ function add(text,who,attachment,downloadFile,toolCalls,pendingActions){const d=
 async function readJarvisStream(response,onDelta){
  if(!response.body||!response.body.getReader)throw new Error('This device cannot read a live JARVIS response. Please retry.');
  const reader=response.body.getReader(),decoder=new TextDecoder();let buffer='',completed=null;
- const frame=raw=>{let event='message';const data=[];for(const line of raw.split(/\\r?\\n/)){if(line.startsWith('event:'))event=line.slice(6).trim();else if(line.startsWith('data:'))data.push(line.slice(5).trim());}if(!data.length)return;let payload;try{payload=JSON.parse(data.join('\\n'))}catch{return}if(event==='delta'&&typeof payload.text==='string')onDelta(payload.text);else if(event==='done')completed=payload;else if(event==='error')throw new Error(payload.error||'The live JARVIS response failed.');};
- while(true){const {value,done}=await reader.read();if(done)break;buffer+=decoder.decode(value,{stream:true});const frames=buffer.split(/\\r?\\n\\r?\\n/);buffer=frames.pop()||'';for(const item of frames)frame(item);}
+ const frame=raw=>{let event='message';const data=[];for(const line of raw.split(/\r?\n/)){if(line.startsWith('event:'))event=line.slice(6).trim();else if(line.startsWith('data:'))data.push(line.slice(5).trim());}if(!data.length)return;let payload;try{payload=JSON.parse(data.join('\n'))}catch{return}if(event==='delta'&&typeof payload.text==='string')onDelta(payload.text);else if(event==='done')completed=payload;else if(event==='error')throw new Error(payload.error||'The live JARVIS response failed.');};
+ while(true){const {value,done}=await reader.read();if(done)break;buffer+=decoder.decode(value,{stream:true});const frames=buffer.split(/\r?\n\r?\n/);buffer=frames.pop()||'';for(const item of frames)frame(item);}
  buffer+=decoder.decode();if(buffer.trim())frame(buffer);if(!completed)throw new Error('JARVIS closed the live response before sending its completion event.');return completed;
 }
 function setAttachment(file){if(!file)return;const allowed=['application/pdf','text/plain','text/csv','application/json','text/markdown'];if(!(file.type.startsWith('image/')||allowed.includes(file.type))){$('hint').textContent='Please choose an image, PDF, TXT, CSV, JSON or Markdown file, Sir.';return;}if(file.size>3*1024*1024){$('hint').textContent='That file is larger than the 3 MB limit, Sir.';return;}const reader=new FileReader();reader.onload=()=>{const data=String(reader.result).split(',')[1]||'';pendingAttachment={name:file.name||'Camera photo',mimeType:file.type||'image/jpeg',data};renderAttachment()};reader.onerror=()=>{$('hint').textContent='I could not read that file, Sir.'};reader.readAsDataURL(file)}
@@ -1257,7 +1257,7 @@ function importJarvisVcards(file){
    for(const line of lines){
     const m=line.match(/^(?:item\d+\.)?(FN|N|TEL)(?:;([^:]*))?:(.*)$/i);
     if(!m)continue;
-    const key=m[1].toUpperCase(),meta=(m[2]||'').toUpperCase(),value=m[3].replace(/\\n/gi,' ').replace(/\\([,;\\])/g,'$1').trim();
+    const key=m[1].toUpperCase(),meta=(m[2]||'').toUpperCase(),value=m[3].replace(/\n/gi,' ').replace(/\\([,;\\])/g,'$1').trim();
     if(key==='FN')name=value;
     else if(key==='N')fallback=value.split(';').filter(Boolean).reverse().join(' ').trim();
     else {const number=cleanContactNumber(value);if(number)numbers.push({number,priority:/CELL|MOBILE/.test(meta)?0:/WORK/.test(meta)?2:1});}
