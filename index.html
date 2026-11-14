@@ -438,7 +438,7 @@ function add(text,who,attachment,downloadFile,toolCalls,pendingActions){const d=
     const phoneNumber=String(action.phoneNumber||'').trim();
     button.textContent='Review call in Phone · '+(phoneNumber||'');
     button.setAttribute('aria-label','Review call in Phone');
-    if(!/^\\+?[0-9][0-9 .()\\-]{5,24}$/.test(phoneNumber)){button.textContent='Invalid phone number';button.disabled=true;}
+    if(!/^\+?[0-9][0-9 .()\-]{5,24}$/.test(phoneNumber)){button.textContent='Invalid phone number';button.disabled=true;}
     else button.onclick=()=>{
      if(!window.AndroidJarvis||typeof window.AndroidJarvis.dialNumber!=='function'){button.textContent='Available in the Android J.A.R.V.I.S. app only';button.disabled=true;return;}
      const result=window.AndroidJarvis.dialNumber(phoneNumber);
@@ -449,7 +449,7 @@ function add(text,who,attachment,downloadFile,toolCalls,pendingActions){const d=
     const phoneNumber=String(action.phoneNumber||'').trim(),message=String(action.message||'');
     button.textContent='Review SMS draft · '+(phoneNumber||'');
     button.setAttribute('aria-label','Review SMS draft');
-    if(!/^\\+?[0-9][0-9 .()\\-]{5,24}$/.test(phoneNumber)||!message.trim()||message.length>2000){button.textContent='Invalid SMS draft';button.disabled=true;}
+    if(!/^\+?[0-9][0-9 .()\-]{5,24}$/.test(phoneNumber)||!message.trim()||message.length>2000){button.textContent='Invalid SMS draft';button.disabled=true;}
     else button.onclick=()=>{
      if(!window.AndroidJarvis||typeof window.AndroidJarvis.openSmsComposer!=='function'){button.textContent='Available in the Android J.A.R.V.I.S. app only';button.disabled=true;return;}
      const result=window.AndroidJarvis.openSmsComposer(phoneNumber,message);
