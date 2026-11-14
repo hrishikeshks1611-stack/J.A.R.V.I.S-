@@ -43,6 +43,8 @@ test("APK workflow builds 14.0.1 and the update workflow verifies in-place data 
   assert.ok(workflow.includes("com.hrishikesh.jarvis.fourteen.release"));
   assert.ok(workflow.includes("com.hrishikesh.jarvis.fourteen.release.tv"));
   const updateWorkflow = await readFile(new URL("../.github/workflows/android-14-1-update.yml", import.meta.url), "utf8");
+  assert.match(updateWorkflow, /name: JARVIS-14\.0-Android-phone-QA/);
+  assert.match(updateWorkflow, /run-id: 43556405657/);
   assert.match(updateWorkflow, /adb install -r update-test-inputs\/jarvis-14\.0\.1-candidate\.apk/);
   assert.match(updateWorkflow, /update-compatibility-sentinel\.txt/);
   assert.match(updateWorkflow, /pm list packages/);

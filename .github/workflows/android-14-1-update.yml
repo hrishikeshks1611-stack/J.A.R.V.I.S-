@@ -8,14 +8,13 @@ on:
       - '.github/workflows/android-14-1-update.yml'
 permissions:
   contents: read
+  actions: read
 jobs:
   in-place-update:
     runs-on: ubuntu-latest
     steps:
-      - name: Check out full history
+      - name: Check out repository
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
       - name: Set up Java
         uses: actions/setup-java@v4
         with:
@@ -32,15 +31,20 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
-      - name: Build 14.0 baseline and 14.0.1 candidate
+      - name: Download the previous J.A.R.V.I.S 14.0 phone QA build
+        uses: actions/download-artifact@v4
+        with:
+          name: JARVIS-14.0-Android-phone-QA
+          path: update-test-inputs/baseline
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 43556405657
+      - name: Build 14.0.1 candidate and validate both package versions
         shell: bash
         run: |
           set -euo pipefail
-          git worktree add /tmp/jarvis-14.0-baseline cfc4171fb31bd7981592c8867fcd51cf51fb75ee
-          gradle --no-daemon -p /tmp/jarvis-14.0-baseline assemblePhoneDebug
-          BASELINE="/tmp/jarvis-14.0-baseline/app/build/outputs/apk/phone/debug/app-phone-debug.apk"
+          BASELINE="update-test-inputs/baseline/app-phone-debug.apk"
           test -s "$BASELINE"
-          mkdir -p update-test-inputs
           cp "$BASELINE" update-test-inputs/jarvis-14.0-baseline.apk
           gradle --no-daemon assemblePhoneDebug
           CANDIDATE="app/build/outputs/apk/phone/debug/app-phone-debug.apk"
