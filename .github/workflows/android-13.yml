@@ -1,0 +1,67 @@
+name: J.A.R.V.I.S 13.0 — Fresh Android Build
+on:
+  push:
+    branches: [jarvis-13.0]
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools platforms;android-35 build-tools;35.0.0'
+          accept-android-sdk-licenses: true
+      - name: Run unit tests
+        run: gradle --no-daemon testDebugUnitTest
+      - name: Apply 13.0 source fixes and assemble fresh-install APK
+        run: python3 tools/prepare_13.py && gradle --no-daemon clean assembleDebug
+      - name: Verify package, version, inverted-triangle identity and APK integrity
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK=app/build/outputs/apk/debug/app-debug.apk
+          test -s "$APK"
+          AAPT="$ANDROID_HOME/build-tools/35.0.0/aapt"
+          "$AAPT" dump badging "$APK" | tee /tmp/jarvis-badging.txt
+          grep -q "package: name='com.hrishikesh.jarvis.thirteen.release' versionCode='1300' versionName='13.0'" /tmp/jarvis-badging.txt
+          grep -q "application-label:'J.A.R.V.I.S'" /tmp/jarvis-badging.txt
+          "$AAPT" dump resources "$APK" > /tmp/jarvis-resources.txt
+          grep -q 'jarvis_reactor' /tmp/jarvis-resources.txt
+          grep -q 'M54,87 L24,31 L84,31 Z' app/src/main/res/drawable/jarvis_reactor.xml
+          grep -q 'NO MALE ENGLISH VOICE FOUND' app/src/main/java/com/hrishikesh/jarvis/MainActivity.java
+          grep -q 'Response copied' app/src/main/java/com/hrishikesh/jarvis/MainActivity.java
+          grep -q 'setFillViewport(false)' app/src/main/java/com/hrishikesh/jarvis/MainActivity.java
+          ! grep -q 'ALFRED' app/src/main/java/com/hrishikesh/jarvis/MainActivity.java
+          grep -q 'float tilt' app/src/main/java/com/hrishikesh/jarvis/ArcReactorView.java
+          grep -q 'seconds \* 47f' app/src/main/java/com/hrishikesh/jarvis/ArcReactorView.java
+          grep -q 'drawLines(triangle' app/src/main/java/com/hrishikesh/jarvis/ArcReactorView.java
+          grep -q 'android:windowSoftInputMode="adjustResize"' app/src/main/AndroidManifest.xml
+          grep -q 'restoreConversation' app/src/main/java/com/hrishikesh/jarvis/MainActivity.java
+          grep -q 'explicitly male-labelled' app/src/main/java/com/hrishikesh/jarvis/MainActivity.java
+                    grep -q 'android:drawable="@drawable/jarvis_reactor"' app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
+          grep -q 'android:drawable="@drawable/jarvis_reactor"' app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml
+          grep -q 'android:drawable="@drawable/jarvis_reactor"' app/src/main/res/drawable/jarvis_splash.xml
+          ! grep -q 'JarvisNotificationListener' app/src/main/AndroidManifest.xml
+          ! grep -q 'BIND_NOTIFICATION_LISTENER_SERVICE' app/src/main/AndroidManifest.xml
+          ! grep -R -q 'MediaSessionManager\|getActiveSessions\|NotificationListenerService' app/src/main/java
+          unzip -t "$APK"
+          unzip -l "$APK" | grep -E 'classes([0-9]+)?[.]dex'
+          mkdir -p release
+          cp "$APK" release/JARVIS-13.0-Fresh-Install.apk
+          sha256sum release/JARVIS-13.0-Fresh-Install.apk | tee release/SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: JARVIS-13.0-Fresh-Install
+          path: |
+            release/JARVIS-13.0-Fresh-Install.apk
+            release/SHA256SUMS.txt
+          if-no-files-found: error
+          retention-days: 30
