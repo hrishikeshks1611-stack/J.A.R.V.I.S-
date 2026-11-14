@@ -4,7 +4,7 @@ import vm from "node:vm";
 const files = ["index.html", "app/src/main/assets/index.html"];
 for (const file of files) {
   const html = await readFile(file, "utf8");
-  const blocks = [...html.matchAll(/<script\\b[^>]*>([\\s\\S]*?)<\\/script>/gi)]
+  const blocks = [...html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)]
     .map(match => match[1])
     .filter(source => source.trim().length > 0);
   if (blocks.length === 0) throw new Error(file + " contains no inline JavaScript.");
