@@ -1302,77 +1302,71 @@ document.addEventListener('visibilitychange',()=>{
 let liveVoice={active:false,ws:null,stream:null,audioContext:null,processor:null,source:null,transcript:'',setup:false,closing:false};
 function liveVoiceStatus(message){$('hint').textContent=message;}
 function stopLiveVoice(reason){
- const state=liveVoice;liveVoice={active:false,ws:null,stream:null,audioContext:null,processor:null,source:null,transcript:'',setup:false,closing:true};
- if(state.processor){try{state.processor.disconnect();}catch{}}
- if(state.source){try{state.source.disconnect();}catch{}}
+ const state=liveVoice;
+ liveVoice={active:false,pc:null,stream:null,channel:null,audio:null,transcript:'',responseText:'',closing:true};
+ if(state.channel){try{state.channel.close();}catch{}}
+ if(state.pc){try{state.pc.close();}catch{}}
  if(state.stream)state.stream.getTracks().forEach(track=>track.stop());
- if(state.audioContext&&state.audioContext.state!=='closed')state.audioContext.close().catch(()=>{});
- if(state.ws){try{state.ws.close(1000,'User stopped Live Voice');}catch{}}
+ if(state.audio){state.audio.pause();state.audio.srcObject=null;}
  $('liveVoiceButton').textContent='Live Voice: Off';$('liveVoiceButton').setAttribute('aria-pressed','false');
  if(reason)liveVoiceStatus(reason);
  if(status)status('System ready');
 }
-function audioFloatToPcm16Base64(input,sampleRate){
- const ratio=sampleRate/16000,outputLength=Math.floor(input.length/ratio),buffer=new ArrayBuffer(outputLength*2),view=new DataView(buffer);
- for(let i=0;i<outputLength;i++){
-  const start=Math.floor(i*ratio),end=Math.min(input.length,Math.floor((i+1)*ratio));
-  let sum=0;for(let j=start;j<end;j++)sum+=input[j];
-  const sample=Math.max(-1,Math.min(1,sum/Math.max(1,end-start)));
-  view.setInt16(i*2,sample<0?sample*32768:sample*32767,true);
- }
- const bytes=new Uint8Array(buffer);let binary='';for(let i=0;i<bytes.length;i++)binary+=String.fromCharCode(bytes[i]);
- return btoa(binary);
-}
 async function startLiveVoice(){
  if(liveVoice.active){stopLiveVoice('Live Voice stopped, Sir.');return;}
  if(!sessionToken){liveVoiceStatus('Pair this device in Devices & Sync before using Live Voice.');return;}
- if(!navigator.mediaDevices?.getUserMedia||!window.WebSocket||!window.AudioContext){liveVoiceStatus('This device does not support browser Live Voice audio capture.');return;}
- const state={active:true,ws:null,stream:null,audioContext:null,processor:null,source:null,transcript:'',setup:false,closing:false};
+ if(!navigator.mediaDevices?.getUserMedia||!window.RTCPeerConnection){liveVoiceStatus('This device does not support WebRTC Live Voice.');return;}
+ const state={active:true,pc:null,stream:null,channel:null,audio:null,transcript:'',responseText:'',closing:false};
  liveVoice=state;$('liveVoiceButton').textContent='Connecting…';$('liveVoiceButton').setAttribute('aria-pressed','true');status('Connecting Live Voice','thinking');
  try{
+  const tokenResponse=await fetch(JARVIS_API+'/openai-live-token',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+sessionToken},body:JSON.stringify({})});
+  const tokenData=await tokenResponse.json().catch(()=>({}));
+  if(!tokenResponse.ok||!tokenData.token)throw new Error(tokenData.error||'OpenAI Live Voice credentials could not be issued.');
+  if(liveVoice!==state)return;
   state.stream=await navigator.mediaDevices.getUserMedia({audio:{channelCount:1,echoCancellation:true,noiseSuppression:true,autoGainControl:true}});
   if(liveVoice!==state)return;
-  const tokenResponse=await fetch(JARVIS_API+'/live-token',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+sessionToken},body:JSON.stringify({})});
-  const tokenData=await tokenResponse.json().catch(()=>({}));
-  if(!tokenResponse.ok||!tokenData.token)throw new Error(tokenData.error||'Live Voice token could not be issued.');
-  const ws=new WebSocket('wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContentConstrained?access_token='+encodeURIComponent(tokenData.token));
-  state.ws=ws;
-  ws.onopen=()=>{
-   if(liveVoice!==state)return;
-   ws.send(JSON.stringify({setup:{model:tokenData.model||'models/gemini-3.5-transcribe-live',generationConfig:{responseModalities:['TEXT']},inputAudioTranscription:{languageCodes:['en-GB']}}}));
-  };
-  ws.onmessage=async event=>{
+  const pc=new RTCPeerConnection();
+  state.pc=pc;
+  state.stream.getTracks().forEach(track=>pc.addTrack(track,state.stream));
+  const audio=document.createElement('audio');audio.autoplay=true;audio.playsInline=true;audio.style.display='none';document.body.appendChild(audio);state.audio=audio;
+  pc.ontrack=event=>{if(liveVoice!==state)return;audio.srcObject=event.streams[0];audio.play().catch(()=>liveVoiceStatus('Tap the screen once to allow Live Voice audio playback.'));};
+  const channel=pc.createDataChannel('oai-events');state.channel=channel;
+  channel.onopen=()=>{if(liveVoice===state){$('liveVoiceButton').textContent='Live Voice: On';liveVoiceStatus('Live conversation active, Sir. Speak naturally; tap Live Voice to stop.');status('Listening','listening');}};
+  channel.onmessage=event=>{
    if(liveVoice!==state)return;
    let packet;try{packet=JSON.parse(event.data)}catch{return;}
-   if(packet.setupComplete){
-    state.setup=true;
-    state.audioContext=new AudioContext();
-    await state.audioContext.resume();
-    state.source=state.audioContext.createMediaStreamSource(state.stream);
-    state.processor=state.audioContext.createScriptProcessor(4096,1,1);
-    state.processor.onaudioprocess=event=>{
-     event.outputBuffer.getChannelData(0).fill(0);
-     if(liveVoice!==state||!state.setup||ws.readyState!==WebSocket.OPEN)return;
-     const pcm=audioFloatToPcm16Base64(event.inputBuffer.getChannelData(0),state.audioContext.sampleRate);
-     if(pcm)ws.send(JSON.stringify({realtimeInput:{audio:{mimeType:'audio/pcm;rate=16000',data:pcm}}}));
-    };
-    state.source.connect(state.processor);state.processor.connect(state.audioContext.destination);
-    $('liveVoiceButton').textContent='Live Voice: On';liveVoiceStatus('Listening continuously, Sir. Tap Live Voice to stop.');status('Listening','listening');
+   if(packet.type==='input_audio_buffer.speech_started'){status('Listening','listening');}
+   if(packet.type==='input_audio_buffer.speech_stopped'){status('Thinking','thinking');}
+   if(packet.type==='conversation.item.input_audio_transcription.completed'&&packet.transcript){
+    state.transcript=packet.transcript;
+    add(packet.transcript,'user');
    }
-   const interim=packet.serverContent?.interimInputTranscription?.text||packet.interimInputTranscription?.text||'';
-   const transcript=packet.serverContent?.inputTranscription?.text||packet.inputTranscription?.text||'';
-   if(interim||transcript){
-    if(currentAudio){currentAudio.pause();currentAudio=null;status('Listening','listening');}
-    if(transcript)state.transcript=(state.transcript+' '+transcript).trim();
+   if(packet.type==='response.output_audio_transcript.delta'||packet.type==='response.output_text.delta'){
+    state.responseText+=packet.delta||'';
+    status('Speaking','speaking');
    }
-   if(packet.serverContent?.turnComplete&&state.transcript){
-    const finalText=state.transcript.trim();state.transcript='';
-    if(finalText){$('prompt').value=finalText;$('form').requestSubmit();}
+   if(packet.type==='response.done'){
+    const answer=state.responseText.trim();
+    if(answer)add(answer,'jarvis');
+    state.responseText='';
+    status('Listening','listening');
    }
-   if(packet.goAway){liveVoiceStatus('Live session is reconnecting, Sir.');}
+   if(packet.type==='error'){
+    const message=packet.error?.message||'Realtime session error.';
+    liveVoiceStatus('Live Voice error: '+message);
+   }
   };
-  ws.onerror=()=>{if(liveVoice===state)stopLiveVoice('Live Voice connection failed. Use the normal microphone or try again later.');};
-  ws.onclose=event=>{if(liveVoice===state&&!state.closing)stopLiveVoice('Live Voice connection closed ('+event.code+'). Tap to reconnect, Sir.');};
+  channel.onerror=()=>{if(liveVoice===state)stopLiveVoice('Live Voice data channel failed. Please reconnect, Sir.');};
+  const offer=await pc.createOffer();
+  await pc.setLocalDescription(offer);
+  const answerResponse=await fetch('https://api.openai.com/v1/realtime/calls',{
+   method:'POST',
+   headers:{'Authorization':'Bearer '+tokenData.token,'Content-Type':'application/sdp'},
+   body:offer.sdp
+  });
+  const answer=await answerResponse.text();
+  if(!answerResponse.ok)throw new Error(answer.slice(0,260)||'Realtime WebRTC connection was rejected.');
+  await pc.setRemoteDescription({type:'answer',sdp:answer});
  }catch(error){
   if(liveVoice===state)stopLiveVoice('Live Voice unavailable: '+(error?.message||'unknown error'));
  }
