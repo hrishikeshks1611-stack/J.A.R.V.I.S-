@@ -826,6 +826,21 @@ const contactCommandText=message.replace(/^\s*(?:hey\s+)?jarvis[, ]*/i,'').trim(
   const reply='Saved '+name+' in this device’s JARVIS contact list, Sir.';
   add(reply,'jarvis');history.push({role:'model',text:reply});history=history.slice(-20);pairApi({action:'append-local',message,reply}).catch(()=>{});speak(reply);return;
  }
+ const directNumberCall=contactCommandText.match(/^(?:(?:please|could you|can you|would you|will you)\s+)*(?:call|phone|dial|ring)\s+([+\d][+\d().\s-]{6,22})$/i);
+ if(directNumberCall){
+  const number=directNumberCall[1].replace(/[^\d+]/g,'');
+  const digits=number.replace(/\D/g,'');
+  let reply;
+  if(digits.length<7||digits.length>15||((number.match(/\+/g)||[]).length>1)||(number.includes('+')&&!number.startsWith('+'))){
+   reply='That phone number does not look valid, Sir. Please check it and try again.';
+   add(reply,'jarvis');history.push({role:'model',text:reply});history=history.slice(-20);speak(reply);return;
+  }
+  reply='Opening the phone dialler for '+number+'. Please review and confirm the call.';
+  add(reply,'jarvis');history.push({role:'model',text:reply});history=history.slice(-20);
+  pairApi({action:'append-local',message,reply}).catch(()=>{});
+  $('hint').textContent='Opening Android dialler. No call is placed automatically.';
+  speak(reply);setTimeout(()=>{window.location.href='tel:'+number;},450);return;
+ }
  const callContact=contactCommandText.match(/^(?:(?:please|could you|can you|would you)\s+)?(?:call|phone|ring)\s+(?:my\s+)?(.+?)(?:\s+(?:mobile|mobile number|phone|number))?$/i);
  if(callContact){
   const target=callContact[1].trim().replace(/^(?:contact\s+)/i,'');
