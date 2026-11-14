@@ -392,7 +392,7 @@ test("music requests are routed before instant replies and the general AI fallba
   const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
   const musicAt = html.indexOf("const musicCommand=message.match(");
   const instantAt = html.indexOf("const instant=attachment?null:instantReply(message);");
-  const onlineFallbackAt = html.indexOf("if(!sessionToken){openSyncPanel()");
+  const onlineFallbackAt = html.indexOf("if(!sessionToken){openSyncPanel()", instantAt);
   assert.ok(musicAt >= 0 && instantAt > musicAt && onlineFallbackAt > instantAt,
     "music routing must run before instant replies and online AI fallback");
   const patternAt = html.indexOf("const musicCommand=message.match(");
