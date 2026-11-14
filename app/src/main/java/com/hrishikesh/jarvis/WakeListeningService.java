@@ -90,7 +90,7 @@ public final class WakeListeningService extends Service {
         try {
             tts = new TextToSpeech(this, status -> {
                 if (status == TextToSpeech.SUCCESS) {
-                    ready = configureAlfredVoice();
+                    ready = configureJ.A.R.V.I.SVoice();
                     if (ready) { tts.setSpeechRate(0.92f); tts.setPitch(0.84f); }
                     else updateNotification("No male English voice installed • select one in Android TTS settings");
                 }
@@ -99,7 +99,7 @@ public final class WakeListeningService extends Service {
     }
 
     /** Wake replies use the same male-only JARVIS voice policy as the main app. */
-    private boolean configureAlfredVoice() {
+    private boolean configureJ.A.R.V.I.SVoice() {
         try {
             Set<Voice> voices = tts.getVoices();
             Voice chosen = null;
