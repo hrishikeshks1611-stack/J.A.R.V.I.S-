@@ -93,3 +93,40 @@ test("owner recovery rejects a wrong credential before changing ownership", asyn
   assert.equal(res.statusCode, 401);
   assert.ok(!commands.some(command => command[0] === "EVAL"));
 });
+
+test("owner recovery preflight verifies a credential without changing ownership or consuming it", async () => {
+  process.env.UPSTASH_REDIS_REST_URL = "https://redis.example.test";
+  process.env.UPSTASH_REDIS_REST_TOKEN = "test-token";
+  process.env.JARVIS_OWNER_RECOVERY_CODE = "b".repeat(64);
+  const commands = [];
+  globalThis.fetch = async (_url, options) => {
+    const batch = JSON.parse(options.body);
+    const command = batch[0];
+    commands.push(command);
+    let result = 1;
+    if (command[0] === "GET" && command[1] === "jarvis:v1:owner:claimed") result = "1";
+    else if (command[0] === "INCR") result = 1;
+    else if (command[0] === "EXPIRE" || command[0] === "LPUSH" || command[0] === "LTRIM") result = 1;
+    else throw new Error("Unexpected Redis command: " + command.join(" "));
+    return new Response(JSON.stringify(batch.map(() => ({ result }))), { status: 200 });
+  };
+  const res = { setHeader() {}, status(code) { this.statusCode = code; return this; }, json(value) { this.body = value; return this; }, end() { return this; } };
+  await handler({ method: "POST", headers: { "user-agent": "JARVIS preflight test" }, body: { action: "check-recovery", recoveryCode: "b".repeat(64) } }, res);
+  assert.equal(res.statusCode, 200);
+  assert.deepEqual(res.body, { configured: true, ownerExists: true, valid: true });
+  assert.ok(commands.some(command => command[0] === "INCR"));
+  assert.ok(!commands.some(command => command[0] === "EVAL" || (command[0] === "SET" && String(command[1]).includes("owner:"))));
+});
+
+test("owner recovery preflight reports an unconfigured server without changing Redis", async () => {
+  process.env.UPSTASH_REDIS_REST_URL = "https://redis.example.test";
+  process.env.UPSTASH_REDIS_REST_TOKEN = "test-token";
+  delete process.env.JARVIS_OWNER_RECOVERY_CODE;
+  let fetchCalls = 0;
+  globalThis.fetch = async () => { fetchCalls++; throw new Error("Redis should not be contacted"); };
+  const res = { setHeader() {}, status(code) { this.statusCode = code; return this; }, json(value) { this.body = value; return this; }, end() { return this; } };
+  await handler({ method: "POST", headers: {}, body: { action: "check-recovery", recoveryCode: "anything" } }, res);
+  assert.equal(res.statusCode, 200);
+  assert.deepEqual(res.body, { configured: false, ownerExists: false, valid: false });
+  assert.equal(fetchCalls, 0);
+});
