@@ -658,6 +658,47 @@ public class MainActivity extends Activity {
             return "Opening your messaging app with the message ready. Review and press Send yourself, Sir.";
         }
 
+        @JavascriptInterface public String shareText(String requestedText, String requestedTitle) {
+            String text = requestedText == null ? "" : requestedText.trim();
+            String title = requestedTitle == null ? "Share with" : requestedTitle.trim();
+            if (text.isEmpty() || text.length() > 8000) return "Provide text of up to 8,000 characters to share, Sir.";
+            Intent intent = new Intent(Intent.ACTION_SEND);
+            intent.setType("text/plain");
+            intent.putExtra(Intent.EXTRA_TEXT, text);
+            Intent chooser = Intent.createChooser(intent, title.isEmpty() ? "Share with" : title);
+            runOnUiThread(() -> {
+                try { startActivity(chooser); }
+                catch (ActivityNotFoundException error) {
+                    Toast.makeText(MainActivity.this, "No app can receive shared text on this device, Sir.", Toast.LENGTH_LONG).show();
+                }
+            });
+            return "Android share sheet opened. Choose any compatible installed app and complete the action yourself, Sir.";
+        }
+
+        @JavascriptInterface public String openWebUrl(String requestedUrl) {
+            String value = requestedUrl == null ? "" : requestedUrl.trim();
+            Uri uri;
+            try { uri = Uri.parse(value); }
+            catch (Exception error) { return "That link is invalid, Sir."; }
+            String scheme = uri.getScheme();
+            if (uri.getHost() == null || !("https".equalsIgnoreCase(scheme) || "http".equalsIgnoreCase(scheme))) {
+                return "Only valid HTTP or HTTPS links can be opened, Sir.";
+            }
+            Intent intent = new Intent(Intent.ACTION_VIEW, uri);
+            runOnUiThread(() -> {
+                try {
+                    if (intent.resolveActivity(getPackageManager()) == null) {
+                        Toast.makeText(MainActivity.this, "No compatible browser is installed, Sir.", Toast.LENGTH_LONG).show();
+                        return;
+                    }
+                    startActivity(intent);
+                } catch (ActivityNotFoundException error) {
+                    Toast.makeText(MainActivity.this, "Android could not open that link, Sir.", Toast.LENGTH_LONG).show();
+                }
+            });
+            return "Opening the link in your selected browser, Sir.";
+        }
+
         @JavascriptInterface public String setAlarm(int hour, int minute, String label) {
             if (hour < 0 || hour > 23 || minute < 0 || minute > 59) {
                 return "That alarm time is invalid, Sir.";
