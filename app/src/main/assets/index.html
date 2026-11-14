@@ -861,8 +861,8 @@ const contactCommandText=message.replace(/^\s*(?:hey\s+)?jarvis[, ]*/i,'').trim(
  
 
  // Catch generic calling requests locally so they never fall through to the AI refusal.
- const genericCallIntent=/^(?:(?:hey\\s+)?jarvis[, ]+)?(?:(?:please|could you|can you|would you|will you)\\s+)*(?:make|place|start)\\s+(?:a\\s+)?call(?:\\s+for me)?$/i.test(contactCommandText)
-  || /^(?:(?:hey\\s+)?jarvis[, ]+)?(?:please\\s+)?(?:call|phone|ring)(?:\\s+someone)?$/i.test(contactCommandText);
+ const genericCallIntent=/^(?:(?:hey\s+)?jarvis[, ]+)?(?:(?:please|could you|can you|would you|will you)\s+)*(?:make|place|start)\s+(?:a\s+)?call(?:\s+for me)?$/i.test(contactCommandText)
+  || /^(?:(?:hey\s+)?jarvis[, ]+)?(?:please\s+)?(?:call|phone|ring)(?:\s+someone)?$/i.test(contactCommandText);
  if(genericCallIntent){
   const reply='Certainly, Sir. Whom would you like me to call? You can say a contact name or provide a phone number.';
   add(reply,'jarvis');history.push({role:'model',text:reply});history=history.slice(-20);
@@ -958,10 +958,10 @@ if(musicCommand&&(explicitMusicCommand||directMusicIntent)){
 }
 const appCommand=message.match(/^\s*(?:jarvis[, ]+)?(?:please\s+)?(?:open|launch|start)\s+([a-z0-9 +.-]+?)(?:\s+app)?[.!?]*\s*$/i);
 const cameraCommandText=message.replace(/^\s*(?:hey\s+)?jarvis[, ]*/i,'').trim().replace(/[.!?]+$/,'').toLowerCase();
-const cameraAction=/^(?:(?:please|could you|can you|would you|will you)\\s+)*(?:open|launch|start)(?:\\s+the)?\\s+camera$/.test(cameraCommandText)?'open':
- /^(?:(?:please|could you|can you|would you|will you)\\s+)*(?:take|capture)(?:\\s+(?:a|the|my))?\\s+selfie(?:\\s+for me)?$/.test(cameraCommandText)?'selfie':
- /^(?:(?:please|could you|can you|would you|will you)\\s+)*(?:take|capture)(?:\\s+(?:a|the|my))?\\s+photos?(?:\\s+for me)?$/.test(cameraCommandText)?'photo':
- /^(?:(?:please|could you|can you|would you|will you)\\s+)*(?:show|open|view)(?:\\s+me)?(?:\\s+the)?\\s+(?:last\\s+)?photo$/.test(cameraCommandText)?'show':null;
+const cameraAction=/^(?:(?:please|could you|can you|would you|will you)\s+)*(?:open|launch|start)(?:\s+the)?\s+camera$/.test(cameraCommandText)?'open':
+ /^(?:(?:please|could you|can you|would you|will you)\s+)*(?:take|capture)(?:\s+(?:a|the|my))?\s+selfie(?:\s+for me)?$/.test(cameraCommandText)?'selfie':
+ /^(?:(?:please|could you|can you|would you|will you)\s+)*(?:take|capture)(?:\s+(?:a|the|my))?\s+photos?(?:\s+for me)?$/.test(cameraCommandText)?'photo':
+ /^(?:(?:please|could you|can you|would you|will you)\s+)*(?:show|open|view)(?:\s+me)?(?:\s+the)?\s+(?:last\s+)?photo$/.test(cameraCommandText)?'show':null;
 if(cameraAction){
  const replies={open:'Certainly, Sir. Opening the camera.',photo:'Certainly, Sir. Taking a photo now.',selfie:'Certainly, Sir. Switching to the front camera for your selfie.',show:'Certainly, Sir. Opening your latest JARVIS photo.'};
  const reply=replies[cameraAction];
