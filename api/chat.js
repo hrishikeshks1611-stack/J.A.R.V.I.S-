@@ -260,23 +260,31 @@ export default async function handler(req, res) {
           // One final model pass may summarise existing results, but receives no tools.
           modelContents.push({ role: "user", parts: [{ text: "Summarise the tool results already returned. Do not request or claim any additional tool execution." }] });
           if (toolTrace.length >= MAX_TOOL_CALLS) {
-            const summaryResponse = await fetch(
-              `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
-              {
-                method: "POST",
-                headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
-                body: JSON.stringify({
-                  system_instruction: { parts: [{ text: system + " Summarise only the tool results supplied. Do not call tools or claim further actions." }] },
-                  contents: modelContents,
-                  generationConfig: { temperature: 0.3, maxOutputTokens: 900 }
-                })
+            const summaryTimeoutMs = modelBudget.timeoutForNextCall();
+            if (summaryTimeoutMs) {
+              try {
+                const summaryResponse = await fetch(
+                  `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+                  {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
+                    signal: AbortSignal.timeout(summaryTimeoutMs),
+                    body: JSON.stringify({
+                      system_instruction: { parts: [{ text: system + " Summarise only the tool results supplied. Do not call tools or claim further actions." }] },
+                      contents: modelContents,
+                      generationConfig: { temperature: 0.3, maxOutputTokens: 700 }
+                    })
+                  }
+                );
+                const summaryRaw = await summaryResponse.text();
+                let summaryData = {};
+                try { summaryData = JSON.parse(summaryRaw); } catch {}
+                if (summaryResponse.ok) {
+                  reply = (summaryData.candidates || []).flatMap(item => item.content?.parts || []).map(item => item.text || "").join("").trim();
+                }
+              } catch (error) {
+                lastUnavailable = "The final tool-result summary exceeded the remaining response-time budget.";
               }
-            );
-            const summaryRaw = await summaryResponse.text();
-            let summaryData = {};
-            try { summaryData = JSON.parse(summaryRaw); } catch {}
-            if (summaryResponse.ok) {
-              reply = (summaryData.candidates || []).flatMap(item => item.content?.parts || []).map(item => item.text || "").join("").trim();
             }
           }
           if (!reply) reply = "Sir, I executed the permitted tools, but could not obtain a final summary. Tool results: " + toolTrace.map(item => item.tool + " (" + item.status + ")").join(", ");
