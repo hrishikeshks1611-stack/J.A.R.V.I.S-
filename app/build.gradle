@@ -40,4 +40,11 @@ android {
             buildConfigField 'boolean', 'JARVIS_TV', 'true'
         }
     }
+    buildTypes {
+        release {
+            // Owner-test build: use the Android Gradle debug certificate so this APK can be installed.
+            // This is not a Play Store / production distribution configuration.
+            signingConfig signingConfigs.debug
+        }
+    }
 }
