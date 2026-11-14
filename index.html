@@ -980,11 +980,11 @@ if(requestedMusic&&(explicitMusicCommand||directMusicIntent||bareMusicIntent)){
  }
 }
 function extractYouTubeVideoQuery(message){
- const clean=String(message||'').trim().replace(/^\\s*(?:hey\\s+)?jarvis[, ]*/i,'').replace(/[.!?]+$/,'').trim();
- if(/\\byoutube\\s+music\\b/i.test(clean))return null;
+ const clean=String(message||'').trim().replace(/^\s*(?:hey\s+)?jarvis[, ]*/i,'').replace(/[.!?]+$/,'').trim();
+ if(/\byoutube\s+music\b/i.test(clean))return null;
  const patterns=[
-  /^(?:(?:please|could you|can you|would you|will you)\\s+)*(?:play|search(?:\\s+for)?|find|show(?:\\s+me)?|watch|look up)\\s+(.+?)\\s+(?:on|in)\\s+youtube$/i,
-  /^(?:(?:please|could you|can you|would you|will you)\\s+)*(?:search(?:\\s+for)?|find|show(?:\\s+me)?|look up)\\s+youtube\\s+for\\s+(.+)$/i
+  /^(?:(?:please|could you|can you|would you|will you)\s+)*(?:play|search(?:\s+for)?|find|show(?:\s+me)?|watch|look up)\s+(.+?)\s+(?:on|in)\s+youtube$/i,
+  /^(?:(?:please|could you|can you|would you|will you)\s+)*(?:search(?:\s+for)?|find|show(?:\s+me)?|look up)\s+youtube\s+for\s+(.+)$/i
  ];
  for(const pattern of patterns){const match=clean.match(pattern);if(match&&match[1])return match[1].trim().replace(/^["']|["']$/g,'');}
  return null;
