@@ -940,7 +940,7 @@ if(musicCommand&&(explicitMusicCommand||directMusicIntent)){
    await acknowledgementFinished;
    // The watch URL is handed to Android after the acknowledgement finishes,
    // avoiding navigation cutting off the J.A.R.V.I.S/Algieba voice stream.
-   openYoutubeMusicTrack(track);
+   await openYoutubeMusicTrack(track);
   }catch(error){
    $('hint').textContent='Could not select a song: '+error.message;
    status('Music request failed');
