@@ -39,6 +39,8 @@ public class WakeWordService extends Service implements RecognitionListener {
     public static final String ACTION_PARTIAL = "com.hrishikesh.jarvis.WAKE_PARTIAL";
     public static final String ACTION_READY = "com.hrishikesh.jarvis.MICROPHONE_READY";
     public static final String ACTION_ERROR = "com.hrishikesh.jarvis.MICROPHONE_ERROR";
+    public static final String ACTION_STATUS = "com.hrishikesh.jarvis.MICROPHONE_STATUS";
+    public static final String EXTRA_STATUS = "status";
     public static final String EXTRA_ERROR = "error";
     public static final String EXTRA_COMMAND = "command";
     public static final String ACTION_DICTATION = "com.hrishikesh.jarvis.START_DICTATION";
@@ -138,7 +140,8 @@ public class WakeWordService extends Service implements RecognitionListener {
                 updateNotification("Downloading offline speech model once. No microphone audio is uploaded.");
                 File archive = new File(getCacheDir(), "vosk-model-small-en-in-0.4.zip");
                 downloadModel(archive);
-                Log.i("WakeWordService", "prepareAndListen: model archive downloaded; extracting");
+                updateNotification("Download complete · installing offline speech model…");
+            Log.i("WakeWordService", "prepareAndListen: model archive downloaded; extracting");
                 unpackModel(archive, modelDir);
                 Log.i("WakeWordService", "prepareAndListen: model extraction complete");
                 // Keep only the extracted model; remove the downloaded archive.
@@ -149,6 +152,7 @@ public class WakeWordService extends Service implements RecognitionListener {
                 Log.i("WakeWordService", "prepareAndListen: cancelled before model load");
                 return;
             }
+            updateNotification("Speech model installed · loading recognition engine…");
             Log.i("WakeWordService", "prepareAndListen: loading native Vosk model");
             model = new Model(modelDir.getAbsolutePath());
             Log.i("WakeWordService", "prepareAndListen: native Vosk model loaded");
@@ -157,7 +161,7 @@ public class WakeWordService extends Service implements RecognitionListener {
             Log.i("WakeWordService", "prepareAndListen: opening 16 kHz mono voice microphone");
             startAudioCapture();
             Log.i("WakeWordService", "prepareAndListen: microphone capture thread launched");
-            updateNotification("Microphone initialised · waiting for first audio frame");
+            updateNotification("Speech model ready · starting microphone…");
             Log.i("WakeWordService", "Vosk is loaded and AudioRecord started; waiting for first PCM frame before reporting ready");
         } catch (Exception | LinkageError error) {
             Log.e("WakeWordService", "Failed to prepare offline wake-word service", error);
@@ -305,11 +309,21 @@ public class WakeWordService extends Service implements RecognitionListener {
                 byte[] buffer = new byte[16384];
                 int read;
                 long total = 0;
+                int lastProgress = -1;
                 while ((read = input.read(buffer)) != -1) {
                     if (stopped) throw new InterruptedException("Stopped by user");
                     total += read;
                     if (total > 120L * 1024L * 1024L) throw new IllegalStateException("Model archive exceeded size limit");
                     output.write(buffer, 0, read);
+                    if (declared > 0) {
+                        int progress = (int) Math.min(99, (total * 100L) / declared);
+                        if (progress != lastProgress && (progress % 5 == 0 || progress == 99)) {
+                            lastProgress = progress;
+                            updateNotification("Downloading offline speech model · " + progress + "%");
+                        }
+                    } else if (total % (1024L * 1024L) < buffer.length) {
+                        updateNotification("Downloading offline speech model · " + (total / (1024L * 1024L)) + " MB received");
+                    }
                 }
                 output.getFD().sync();
             }
@@ -410,6 +424,10 @@ public class WakeWordService extends Service implements RecognitionListener {
     }
 
     private void updateNotification(String message) {
+        getSharedPreferences("jarvis_wake_word", MODE_PRIVATE).edit().putString("status", message).apply();
+        Intent statusIntent = new Intent(ACTION_STATUS).setPackage(getPackageName());
+        statusIntent.putExtra(EXTRA_STATUS, message);
+        sendBroadcast(statusIntent);
         NotificationManager manager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
         manager.notify(NOTIFICATION_ID, buildNotification(message));
     }
