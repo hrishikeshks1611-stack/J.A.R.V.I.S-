@@ -91,7 +91,8 @@ public final class WakeListeningService extends Service {
             tts = new TextToSpeech(this, status -> {
                 if (status == TextToSpeech.SUCCESS) {
                     ready = configureAlfredVoice();
-                    if (!ready) updateNotification("Alfred UK male voice unavailable • speech output muted");
+                    if (ready) { tts.setSpeechRate(0.94f); tts.setPitch(0.92f); }
+                    else updateNotification("Speech output unavailable • check Android text-to-speech settings");
                 }
             });
         } catch (Throwable ignored) { ready = false; }
@@ -101,21 +102,21 @@ public final class WakeListeningService extends Service {
         try {
             Set<Voice> voices = tts.getVoices();
             if (voices == null) return false;
-            Voice chosen = null;
+            Voice preferred = null;
+            Voice britishFallback = null;
             for (Voice voice : voices) {
-                String name = voice.getName().toLowerCase(Locale.ROOT);
                 Locale locale = voice.getLocale();
                 if (!"en".equals(locale.getLanguage()) || !"GB".equalsIgnoreCase(locale.getCountry())) continue;
+                String name = voice.getName().toLowerCase(Locale.ROOT);
+                if (britishFallback == null) britishFallback = voice;
                 if (name.contains("female")) continue;
-                if (name.contains("algieba") || name.contains("male") || name.contains("masculine")) {
-                    chosen = voice;
-                    if (name.contains("algieba")) break;
-                }
+                if (name.contains("algieba")) { preferred = voice; break; }
+                if (name.contains("male") || name.contains("masculine")) preferred = voice;
             }
-            if (chosen == null) return false;
             int language = tts.setLanguage(Locale.UK);
             if (language == TextToSpeech.LANG_MISSING_DATA || language == TextToSpeech.LANG_NOT_SUPPORTED) return false;
-            return tts.setVoice(chosen) == TextToSpeech.SUCCESS;
+            Voice chosen = preferred != null ? preferred : britishFallback;
+            return chosen == null || tts.setVoice(chosen) == TextToSpeech.SUCCESS;
         } catch (Exception ignored) { return false; }
     }
 
