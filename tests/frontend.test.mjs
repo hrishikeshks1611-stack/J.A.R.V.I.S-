@@ -67,6 +67,8 @@ test("J.A.R.V.I.S voice fails silent and never falls back to Android default TTS
   assert.ok(fallback.includes("I will remain silent rather than use another voice"));
   assert.ok(!fallback.includes("speakOfflineFallback"));
   assert.ok(html.includes("jarvis-male-british-v4"));
+  assert.doesNotMatch(html, /alfred/i);
+  assert.ok(html.includes("J.A.R.V.I.S · Male British voice"));
 });
 
 
