@@ -149,12 +149,17 @@ test("alarm and reminder commands require clear times and call the native confir
   const parse = new Function("window", source + "; return handleCalendarOrAlarmCommand;")({
     AndroidJarvis: {
       setAlarm: (...args) => ({ type: "alarm", args }),
+      setReminder: (...args) => ({ type: "reminder", args }),
       createCalendarEvent: (...args) => ({ type: "event", args })
     }
   });
-  assert.deepEqual(parse("Remind me to take medicine at 7:30 pm"), {
-    type: "alarm", args: [19, 30, "Reminder: take medicine"]
-  });
+  const reminder = parse("Remind me to take medicine at 7:30 pm");
+  assert.equal(reminder.type, "reminder");
+  assert.equal(reminder.args[1], "take medicine");
+  assert.ok(reminder.args[0] > Date.now() && reminder.args[0] <= Date.now() + 24 * 60 * 60 * 1000);
+  const dated = parse("Remind me to attend meeting on 2030-06-15 at 09:30");
+  assert.equal(dated.type, "reminder");
+  assert.equal(dated.args[1], "attend meeting");
   assert.deepEqual(parse("Set alarm for 19:45 called Workout"), {
     type: "alarm", args: [19, 45, "Workout"]
   });
