@@ -23,7 +23,7 @@
 
 ## Important boundaries
 
-- Revocation removes the server-side session and device record. It does not uninstall the app or wipe its private local storage.
+- Revocation atomically removes only the server-side session, device record, and device-registry entry after rechecking the target session hash. It does not uninstall the app, wipe private local storage, or delete shared conversation history or saved memories.
 - Shared conversation and memory sync does not transfer Android-local alarms, reminders, contacts permissions, camera permissions, microphone permissions, wake-word model files, media notification access, or other OS grants.
 - Re-authorise and validate device-local capabilities on 15.0 independently before revoking 14.0.
 - Do not revoke 14.0 merely because pairing succeeded. Verify 15.0 ownership and all required local capabilities first.
