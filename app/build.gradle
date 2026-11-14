@@ -13,17 +13,19 @@ dependencies {
 }
 
 android {
+    // Keep the source namespace stable; the installable app has its own package identity.
     namespace 'com.hrishikesh.jarvis'
     compileSdk 35
     buildFeatures {
         buildConfig true
     }
     defaultConfig {
-        applicationId 'com.hrishikesh.jarvis'
+        // Deliberately different from the legacy 5.0.2 package so both apps can coexist.
+        applicationId 'com.hrishikesh.jarvis.next'
         minSdk 23
         targetSdk 35
-        versionCode 503
-        versionName '5.0.3'
+        versionCode 600
+        versionName '6.0.0'
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
         buildConfigField 'boolean', 'JARVIS_TV', 'false'
         buildConfigField 'String', 'ASSISTANT_NAME', '"J.A.R.V.I.S."'
