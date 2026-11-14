@@ -1,6 +1,6 @@
 # J.A.R.V.I.S. — Fresh Android Build
 
-Application ID: `com.hrishikesh.jarvis.fresh`. This is a clean-room app identity. It does not import old JARVIS conversations, databases, or backups.
+Application ID: `com.hrishikesh.jarvis.eight.release`. This uses the J.A.R.V.I.S 8.0 package identity for an in-place upgrade path. Local encrypted memory is retained only when Android accepts the update as the same installed app.
 
 ## Implemented in source
 - ARC-reactor launcher artwork and a rotating OpenGL ES 2.0 3D reactor with torus rings and a luminous core.
