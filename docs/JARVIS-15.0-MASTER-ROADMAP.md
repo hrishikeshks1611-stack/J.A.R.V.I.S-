@@ -136,6 +136,14 @@ Add task and memory panels around the existing reactor; add audio, task, and app
 Test side-by-side 14.0/15.0 installation, pairing, shared history/memory, reconnect, owner transfer, old-session revocation, owner recovery, and local-only actions. Run the full preservation suite.  
 **Exit:** automated checks pass, device tests are documented, and both installations coexist without data loss or accidental access revocation.
 
+## Current implementation checkpoint
+
+- **Phase 1 context retrieval:** implemented in `lib/jarvis-context.js` and wired into `api/chat.js`. The assistant now selects bounded, lexically relevant shared conversation turns and user-approved memories instead of blindly injecting only the newest eight turns and fifteen memories. Relevant user/model turns are kept together; pronoun-style follow-ups retain a small recent window when no lexical match exists.
+- **Device-sync lifecycle test:** `tests/device-sync-lifecycle.test.mjs` exercises a simulated Redis-backed lifecycle: 14.0 owner claim, one-time code creation, 15.0 pairing, shared history visibility, owner transfer, old-session revocation, continued 15.0 owner access, and shared-history preservation. It verifies that revocation deletes only the old server-side session/device keys, not conversation or memory keys.
+- **Quality CI:** latest run on commit `8abc8ccbc8ce9e8edf8b54b32d9c789206978620` passed **141/141 Node tests**, dependency audit, syntax checks, live YouTube Music catalogue smoke, and read-only production API smoke.
+- **Android CI:** phone and TV debug variants plus offline wake-phrase unit tests passed on the earlier Android-source commit. The subsequent context-retrieval and test commits did not change Android source or Gradle configuration.
+- **Not yet verified:** no physical 14.0/15.0 pair of installations has been connected to the live backend; no real device has transferred ownership or been revoked. No APK has been installed on the user's phone. Do not treat the simulated lifecycle test as proof of live-device migration.
+
 ## Verification snapshot from the initial audit
 
 - Node suite: **135 passed, 0 failed** in the isolated audit workspace after installing declared dependencies.
