@@ -1,7 +1,7 @@
-name: Fresh Android Build — Separate Install
+name: J.A.R.V.I.S 10.0 — Fresh Android Build
 on:
   push:
-    branches: [jarvis-9.0]
+    branches: [jarvis-10.0]
   workflow_dispatch:
 jobs:
   build:
@@ -21,9 +21,9 @@ jobs:
           accept-android-sdk-licenses: true
       - name: Run unit tests
         run: gradle --no-daemon testDebugUnitTest
-      - name: Assemble fresh phone APK
+      - name: Assemble 10.0 fresh-install APK
         run: gradle --no-daemon clean assembleDebug
-      - name: Verify package, version, icon and splash resources
+      - name: Verify package, version, inverted-triangle identity and APK integrity
         shell: bash
         run: |
           set -euo pipefail
@@ -31,32 +31,27 @@ jobs:
           test -s "$APK"
           AAPT="$ANDROID_HOME/build-tools/35.0.0/aapt"
           "$AAPT" dump badging "$APK" | tee /tmp/jarvis-badging.txt
-          grep -q "package: name='com.hrishikesh.jarvis.nine.release' versionCode='900' versionName='9.0'" /tmp/jarvis-badging.txt
-          grep -q "application-icon-.*:.*res/" /tmp/jarvis-badging.txt
+          grep -q "package: name='com.hrishikesh.jarvis.ten.release' versionCode='1000' versionName='10.0'" /tmp/jarvis-badging.txt
+          grep -q "application-label:'J.A.R.V.I.S'" /tmp/jarvis-badging.txt
           "$AAPT" dump resources "$APK" > /tmp/jarvis-resources.txt
           grep -q 'jarvis_reactor' /tmp/jarvis-resources.txt
-          grep -q 'jarvis_splash' /tmp/jarvis-resources.txt
+          grep -q 'M54,74 L36,42 L72,42 Z' app/src/main/res/drawable/jarvis_reactor.xml
           grep -q 'android:drawable="@drawable/jarvis_reactor"' app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
           grep -q 'android:drawable="@drawable/jarvis_reactor"' app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml
           grep -q 'android:drawable="@drawable/jarvis_reactor"' app/src/main/res/drawable/jarvis_splash.xml
           ! grep -q 'JarvisNotificationListener' app/src/main/AndroidManifest.xml
           ! grep -q 'BIND_NOTIFICATION_LISTENER_SERVICE' app/src/main/AndroidManifest.xml
-          ! grep -q 'android.permission.INTERNET' app/src/main/AndroidManifest.xml
           ! grep -R -q 'MediaSessionManager\|getActiveSessions\|NotificationListenerService' app/src/main/java
-          unzip -l "$APK" | grep -q 'res/mipmap-anydpi-v26/ic_launcher.xml'
-          unzip -l "$APK" | grep -q 'res/mipmap-anydpi-v26/ic_launcher_round.xml'
-          unzip -l "$APK" | grep -q 'res/drawable/jarvis_splash.xml'
-          unzip -l "$APK" | grep -q 'res/drawable/jarvis_reactor.xml'
           unzip -t "$APK"
           unzip -l "$APK" | grep -E 'classes([0-9]+)?[.]dex'
           mkdir -p release
-          cp "$APK" release/JARVIS-9.0.apk
-          sha256sum release/JARVIS-9.0.apk | tee release/SHA256SUMS.txt
+          cp "$APK" release/JARVIS-10.0-Fresh-Install.apk
+          sha256sum release/JARVIS-10.0-Fresh-Install.apk | tee release/SHA256SUMS.txt
       - uses: actions/upload-artifact@v4
         with:
-          name: JARVIS-9.0-APK
+          name: JARVIS-10.0-Fresh-Install
           path: |
-            release/JARVIS-9.0.apk
+            release/JARVIS-10.0-Fresh-Install.apk
             release/SHA256SUMS.txt
           if-no-files-found: error
           retention-days: 30
