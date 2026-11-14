@@ -6,6 +6,7 @@ import { buildJarvisCapabilitiesReply, isJarvisCapabilitiesQuestion } from "../l
 import { buildTutorSystemInstruction, isTutorRequest } from "../lib/jarvis-tutor.js";
 import { buildMedicalEmergencyReply, buildMedicalSystemInstruction, detectMedicalEmergency, isMedicalRequest } from "../lib/jarvis-medical.js";
 import { buildMentalistSystemInstruction, buildEmotionalAvailabilityInstruction, isMentalistRequest } from "../lib/jarvis-mentalist.js";
+import { selectRelevantContext } from "../lib/jarvis-context.js";
 
 export default async function handler(req, res) {
   const origin = req.headers.origin || "";
@@ -77,10 +78,10 @@ export default async function handler(req, res) {
     const mentalistMode = isMentalistRequest(message);
     const system = [buildJarvisSystemInstruction(mode), "You are emotionally available as described here: " + buildEmotionalAvailabilityInstruction(), tutorMode ? buildTutorSystemInstruction() : "", medicalMode ? buildMedicalSystemInstruction() : "", mentalistMode ? buildMentalistSystemInstruction() : ""].filter(Boolean).join(" ");
 
-    // Every paired device reads the same central conversation rather than sending
-    // a private browser-only history. Only the latest eight turns enter the prompt.
-    const prior = sharedHistory.slice(-8);
-    const contents = prior
+    // Select relevant shared context instead of blindly injecting only the newest
+    // messages. Preserve chronological order so follow-up turns remain coherent.
+    const selectedContext = selectRelevantContext({ history: sharedHistory, memories: savedMemories, query: message });
+    const contents = selectedContext.history
       .filter(item => item && (item.role === "user" || item.role === "model") && typeof item.text === "string")
       .map(item => ({ role: item.role, parts: [{ text: item.text.slice(0, 2500) }] }));
     if (!contents.length || contents[contents.length - 1].role !== "user" ||
@@ -88,8 +89,8 @@ export default async function handler(req, res) {
       contents.push({ role: "user", parts: [{ text: message }] });
     }
 
-    // Inject only a small, bounded set of explicitly user-saved memories.
-    const memoryContext = (savedMemories || []).slice(-15)
+    // Inject only relevant, explicitly user-saved memories selected above.
+    const memoryContext = selectedContext.memories
       .map(item => typeof item?.text === "string" ? item.text.slice(0, 300) : "")
       .filter(Boolean);
     if (memoryContext.length && contents.length) {
