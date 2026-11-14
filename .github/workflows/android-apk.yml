@@ -6,6 +6,8 @@ on:
     branches: [ jarvis-16.0-foundation ]
     paths:
       - 'app/**'
+      - 'index.html'
+      - 'api/live-token.js'
       - '*.gradle'
       - 'settings.gradle'
       - '.github/workflows/android-apk.yml'
