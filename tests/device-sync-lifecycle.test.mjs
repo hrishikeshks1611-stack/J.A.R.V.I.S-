@@ -71,7 +71,7 @@ function makeRedis() {
       }
       if (script.includes("target.role = 'owner'")) {
         const [ownerKey, currentDeviceKey, targetDeviceKey, currentSessionKey, targetSessionKey] = keys;
-        const [currentHash, targetHash, ttl] = argv;
+        const [currentHash, targetHash] = argv;
         if (values.get(ownerKey) !== currentHash) return JSON.stringify({ ok: false, reason: "owner_changed" });
         const currentDevice = JSON.parse(values.get(currentDeviceKey));
         const targetDevice = JSON.parse(values.get(targetDeviceKey));
@@ -89,6 +89,19 @@ function makeRedis() {
         values.set(targetSessionKey, JSON.stringify(targetSession));
         values.set(ownerKey, targetHash);
         return JSON.stringify({ ok: true, ownerDeviceId: targetDevice.deviceId, previousOwnerDeviceId: currentDevice.deviceId });
+      }
+      if (script.includes("device.sessionHash ~= ARGV[1]")) {
+        const [deviceKey, sessionKey, devicesKey] = keys;
+        const [expectedSessionHash, deviceId] = argv;
+        const raw = values.get(deviceKey);
+        if (!raw) return JSON.stringify({ ok: false, reason: "device_missing" });
+        const device = JSON.parse(raw);
+        if (device.sessionHash !== expectedSessionHash) return JSON.stringify({ ok: false, reason: "session_changed" });
+        values.delete(deviceKey);
+        values.delete(sessionKey);
+        deletedKeys.push(deviceKey, sessionKey);
+        sets.get(devicesKey)?.delete(deviceId);
+        return JSON.stringify({ ok: true });
       }
       throw new Error("Unexpected Redis script in integration test");
     }
@@ -177,7 +190,7 @@ test("15.0 device-sync lifecycle preserves shared history through pairing, owner
 
   const revoked = await request({ action: "revoke", deviceId: oldDeviceId }, newToken);
   assert.equal(revoked.statusCode, 200);
-  assert.equal(revoked.body.revoked, true);
+  assert.equal(revoked.body.revoked, true);\n  assert.equal(revoked.body.serverSessionOnly, true);\n  assert.equal(revoked.body.localAppDataChanged, false);\n  assert.equal(revoked.body.sharedHistoryPreserved, true);\n  assert.equal(revoked.body.sharedMemoriesPreserved, true);\n  assert.ok(redis.calls.some(command => command[0] === "EVAL" && String(command[1]).includes("device.sessionHash ~= ARGV[1]")), "revocation must be an atomic Redis operation");
 
   const oldAccess = await request({ action: "verify" }, oldToken);
   assert.equal(oldAccess.statusCode, 401);
