@@ -375,3 +375,28 @@ test("Alfred voice keeps Algieba as the only generated voice and retries transie
   assert.match(html, /I will remain silent rather than use another voice/);
   assert.match(html, /await requestAlfredSpeech\(spoken\)/);
 });
+
+
+test("phone UI provides authenticated continuous Live Voice transcription with explicit stop and safe PCM capture", async () => {
+  const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+  assert.match(html, /id="liveVoiceButton"/);
+  assert.match(html, /async function startLiveVoice\(\)/);
+  assert.match(html, /navigator\.mediaDevices\?\.getUserMedia/);
+  assert.match(html, /Authorization':?'Bearer '\+sessionToken/);
+  assert.match(html, /BidiGenerateContentConstrained\?access_token=/);
+  assert.match(html, /models\/gemini-3\.5-transcribe-live/);
+  assert.match(html, /mimeType:'audio\/pcm;rate=16000'/);
+  assert.match(html, /inputTranscription/);
+  assert.match(html, /requestSubmit\(\)/);
+  assert.match(html, /function stopLiveVoice\(reason\)/);
+  assert.match(html, /outputBuffer\.getChannelData\(0\)\.fill\(0\)/);
+});
+
+test("Android WebView only grants microphone capture after runtime permission", async () => {
+  const java = await readFile(new URL("../app/src/main/java/com/hrishikesh/jarvis/MainActivity.java", import.meta.url), "utf8");
+  assert.match(java, /onPermissionRequest\(PermissionRequest request\)/);
+  assert.match(java, /RESOURCE_AUDIO_CAPTURE/);
+  assert.match(java, /REQUEST_WEB_AUDIO/);
+  assert.match(java, /pending\.grant\(new String\[\]\{PermissionRequest\.RESOURCE_AUDIO_CAPTURE\}\)/);
+  assert.match(java, /pending\.deny\(\)/);
+});
