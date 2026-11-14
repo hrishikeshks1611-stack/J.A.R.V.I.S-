@@ -12,6 +12,8 @@ import { streamGeminiText } from "../lib/gemini-stream.js";
 
 export default async function handler(req, res) {
   const requestStartedAt = Date.now();
+  let streamTransportActive = false;
+  let streamEvent = null;
   const origin = req.headers.origin || "";
   const allowedOrigin =
     origin === "https://hrishikeshks1611-stack.github.io" ||
@@ -160,6 +162,8 @@ export default async function handler(req, res) {
     // attachments, and complex turns keep the full tool-enabled JSON workflow below.
     if (body.stream === true && performancePolicy.tier === "quick" && !attachment && typeof res.write === "function") {
       const sendEvent = (event, payload) => res.write("event: " + event + "\ndata: " + JSON.stringify(payload) + "\n\n");
+      streamTransportActive = true;
+      streamEvent = sendEvent;
       res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
       res.setHeader("Cache-Control", "no-cache, no-transform");
       res.setHeader("Connection", "keep-alive");
@@ -200,7 +204,21 @@ export default async function handler(req, res) {
         sendEvent("error", { error: "Sir, the live response could not be completed. " + streamError });
       }
       res.end();
+      streamTransportActive = false;
       return;
+    }
+
+    const progressStreaming = body.stream === true && performancePolicy.tier === "full" && !attachment && typeof res.write === "function";
+    if (progressStreaming) {
+      const sendEvent = (event, payload) => res.write("event: " + event + "\\ndata: " + JSON.stringify(payload) + "\\n\\n");
+      res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
+      res.setHeader("Cache-Control", "no-cache, no-transform");
+      res.setHeader("Connection", "keep-alive");
+      res.setHeader("X-Accel-Buffering", "no");
+      res.flushHeaders?.();
+      streamTransportActive = true;
+      streamEvent = sendEvent;
+      streamEvent("progress", { message: "Breaking your request into steps and checking dependencies…" });
     }
 
     // Bounded Gemini function-calling loop. Only the local allow-list below
@@ -308,6 +326,15 @@ export default async function handler(req, res) {
           toolTrace.push({ tool: item.name, status: item.status });
           return { functionResponse: { name: item.name, response: item.result } };
         });
+        if (progressStreaming) {
+          streamEvent("progress", {
+            message: toolContext.taskPlan
+              ? "Task plan updated: " + toolContext.taskPlan.steps.filter(step => step.status === "completed").length + " of " + toolContext.taskPlan.steps.length + " steps verified."
+              : "Completed a tool round; checking the results before the next step.",
+            taskPlan: toolContext.taskPlan || null,
+            toolCalls: toolTrace.slice()
+          });
+        }
 
         if (!functionResponses.length) {
           reply = "Sir, I reached the safe tool-call limit for this request. The tools already run are listed below; no further action was attempted.";
@@ -360,17 +387,35 @@ export default async function handler(req, res) {
 
     if (!completed || !reply) {
       const limited = lastFailureStatus === 429;
-      return res.status(limited ? 429 : 503).json({
-        error: limited
-          ? "Sir, Google's request limit was reached on the available Gemini models. I tried the primary model and two fallbacks; please wait for the limit to reset. " + (lastUnavailable || "")
-          : "Sir, Google's Gemini models are temporarily at capacity. I tried the primary model and two fallbacks. Please try again shortly. " + (lastUnavailable || "")
-      });
+      const errorMessage = limited
+        ? "Sir, Google's request limit was reached on the available Gemini models. I tried the primary model and two fallbacks; please wait for the limit to reset. " + (lastUnavailable || "")
+        : "Sir, Google's Gemini models are temporarily at capacity. I tried the primary model and two fallbacks. Please try again shortly. " + (lastUnavailable || "");
+      if (streamTransportActive) {
+        streamEvent("error", { error: errorMessage });
+        res.end();
+        streamTransportActive = false;
+        return;
+      }
+      return res.status(limited ? 429 : 503).json({ error: errorMessage });
     }
 
     await appendConversationTurn(message, reply);
-    return res.status(200).json({ reply, deviceId: session.deviceId, toolCalls: toolTrace, pendingActions, engine: medicalMode ? "medical" : tutorMode ? "tutor" : mentalistMode ? "mentalist" : "general", emotionalAvailability: true, responseTier: performancePolicy.tier, latencyMs: Date.now() - requestStartedAt, taskPlan: toolContext.taskPlan || null });
+    const resultPayload = { reply, deviceId: session.deviceId, toolCalls: toolTrace, pendingActions, engine: medicalMode ? "medical" : tutorMode ? "tutor" : mentalistMode ? "mentalist" : "general", emotionalAvailability: true, responseTier: performancePolicy.tier, latencyMs: Date.now() - requestStartedAt, taskPlan: toolContext.taskPlan || null };
+    if (streamTransportActive) {
+      streamEvent("done", resultPayload);
+      res.end();
+      streamTransportActive = false;
+      return;
+    }
+    return res.status(200).json(resultPayload);
   } catch (error) {
     console.error("JARVIS API failure:", error);
-    return res.status(500).json({ error: "JARVIS server error: " + String(error?.message || error).slice(0, 300) });
+    const message = "JARVIS server error: " + String(error?.message || error).slice(0, 300);
+    if (streamTransportActive && streamEvent) {
+      try { streamEvent("error", { error: message }); res.end(); } catch {}
+      streamTransportActive = false;
+      return;
+    }
+    return res.status(500).json({ error: message });
   }
 }
