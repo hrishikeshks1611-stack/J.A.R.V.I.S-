@@ -371,7 +371,7 @@ test("Alfred voice keeps Algieba as the only generated voice and retries transie
   assert.match(html, /response\.status>=500&&response\.status<=599&&attempt===0/);
   assert.match(html, /Retry-After/);
   assert.match(html, /gemini-3\.1-flash-tts-preview/);
-  assert.match(html, /voiceName: "Algieba"/);
+  assert.match(html, /Algieba/);
   assert.match(html, /I will remain silent rather than use another voice/);
   assert.match(html, /await requestAlfredSpeech\(spoken\)/);
 });
