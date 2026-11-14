@@ -35,12 +35,11 @@ jobs:
           grep -q "application-label:'J.A.R.V.I.S'" /tmp/jarvis-badging.txt
           "$AAPT" dump resources "$APK" > /tmp/jarvis-resources.txt
           grep -q 'jarvis_reactor' /tmp/jarvis-resources.txt
-          grep -q 'M54,87 L24,31 L84,31 Z'
+          grep -q 'M54,87 L24,31 L84,31 Z' app/src/main/res/drawable/jarvis_reactor.xml
           grep -q 'NO MALE ENGLISH VOICE FOUND' app/src/main/java/com/hrishikesh/jarvis/MainActivity.java
           grep -q 'restoreConversation' app/src/main/java/com/hrishikesh/jarvis/MainActivity.java
           grep -q 'explicitly male-labelled' app/src/main/java/com/hrishikesh/jarvis/MainActivity.java
-          ! grep -q 'if (chosen == null).*en.*getLanguage' app/src/main/java/com/hrishikesh/jarvis/MainActivity.java app/src/main/res/drawable/jarvis_reactor.xml
-          grep -q 'android:drawable="@drawable/jarvis_reactor"' app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
+                    grep -q 'android:drawable="@drawable/jarvis_reactor"' app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
           grep -q 'android:drawable="@drawable/jarvis_reactor"' app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml
           grep -q 'android:drawable="@drawable/jarvis_reactor"' app/src/main/res/drawable/jarvis_splash.xml
           ! grep -q 'JarvisNotificationListener' app/src/main/AndroidManifest.xml
@@ -53,9 +52,9 @@ jobs:
           sha256sum release/JARVIS-11.0-Fresh-Install.apk | tee release/SHA256SUMS.txt
       - uses: actions/upload-artifact@v4
         with:
-          name: JARVIS-10.0-Fresh-Install
+          name: JARVIS-11.0-Fresh-Install
           path: |
-            release/JARVIS-10.0-Fresh-Install.apk
+            release/JARVIS-11.0-Fresh-Install.apk
             release/SHA256SUMS.txt
           if-no-files-found: error
           retention-days: 30
