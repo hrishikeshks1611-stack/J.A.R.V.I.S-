@@ -190,3 +190,57 @@ test("chat API streams quick conversational tokens and persists the completed tu
     }
   }
 });
+
+
+test("chat API streams progress and final result for complex tool-enabled turns", async () => {
+  const originalFetch = global.fetch;
+  const keys = ["UPSTASH_REDIS_REST_URL", "UPSTASH_REDIS_REST_TOKEN", "JARVIS", "GEMINI_API_KEY"];
+  const original = Object.fromEntries(keys.map(key => [key, process.env[key]]));
+  process.env.UPSTASH_REDIS_REST_URL = "https://redis.example.test";
+  process.env.UPSTASH_REDIS_REST_TOKEN = "test-token";
+  process.env.JARVIS = "test-gemini-key";
+  delete process.env.GEMINI_API_KEY;
+  let saved = false;
+  global.fetch = async (url, options) => {
+    if (String(url).includes("generativelanguage.googleapis.com")) {
+      return { ok: true, status: 200, text: async () => JSON.stringify({
+        candidates: [{ content: { parts: [{ text: "Here is the comparison, Sir." }] } }]
+      }) };
+    }
+    const commands = JSON.parse(options.body);
+    const results = commands.map(command => {
+      const [op, key] = command;
+      if (op === "GET" && key.includes(":session:")) return { result: JSON.stringify({ deviceId: "progress-test-device" }) };
+      if (op === "GET" && key.endsWith(":owner:token-hash")) return { result: null };
+      if (op === "GET") return { result: null };
+      if (op === "EXPIRE") return { result: 1 };
+      if (op === "EVAL") { saved = true; return { result: JSON.stringify([]) }; }
+      throw new Error("Unexpected Redis command: " + op);
+    });
+    return { ok: true, status: 200, text: async () => JSON.stringify(results) };
+  };
+  try {
+    const res = response();
+    res.chunks = [];
+    res.write = function (chunk) { this.chunks.push(chunk); return true; };
+    await handler({
+      method: "POST",
+      headers: { authorization: "Bearer progress-test-session" },
+      body: { message: "Research and compare three options for a study plan.", stream: true }
+    }, res);
+    const wire = res.chunks.join("");
+    assert.equal(res.headers["Content-Type"], "text/event-stream; charset=utf-8");
+    assert.match(wire, /event: progress/);
+    assert.match(wire, /Breaking your request into steps/);
+    assert.match(wire, /event: done/);
+    assert.match(wire, /Here is the comparison/);
+    assert.equal(saved, true);
+    assert.equal(res.ended, true);
+  } finally {
+    global.fetch = originalFetch;
+    for (const key of keys) {
+      if (original[key] === undefined) delete process.env[key];
+      else process.env[key] = original[key];
+    }
+  }
+});
