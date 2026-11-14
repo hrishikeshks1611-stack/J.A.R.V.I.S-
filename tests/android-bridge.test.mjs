@@ -28,11 +28,18 @@ test("native bridge exposes confirmation-based Clock and Calendar actions", asyn
   assert.ok(manifest.includes('com.android.alarm.permission.SET_ALARM'));
 });
 
-test("JARVIS 14.0.1 keeps the 14.0 package identity and increments its version", async () => {
+test("JARVIS 15.0 installs separately from the protected 14.0 package", async () => {
   const gradle = await readFile(new URL("../app/build.gradle", import.meta.url), "utf8");
-  assert.match(gradle, /applicationId\s+'com\.hrishikesh\.jarvis\.fourteen\.release'/);
-  assert.match(gradle, /versionCode\s+1401/);
-  assert.match(gradle, /versionName\s+'14\.0\.1'/);
+  const manifest = await readFile(new URL("../app/src/main/AndroidManifest.xml", import.meta.url), "utf8");
+  assert.match(gradle, /applicationId\\s+'com\\.hrishikesh\\.jarvis\\.fifteen\\.release'/);
+  assert.match(gradle, /versionCode\\s+1500/);
+  assert.match(gradle, /versionName\\s+'15\\.0\\.0'/);
+  assert.doesNotMatch(gradle, /applicationId\\s+'com\\.hrishikesh\\.jarvis\\.fourteen\\.release'/);
+  assert.match(manifest, /android:label="J\\.A\\.R\\.V\\.I\\.S 15\\.0"/);
+  const migration = await readFile(new URL("../docs/JARVIS-15-DEVICE-SYNC-AND-CUTOVER.md", import.meta.url), "utf8");
+  assert.ok(migration.includes("Transfer owner here"));
+  assert.ok(migration.includes("revoke the old 14.0 device session"));
+  assert.ok(migration.includes("must not uninstall the app or wipe its private local storage"));
 });
 
 test("APK workflow builds 14.0.1 and the update workflow verifies in-place data preservation", async () => {
