@@ -76,7 +76,7 @@ public final class MainActivity extends Activity {
         root.addView(title, matchWrap());
 
         reactorView = new ArcReactorView(this);
-        LinearLayout.LayoutParams rp = new LinearLayout.LayoutParams(dp(208), dp(208));
+        LinearLayout.LayoutParams rp = new LinearLayout.LayoutParams(dp(224), dp(224));
         rp.gravity = Gravity.CENTER_HORIZONTAL;
         rp.setMargins(0, dp(2), 0, dp(3));
         root.addView(reactorView, rp);
@@ -90,7 +90,7 @@ public final class MainActivity extends Activity {
         root.addView(status, matchWrap());
 
         TextView chatHeading = new TextView(this);
-        chatHeading.setText("ALFRED  •  CONVERSATION");
+        chatHeading.setText("ALFRED  •  AT YOUR SERVICE");
         chatHeading.setTextColor(cyan);
         chatHeading.setTextSize(12);
         chatHeading.setLetterSpacing(.12f);
@@ -111,7 +111,7 @@ public final class MainActivity extends Activity {
         transcript.setTextColor(Color.WHITE);
         transcript.setTextSize(15);
         transcript.setGravity(Gravity.START);
-        transcript.setText("ALFRED\nAt your service, Sir. What would you like me to do?");
+        transcript.setText("ALFRED\nGood day, Sir. I am listening. How may I assist?");
         transcript.setPadding(dp(12), dp(12), dp(12), dp(12));
         android.graphics.drawable.GradientDrawable bubble = new android.graphics.drawable.GradientDrawable();
         bubble.setColor(Color.rgb(10, 37, 60));
@@ -246,8 +246,8 @@ public final class MainActivity extends Activity {
         tts = new TextToSpeech(this, result -> {
             if (result == TextToSpeech.SUCCESS) {
                 ttsReady = configureVoice();
-                if (ttsReady) speak("At your service, Sir.");
-                else setStatus("ALFRED UK MALE VOICE UNAVAILABLE • AUDIO MUTED");
+                if (ttsReady) { tts.setSpeechRate(0.94f); tts.setPitch(0.92f); speak("Good day, Sir. Alfred is at your service."); }
+                else setStatus("TEXT MODE • INSTALL AN ENGLISH UK VOICE FOR SPOKEN REPLIES");
             }
         });
         } catch (Throwable ttsError) {
@@ -265,21 +265,21 @@ public final class MainActivity extends Activity {
         try {
             Set<Voice> voices = tts.getVoices();
             if (voices == null) return false;
-            Voice chosen = null;
+            Voice preferred = null;
+            Voice britishFallback = null;
             for (Voice voice : voices) {
-                String name = voice.getName().toLowerCase(Locale.ROOT);
                 Locale locale = voice.getLocale();
                 if (!"en".equals(locale.getLanguage()) || !"GB".equalsIgnoreCase(locale.getCountry())) continue;
+                String name = voice.getName().toLowerCase(Locale.ROOT);
+                if (britishFallback == null) britishFallback = voice;
                 if (name.contains("female")) continue;
-                if (name.contains("algieba") || name.contains("male") || name.contains("masculine")) {
-                    chosen = voice;
-                    if (name.contains("algieba")) break;
-                }
+                if (name.contains("algieba")) { preferred = voice; break; }
+                if (name.contains("male") || name.contains("masculine")) preferred = voice;
             }
-            if (chosen == null) return false;
             int language = tts.setLanguage(Locale.UK);
             if (language == TextToSpeech.LANG_MISSING_DATA || language == TextToSpeech.LANG_NOT_SUPPORTED) return false;
-            return tts.setVoice(chosen) == TextToSpeech.SUCCESS;
+            Voice chosen = preferred != null ? preferred : britishFallback;
+            return chosen == null || tts.setVoice(chosen) == TextToSpeech.SUCCESS;
         } catch (Exception ignored) { return false; }
     }
 
