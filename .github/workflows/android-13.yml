@@ -39,6 +39,8 @@ jobs:
           grep -q 'NO MALE ENGLISH VOICE FOUND' app/src/main/java/com/hrishikesh/jarvis/MainActivity.java
           grep -q 'Response copied' app/src/main/java/com/hrishikesh/jarvis/MainActivity.java
           grep -q 'setFillViewport(false)' app/src/main/java/com/hrishikesh/jarvis/MainActivity.java
+          test "$(grep -c 'formScroll.setVerticalScrollBarEnabled(true)' app/src/main/java/com/hrishikesh/jarvis/MainActivity.java)" -eq 2
+          test "$(grep -c '.setView(formScroll)' app/src/main/java/com/hrishikesh/jarvis/MainActivity.java)" -eq 2
           ! grep -q 'ALFRED' app/src/main/java/com/hrishikesh/jarvis/MainActivity.java
           grep -q 'float tilt' app/src/main/java/com/hrishikesh/jarvis/ArcReactorView.java
           grep -q 'seconds \* 47f' app/src/main/java/com/hrishikesh/jarvis/ArcReactorView.java
