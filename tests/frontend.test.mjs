@@ -387,3 +387,18 @@ test("browser microphone reports permission and capture failures clearly", async
   assert.ok(html.includes("No working microphone was found"));
   assert.ok(html.includes("rec.continuous=false"));
 });
+
+test("music requests are routed before instant replies and the general AI fallback", async () => {
+  const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+  const musicAt = html.indexOf("const musicCommand=message.match(");
+  const instantAt = html.indexOf("const instant=attachment?null:instantReply(message);");
+  const onlineFallbackAt = html.indexOf("if(!sessionToken){openSyncPanel()");
+  assert.ok(musicAt >= 0 && instantAt > musicAt && onlineFallbackAt > instantAt,
+    "music routing must run before instant replies and online AI fallback");
+  const patternAt = html.indexOf("const musicCommand=message.match(");
+  const patternEnd = html.indexOf(";", patternAt);
+  const declaration = html.slice(patternAt, patternEnd + 1);
+  const match = new Function("message", declaration + "; return musicCommand;")("Play Numb by Linkin Park");
+  assert.ok(match, "plain typed song requests must be recognised");
+  assert.equal(match[1].trim(), "Numb by Linkin Park");
+});
