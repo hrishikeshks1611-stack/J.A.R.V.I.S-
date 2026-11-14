@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import handler from "../api/speech.js";
 
 const originalFetch = globalThis.fetch;
-const keys = ["JARVIS", "GEMINI_API_KEY", "UPSTASH_REDIS_REST_URL", "UPSTASH_REDIS_REST_TOKEN"];
+const keys = ["JARVIS", "GEMINI_API_KEY", "JARVIS_SPEECH_FREE_TIER_CONFIRMED", "UPSTASH_REDIS_REST_URL", "UPSTASH_REDIS_REST_TOKEN"];
 const prior = Object.fromEntries(keys.map(key => [key, process.env[key]]));
 
 test.afterEach(() => {
@@ -32,6 +32,7 @@ function response() {
 
 function setup(upstream) {
   process.env.JARVIS = "test-gemini-key";
+  process.env.JARVIS_SPEECH_FREE_TIER_CONFIRMED = "true";
   process.env.UPSTASH_REDIS_REST_URL = "https://redis.test";
   process.env.UPSTASH_REDIS_REST_TOKEN = "test-redis-token";
   globalThis.fetch = async (url, options = {}) => {
@@ -91,11 +92,14 @@ test("Algieba speech preserves en-GB identity and streams PCM across split SSE c
   assert.match(modelRequest.contents[0].parts[0].text, /contemporary British English/);
 });
 
-test("Gemini speech quota errors remain visible as HTTP 429", async () => {
-  setup(async () => new Response(JSON.stringify({ error: { message: "quota exceeded" } }), { status: 429 }));
+test("Gemini speech quota errors preserve upstream Retry-After guidance", async () => {
+  setup(async () => new Response(JSON.stringify({ error: { message: "quota exceeded" } }), {
+    status: 429, headers: { "Retry-After": "75" }
+  }));
   const res = response();
   await handler(request, res);
   assert.equal(res.statusCode, 429);
+  assert.equal(res.headers["Retry-After"], "75");
   assert.match(res.body.error, /HTTP 429/);
 });
 
@@ -115,8 +119,19 @@ test("empty Gemini speech streams fail instead of returning silent audio", async
   assert.match(res.body.error, /no audio/i);
 });
 
+test("speech stays disabled unless the owner explicitly confirms the free-tier-only project", async () => {
+  setup(async () => { throw new Error("Gemini must not be called while the free-tier gate is closed."); });
+  delete process.env.JARVIS_SPEECH_FREE_TIER_CONFIRMED;
+  const res = response();
+  await handler(request, res);
+  assert.equal(res.statusCode, 503);
+  assert.match(res.body.error, /free tier/i);
+  assert.equal(res.chunks.length, 0);
+});
+
 test("unpaired devices cannot call the speech service", async () => {
   process.env.JARVIS = "test-gemini-key";
+  process.env.JARVIS_SPEECH_FREE_TIER_CONFIRMED = "true";
   process.env.UPSTASH_REDIS_REST_URL = "https://redis.test";
   process.env.UPSTASH_REDIS_REST_TOKEN = "test-redis-token";
   globalThis.fetch = async () => { throw new Error("Redis must not be contacted without a bearer token."); };

@@ -33,6 +33,14 @@ export default async function handler(req, res) {
     return res.status(503).json({ error: "JARVIS shared memory is temporarily unavailable." });
   }
 
+  // Fail closed unless the owner has explicitly confirmed this project is restricted to the free tier.
+  // This prevents speech generation from silently using a billable Gemini project.
+  if (process.env.JARVIS_SPEECH_FREE_TIER_CONFIRMED !== "true") {
+    return res.status(503).json({
+      error: "Speech is disabled until the owner confirms this Gemini API project is restricted to the free tier."
+    });
+  }
+
   const apiKey = process.env.JARVIS || process.env.GEMINI_API_KEY;
   if (!apiKey) return res.status(503).json({ error: "The Gemini API key is not configured on the JARVIS server." });
 
@@ -77,6 +85,10 @@ export default async function handler(req, res) {
       try { data = JSON.parse(raw); } catch { }
       const detail = data?.error?.message || raw.slice(0, 500) || "Google returned no error detail.";
       console.error("Gemini streaming TTS error:", upstream.status, detail);
+      if (upstream.status === 429) {
+        const retryAfter = upstream.headers.get("retry-after");
+        if (retryAfter && /^\d+$/.test(retryAfter)) res.setHeader("Retry-After", retryAfter);
+      }
       return res.status(upstream.status === 429 ? 429 : 502).json({
         error: "The speech service returned HTTP " + upstream.status + ": " + detail
       });

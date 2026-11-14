@@ -170,6 +170,10 @@ test("calendar event commands validate a future ISO date and open the native eve
   assert.equal(result.args[0], "Dentist appointment");
   assert.equal(result.args[2] - result.args[1], 60 * 60 * 1000);
   assert.equal(result.args[3], "Created through J.A.R.V.I.S.");
+  const natural = parse("Put Dentist appointment on my calendar for 2030-06-15 at 09:30");
+  assert.equal(natural.type, "event");
+  assert.equal(natural.args[0], "Dentist appointment");
+  assert.equal(natural.args[2] - natural.args[1], 60 * 60 * 1000);
   assert.match(parse("Create event Invalid date on 2030-02-31 at 09:30"), /invalid/i);
 });
 
@@ -332,12 +336,67 @@ test("installed-app inventory and arbitrary app names use the native Android bri
 });
 
 
-test("always-on microphone is disabled while tap-to-speak remains available", async () => {
+test("wake-word listening is explicit, foreground-notified, and survives Activity backgrounding", async () => {
  const source = await readFile(new URL("../app/src/main/java/com/hrishikesh/jarvis/MainActivity.java", import.meta.url), "utf8");
- const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
- assert.ok(source.includes('putBoolean("enabled", false)'));
- assert.ok(source.includes('stopService(new Intent(this, WakeWordService.class))'));
- assert.ok(html.includes("$('wakeWordButton').hidden=true"));
- assert.ok(html.includes("Tap the microphone button when you want to speak"));
+ const service = await readFile(new URL("../app/src/main/java/com/hrishikesh/jarvis/WakeWordService.java", import.meta.url), "utf8");
+ const activity = await readFile(new URL("../app/src/main/java/com/hrishikesh/jarvis/WakeWordActivity.java", import.meta.url), "utf8");
+ assert.ok(source.includes("restoreWakeWordServiceIfEnabled()"));
+ assert.ok(source.includes('getBoolean("enabled", false)'));
+ assert.ok(source.includes("startForegroundService(service)"));
+ const onStop = source.match(/protected void onStop\(\)\s*\{([\s\S]*?)super\.onStop\(\);/);
+ assert.ok(onStop);
+ assert.doesNotMatch(onStop[1], /stopService|putBoolean/);
+ assert.ok(service.includes('setOngoing(true)'));
+ assert.ok(service.includes('"Turn microphone OFF"'));
+ assert.ok(activity.includes('putBoolean("enabled", true)'));
+ assert.ok(activity.includes('stopService(new Intent(this, WakeWordService.class))'));
  assert.ok(source.includes("startOfflineDictation()"));
+});
+
+
+test("contact call and SMS commands use the local JARVIS contact list and native confirmation apps", async () => {
+  const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+  assert.match(html, /resolveJarvisContact\(target\)/);
+  assert.match(html, /AndroidJarvis\.dialNumber\(result\.contact\.number\)/);
+  assert.match(html, /AndroidJarvis\.openSmsComposer\(result\.contact\.number,body\)/);
+  assert.match(html, /press Send yourself/);
+  assert.match(html, /window\.location\.href='sms:'/);
+  assert.match(html, /window\.location\.href='tel:'/);
+});
+
+
+test("Alfred voice keeps Algieba as the only generated voice and retries transient speech failures", async () => {
+  const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+  assert.match(html, /async function requestAlfredSpeech\(spoken\)/);
+  assert.match(html, /response\.status>=500&&response\.status<=599&&attempt===0/);
+  assert.match(html, /Retry-After/);
+  assert.match(html, /gemini-3\.1-flash-tts-preview/);
+  assert.match(html, /Algieba/);
+  assert.match(html, /I will remain silent rather than use another voice/);
+  assert.match(html, /await requestAlfredSpeech\(spoken\)/);
+});
+
+
+test("phone UI provides authenticated continuous Live Voice transcription with explicit stop and safe PCM capture", async () => {
+  const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+  assert.match(html, /id="liveVoiceButton"/);
+  assert.match(html, /async function startLiveVoice\(\)/);
+  assert.match(html, /navigator\.mediaDevices\?\.getUserMedia/);
+  assert.match(html, /Authorization':?'Bearer '\+sessionToken/);
+  assert.match(html, /BidiGenerateContentConstrained\?access_token=/);
+  assert.match(html, /models\/gemini-3\.5-transcribe-live/);
+  assert.match(html, /mimeType:'audio\/pcm;rate=16000'/);
+  assert.match(html, /inputTranscription/);
+  assert.match(html, /requestSubmit\(\)/);
+  assert.match(html, /function stopLiveVoice\(reason\)/);
+  assert.match(html, /outputBuffer\.getChannelData\(0\)\.fill\(0\)/);
+});
+
+test("Android WebView only grants microphone capture after runtime permission", async () => {
+  const java = await readFile(new URL("../app/src/main/java/com/hrishikesh/jarvis/MainActivity.java", import.meta.url), "utf8");
+  assert.match(java, /onPermissionRequest\(PermissionRequest request\)/);
+  assert.match(java, /RESOURCE_AUDIO_CAPTURE/);
+  assert.match(java, /REQUEST_WEB_AUDIO/);
+  assert.match(java, /pending\.grant\(new String\[\]\{PermissionRequest\.RESOURCE_AUDIO_CAPTURE\}\)/);
+  assert.match(java, /pending\.deny\(\)/);
 });

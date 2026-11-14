@@ -1,7 +1,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.INTERNET" />
-    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.READ_CONTACTS" />
+    <uses-permission android:name="android.permission.READ_CALL_LOG" />
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-feature android:name="android.hardware.camera.any" android:required="false" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
@@ -48,10 +50,10 @@
     <application
         android:allowBackup="false"
         android:icon="@drawable/ic_jarvis_launcher"
+        android:roundIcon="@drawable/ic_jarvis_launcher"
         android:label="J.A.R.V.I.S."
         android:theme="@android:style/Theme.Material.NoActionBar"
         android:usesCleartextTraffic="false">
-        <receiver android:name=".UpdateInstallReceiver" android:exported="false" />
         <activity android:name=".WakeWordActivity" android:exported="false" />
         <activity android:name=".CameraCaptureActivity" android:exported="false" android:screenOrientation="portrait" />
         <service android:name=".WakeWordService" android:exported="false" android:foregroundServiceType="microphone" />

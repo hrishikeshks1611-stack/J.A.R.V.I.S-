@@ -19,11 +19,11 @@ android {
         buildConfig true
     }
     defaultConfig {
-        applicationId 'com.hrishikesh.jarvis'
+        applicationId 'com.hrishikesh.jarvis16'
         minSdk 23
         targetSdk 35
-        versionCode 503
-        versionName '5.0.3'
+        versionCode 1600
+        versionName '16.0.0'
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
         buildConfigField 'boolean', 'JARVIS_TV', 'false'
         buildConfigField 'String', 'ASSISTANT_NAME', '"J.A.R.V.I.S."'
@@ -40,4 +40,29 @@ android {
             buildConfigField 'boolean', 'JARVIS_TV', 'true'
         }
     }
+    buildTypes {
+        release {
+            // Owner-test build: use the Android Gradle debug certificate so this APK can be installed.
+            // This is not a Play Store / production distribution configuration.
+            signingConfig signingConfigs.debug
+        }
+    }
 }
+
+// Bundle the exact web interface into the APK. The UI can open without relying on
+// GitHub Pages being reachable; authenticated AI services still use the network.
+tasks.register('prepareJarvisWebAssets') {
+    def sourceHtml = rootProject.file('index.html')
+    def targetHtml = file('src/main/assets/index.html')
+    inputs.file(sourceHtml)
+    outputs.file(targetHtml)
+    doLast {
+        targetHtml.parentFile.mkdirs()
+        def html = sourceHtml.getText('UTF-8')
+        html = html.replaceAll(/<link rel="manifest"[^>]*>/, '')
+        html = html.replaceAll(/<link rel="icon"[^>]*>/, '')
+        html = html.replaceAll(/<link rel="apple-touch-icon"[^>]*>/, '')
+        targetHtml.setText(html, 'UTF-8')
+    }
+}
+tasks.named('preBuild').configure { dependsOn tasks.named('prepareJarvisWebAssets') }

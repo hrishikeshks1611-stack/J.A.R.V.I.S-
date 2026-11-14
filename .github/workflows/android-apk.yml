@@ -1,18 +1,25 @@
-name: Build complete JARVIS Android and TV APKs
-# CI artifacts are build outputs; installation and on-device behaviour require separate validation.
+name: Build J.A.R.V.I.S. 16.0 Android phone release candidate
+# Build artifacts are not equivalent to a release installed and tested on a physical device.
 on:
   workflow_dispatch:
   push:
-    branches: [ main ]
+    branches: [ jarvis-16.0-foundation ]
     paths:
       - 'app/**'
+      - 'index.html'
+      - 'tests/**'
+      - 'lib/**'
+      - 'api/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'api/live-token.js'
       - '*.gradle'
       - 'settings.gradle'
       - '.github/workflows/android-apk.yml'
 permissions:
   contents: read
 jobs:
-  build:
+  build-phone:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
@@ -22,6 +29,12 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install and run repository tests
+        run: npm ci --ignore-scripts --no-audit --no-fund && npm test
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
         with:
@@ -33,34 +46,29 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
-      - name: Run phone and Android TV unit tests
-        run: gradle --no-daemon testPhoneDebugUnitTest testTvDebugUnitTest
-      - name: Build phone and Android TV APKs
-        run: gradle --no-daemon assemblePhoneDebug assembleTvDebug
-      - name: Verify phone APK package and version
+      - name: Run Android phone unit tests
+        run: gradle --no-daemon testPhoneDebugUnitTest
+      - name: Build Android phone release APK
+        run: gradle --no-daemon assemblePhoneRelease
+      - name: Verify phone release APK package and version
         shell: bash
         run: |
           set -euo pipefail
-          APK="app/build/outputs/apk/phone/debug/app-phone-debug.apk"
+          APK="app/build/outputs/apk/phone/release/app-phone-release.apk"
           AAPT="$ANDROID_HOME/build-tools/35.0.0/aapt"
+          APKSIGNER="$ANDROID_HOME/build-tools/35.0.0/apksigner"
           test -s "$APK"
           BADGING="$("$AAPT" dump badging "$APK")"
-          echo "$BADGING" | grep -Fq "package: name='com.hrishikesh.jarvis' versionCode='503' versionName='5.0.3'"
+          echo "$BADGING" | grep -Fq "package: name='com.hrishikesh.jarvis16' versionCode='1600' versionName='16.0.0'"
+          "$APKSIGNER" verify --verbose "$APK"
           sha256sum "$APK"
-          echo "Verified package: com.hrishikesh.jarvis"
-          echo "Verified version: 5.0.3 (503)"
-          echo "Note: this does not verify compatibility with the copy installed on a user's phone."
-      - name: Upload phone verification artifact
+          echo "Verified package: com.hrishikesh.jarvis16"
+          echo "Verified version: 16.0.0 (1600)"
+          echo "Verified APK signature for owner testing"
+      - name: Upload phone release candidate APK
         uses: actions/upload-artifact@v4
         with:
-          name: JARVIS-Android-phone-debug-verification-complete
-          path: app/build/outputs/apk/phone/debug/app-phone-debug.apk
-          if-no-files-found: error
-          retention-days: 30
-      - name: Upload Android TV verification artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: JARVIS-Android-TV-debug-verification-complete
-          path: app/build/outputs/apk/tv/debug/app-tv-debug.apk
+          name: JARVIS-16.0-phone-release-candidate
+          path: app/build/outputs/apk/phone/release/app-phone-release.apk
           if-no-files-found: error
           retention-days: 30
