@@ -61,20 +61,23 @@ test("APK workflow builds 14.0.1 and the update workflow verifies in-place data 
 
 
 
-test("native contact calling opens the dialler for confirmation and refuses ambiguous matches", async () => {
+test("native contact calling resolves contacts and places a direct call after Android permission", async () => {
   const source = await readFile(new URL("../app/src/main/java/com/hrishikesh/jarvis/MainActivity.java", import.meta.url), "utf8");
   const manifest = await readFile(new URL("../app/src/main/AndroidManifest.xml", import.meta.url), "utf8");
-  assert.match(source, /public String callContact\(String requested\)/);
-  assert.match(source, /ContactsContract\.CommonDataKinds\.Phone\.CONTENT_FILTER_URI/);
-  assert.match(source, /AMBIGUOUS:/);
-  assert.match(source, /REQUEST_CONTACTS/);
-  assert.match(source, /Intent\.ACTION_DIAL/);
-  assert.match(source, /DIALER_OPENED:/);
-  assert.doesNotMatch(source, /Intent\.ACTION_CALL/);
+  assert.ok(source.includes('public String callContact(String requested)'));
+  assert.ok(source.includes('public String callNumber(String requestedNumber, String displayName)'));
+  assert.ok(source.includes('ContactsContract.CommonDataKinds.Phone.CONTENT_FILTER_URI'));
+  assert.ok(source.includes('AMBIGUOUS:'));
+  assert.ok(source.includes('REQUEST_CONTACTS'));
+  assert.ok(source.includes('REQUEST_CALL_PHONE'));
+  assert.ok(source.includes('Manifest.permission.CALL_PHONE'));
+  assert.ok(source.includes('Intent.ACTION_CALL'));
+  assert.ok(source.includes('CALL_STARTING:'));
+  assert.ok(source.includes('placePendingCall()'));
+  assert.ok(!source.includes('Intent.ACTION_DIAL'));
   assert.ok(manifest.includes('android.permission.READ_CONTACTS'));
-  assert.ok(!manifest.includes('android.permission.CALL_PHONE'));
+  assert.ok(manifest.includes('android.permission.CALL_PHONE'));
 });
-
 
 
 test("contact commands reach the native Android caller before the VCF dialler fallback", async () => {
@@ -83,7 +86,11 @@ test("contact commands reach the native Android caller before the VCF dialler fa
   const vcfFallback = html.indexOf("resolveJarvisContact(target)");
   assert.ok(nativeCall >= 0 && vcfFallback > nativeCall);
   assert.ok(html.includes("if(!nativeResult.startsWith('NOT_FOUND:'))"));
-  assert.ok(html.includes('DIALER_OPENED:'));
+  assert.ok(html.includes('CALL_STARTING:'));
+  assert.ok(html.includes('window.AndroidJarvis.callNumber(result.contact.number,result.contact.name)'));
+  const bundledHtml = await readFile(new URL("../app/src/main/assets/index.html", import.meta.url), "utf8");
+  assert.ok(bundledHtml.includes('window.AndroidJarvis.callNumber(result.contact.number,result.contact.name)'));
+  assert.ok(bundledHtml.includes("nativeResult.startsWith('CALL_STARTING:')"));
   assert.ok(!html.includes("const callCommand=message.match"));
 });
 
