@@ -159,7 +159,7 @@ export default async function handler(req, res) {
     // Stream short, text-only conversational answers token-by-token. Action requests,
     // attachments, and complex turns keep the full tool-enabled JSON workflow below.
     if (body.stream === true && performancePolicy.tier === "quick" && !attachment && typeof res.write === "function") {
-      const sendEvent = (event, payload) => res.write("event: " + event + "\\ndata: " + JSON.stringify(payload) + "\\n\\n");
+      const sendEvent = (event, payload) => res.write("event: " + event + "\ndata: " + JSON.stringify(payload) + "\n\n");
       res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
       res.setHeader("Cache-Control", "no-cache, no-transform");
       res.setHeader("Connection", "keep-alive");
