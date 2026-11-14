@@ -74,23 +74,34 @@ public final class ArcReactorView extends GLSurfaceView {
             GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT | GLES20.GL_DEPTH_BUFFER_BIT);
             GLES20.glUseProgram(program);
             float seconds = (System.nanoTime() - started) / 1_000_000_000f;
+            // The ring assembly tilts in 3D while each concentric ring counter-rotates.
+            float tilt = 12f + 5f * (float)Math.sin(seconds * 0.55f);
             Matrix.setIdentityM(model, 0);
-            Matrix.rotateM(model, 0, seconds * 13f, 0f, 0f, 1f);
+            Matrix.rotateM(model, 0, tilt, 1f, 0f, 0f);
+            Matrix.rotateM(model, 0, seconds * 19f, 0f, 0f, 1f);
             draw(outer, model, .20f, .48f, .62f, 1f);
+
             Matrix.setIdentityM(model, 0);
-            Matrix.rotateM(model, 0, -seconds * 24f, 0f, 0f, 1f);
+            Matrix.rotateM(model, 0, -tilt * 1.25f, 1f, 0f, 0f);
+            Matrix.rotateM(model, 0, -seconds * 31f, 0f, 0f, 1f);
             draw(middle, model, .28f, .62f, .78f, 1f);
+
             Matrix.setIdentityM(model, 0);
-            Matrix.rotateM(model, 0, seconds * 38f, 0f, 0f, 1f);
+            Matrix.rotateM(model, 0, tilt * 1.7f, 1f, 0f, 0f);
+            Matrix.rotateM(model, 0, seconds * 47f, 0f, 0f, 1f);
             draw(inner, model, .42f, .76f, .92f, 1f);
+
+            // A compact inverted triangle sits within the reactor's central energy chamber.
             Matrix.setIdentityM(model, 0);
-            Matrix.rotateM(model, 0, seconds * 5f, 0f, 0f, 1f);
+            Matrix.rotateM(model, 0, seconds * 11f, 0f, 0f, 1f);
+            Matrix.scaleM(model, 0, .34f, .34f, .34f);
             GLES20.glDisable(GLES20.GL_DEPTH_TEST);
             drawLines(triangle, model, .10f, .62f, 1.0f, 1f);
-            drawLines(triangle, model, .34f, .86f, 1.0f, 1f);
             GLES20.glEnable(GLES20.GL_DEPTH_TEST);
+
             Matrix.setIdentityM(model, 0);
-            float pulse = 0.90f + 0.10f * (float)Math.sin(seconds * 2.2f);
+            Matrix.rotateM(model, 0, tilt, 1f, 0f, 0f);
+            float pulse = 0.86f + 0.14f * (float)Math.sin(seconds * 2.2f);
             Matrix.scaleM(model, 0, pulse, pulse, pulse);
             draw(core, model, .18f, .62f, .82f, 1f);
         }
