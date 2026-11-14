@@ -58,6 +58,9 @@ public class MainActivity extends Activity {
     private static final int REQUEST_LOCATION = 4105;
     private static final int REQUEST_CONTACTS = 4106;
     private static final int REQUEST_CALL_PHONE = 4107;
+    private static final int REQUEST_REMINDER_NOTIFICATION = 4108;
+    private long pendingReminderAt = 0L;
+    private String pendingReminderTitle = null;
     private String pendingContactCall;
     private String pendingCallName;
     private String pendingCallNumber;
@@ -174,6 +177,22 @@ public class MainActivity extends Activity {
         webView.requestFocus();
         if (BuildConfig.JARVIS_TV) applyTvImmersiveMode();
         loadBundledInterface();
+    }
+
+    private void scheduleReminderNotification(long triggerAtMillis, String title) {
+        android.app.AlarmManager alarmManager = (android.app.AlarmManager) getSystemService(ALARM_SERVICE);
+        if (alarmManager == null) {
+            Toast.makeText(this, "Android reminders are unavailable on this device, Sir.", Toast.LENGTH_LONG).show();
+            return;
+        }
+        int notificationId = (int) (triggerAtMillis % Integer.MAX_VALUE);
+        Intent intent = new Intent(this, ReminderReceiver.class);
+        intent.putExtra(ReminderReceiver.EXTRA_TITLE, title);
+        intent.putExtra(ReminderReceiver.EXTRA_NOTIFICATION_ID, notificationId);
+        PendingIntent pending = PendingIntent.getBroadcast(this, notificationId, intent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+        alarmManager.setAndAllowWhileIdle(android.app.AlarmManager.RTC_WAKEUP, triggerAtMillis, pending);
+        runOnUiThread(() -> Toast.makeText(this, "Reminder scheduled, Sir.", Toast.LENGTH_SHORT).show());
     }
 
     private void loadBundledInterface() {
@@ -612,6 +631,22 @@ public class MainActivity extends Activity {
             return "Opening Android's Cast settings, Sir. Select a compatible TV or wireless display.";
         }
 
+        @JavascriptInterface public String setReminder(long triggerAtMillis, String title) {
+            String reminderTitle = title == null ? "" : title.trim();
+            if (reminderTitle.isEmpty() || reminderTitle.length() > 120) return "ERROR:Please provide a reminder under 120 characters.";
+            if (triggerAtMillis <= System.currentTimeMillis() || triggerAtMillis - System.currentTimeMillis() > 366L * 24 * 60 * 60 * 1000) {
+                return "ERROR:Choose a reminder time within the next year.";
+            }
+            if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                pendingReminderAt = triggerAtMillis;
+                pendingReminderTitle = reminderTitle;
+                runOnUiThread(() -> requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, REQUEST_REMINDER_NOTIFICATION));
+                return "PERMISSION_REQUIRED:Allow notifications so J.A.R.V.I.S. can deliver this reminder.";
+            }
+            scheduleReminderNotification(triggerAtMillis, reminderTitle);
+            return "REMINDER_SCHEDULED:Reminder scheduled for " + new java.text.SimpleDateFormat("EEE, d MMM · h:mm a", Locale.getDefault()).format(new java.util.Date(triggerAtMillis)) + ".";
+        }
+
         @JavascriptInterface public String setAlarm(int hour, int minute, String label) {
             if (hour < 0 || hour > 23 || minute < 0 || minute > 59) {
                 return "That alarm time is invalid, Sir.";
@@ -1039,6 +1074,19 @@ public class MainActivity extends Activity {
                 pendingCallName = null;
                 pendingCallNumber = null;
                 Toast.makeText(this, "Phone-call permission was denied. No call was placed, Sir.", Toast.LENGTH_LONG).show();
+            }
+            return;
+        }
+        if (requestCode == REQUEST_REMINDER_NOTIFICATION) {
+            boolean granted = grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED;
+            long triggerAt = pendingReminderAt;
+            String title = pendingReminderTitle;
+            pendingReminderAt = 0L;
+            pendingReminderTitle = null;
+            if (granted && triggerAt > System.currentTimeMillis() && title != null) {
+                scheduleReminderNotification(triggerAt, title);
+            } else {
+                Toast.makeText(this, "Notifications were not allowed. No reminder was scheduled, Sir.", Toast.LENGTH_LONG).show();
             }
             return;
         }
