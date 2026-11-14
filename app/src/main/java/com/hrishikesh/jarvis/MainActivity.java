@@ -39,6 +39,9 @@ public final class MainActivity extends Activity {
     private ArcReactorView reactorView;
     private SpeechRecognizer recognizer;
     private TextView status, transcript;
+    private android.widget.EditText chatInput;
+    private LinearLayout chatMessages;
+    private ScrollView chatScroll;
     private boolean ttsReady = false;
     private boolean wakeListeningRequested = false;
     private final int cyan = Color.rgb(75, 210, 255);
@@ -57,100 +60,146 @@ public final class MainActivity extends Activity {
     }
 
     private void buildInterface() {
-        ScrollView scroll = new ScrollView(this);
-        scroll.setFillViewport(true);
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setGravity(Gravity.CENTER_HORIZONTAL);
-        root.setPadding(dp(18), dp(18), dp(18), dp(26));
+        root.setPadding(dp(16), dp(12), dp(16), dp(10));
         root.setBackgroundColor(Color.rgb(2, 8, 18));
-        scroll.addView(root);
 
         TextView title = new TextView(this);
         title.setText("J.A.R.V.I.S.");
         title.setTextColor(cyan);
-        title.setTextSize(27);
-        title.setLetterSpacing(.24f);
+        title.setTextSize(25);
+        title.setLetterSpacing(.22f);
         title.setGravity(Gravity.CENTER);
         root.addView(title, matchWrap());
 
         reactorView = new ArcReactorView(this);
-        LinearLayout.LayoutParams rp = new LinearLayout.LayoutParams(dp(260), dp(260));
-        rp.setMargins(0, dp(6), 0, dp(8));
+        LinearLayout.LayoutParams rp = new LinearLayout.LayoutParams(dp(174), dp(174));
+        rp.gravity = Gravity.CENTER_HORIZONTAL;
+        rp.setMargins(0, dp(2), 0, dp(3));
         root.addView(reactorView, rp);
 
-        LinearLayout corePanel = addPanel(root, "CORE STATUS");
         status = new TextView(this);
-        status.setTextColor(Color.rgb(142, 213, 240));
-        status.setTextSize(12);
+        status.setTextColor(Color.rgb(120, 205, 235));
+        status.setTextSize(11);
         status.setGravity(Gravity.CENTER);
-        status.setPadding(0, dp(4), 0, dp(6));
-        corePanel.addView(status, matchWrap());
+        status.setPadding(dp(4), dp(5), dp(4), dp(8));
+        root.addView(status, matchWrap());
+
+        TextView chatHeading = new TextView(this);
+        chatHeading.setText("ALFRED  •  CONVERSATION");
+        chatHeading.setTextColor(cyan);
+        chatHeading.setTextSize(12);
+        chatHeading.setLetterSpacing(.12f);
+        chatHeading.setPadding(dp(4), dp(5), dp(4), dp(7));
+        root.addView(chatHeading, matchWrap());
+
+        chatScroll = new ScrollView(this);
+        chatScroll.setFillViewport(true);
+        chatScroll.setBackgroundColor(Color.rgb(4, 17, 31));
+        chatMessages = new LinearLayout(this);
+        chatMessages.setOrientation(LinearLayout.VERTICAL);
+        chatMessages.setPadding(dp(10), dp(10), dp(10), dp(10));
+        chatScroll.addView(chatMessages);
+        LinearLayout.LayoutParams cp = new LinearLayout.LayoutParams(-1, 0, 1f);
+        root.addView(chatScroll, cp);
 
         transcript = new TextView(this);
         transcript.setTextColor(Color.WHITE);
-        transcript.setTextSize(14);
-        transcript.setGravity(Gravity.CENTER);
-        transcript.setPadding(dp(4), dp(8), dp(4), dp(8));
-        corePanel.addView(transcript, matchWrap());
+        transcript.setTextSize(15);
+        transcript.setGravity(Gravity.START);
+        transcript.setText("ALFRED\nAt your service, Sir. What would you like me to do?");
+        transcript.setPadding(dp(12), dp(12), dp(12), dp(12));
+        android.graphics.drawable.GradientDrawable bubble = new android.graphics.drawable.GradientDrawable();
+        bubble.setColor(Color.rgb(10, 37, 60));
+        bubble.setCornerRadius(dp(14));
+        transcript.setBackground(bubble);
+        chatMessages.addView(transcript, matchWrap());
 
-        LinearLayout voicePanel = addPanel(root, "VOICE & SYSTEM CONTROL");
-        Button listen = makeButton("TALK TO JARVIS");
-        listen.setOnClickListener(v -> startListening());
-        voicePanel.addView(listen, matchWrap());
+        LinearLayout composer = new LinearLayout(this);
+        composer.setOrientation(LinearLayout.HORIZONTAL);
+        composer.setGravity(Gravity.CENTER_VERTICAL);
+        composer.setPadding(0, dp(8), 0, dp(4));
+        chatInput = new android.widget.EditText(this);
+        chatInput.setSingleLine(true);
+        chatInput.setTextColor(Color.WHITE);
+        chatInput.setHintTextColor(Color.rgb(120, 150, 170));
+        chatInput.setHint("Message J.A.R.V.I.S...");
+        chatInput.setTextSize(15);
+        chatInput.setPadding(dp(13), dp(8), dp(13), dp(8));
+        android.graphics.drawable.GradientDrawable inputBg = new android.graphics.drawable.GradientDrawable();
+        inputBg.setColor(Color.rgb(8, 27, 45));
+        inputBg.setCornerRadius(dp(24));
+        inputBg.setStroke(dp(1), Color.rgb(42, 155, 210));
+        chatInput.setBackground(inputBg);
+        composer.addView(chatInput, new LinearLayout.LayoutParams(0, dp(50), 1f));
 
-        Button wake = makeButton("START BACKGROUND WAKE LISTENING");
-        wake.setOnClickListener(v -> startWakeListening());
-        voicePanel.addView(wake, matchWrap());
+        Button mic = makeButton("MIC");
+        mic.setTextSize(11);
+        LinearLayout.LayoutParams mp = new LinearLayout.LayoutParams(dp(58), dp(48));
+        mp.setMargins(dp(5), 0, dp(4), 0);
+        composer.addView(mic, mp);
+        mic.setOnClickListener(v -> startListening());
 
-        Button stopWake = makeButton("STOP WAKE LISTENING");
-        stopWake.setOnClickListener(v -> stopWakeListening());
-        voicePanel.addView(stopWake, matchWrap());
+        Button send = makeButton("SEND");
+        send.setTextSize(11);
+        composer.addView(send, new LinearLayout.LayoutParams(dp(72), dp(48)));
+        send.setOnClickListener(v -> sendChatMessage());
+        chatInput.setOnEditorActionListener((v, actionId, event) -> { sendChatMessage(); return true; });
+        root.addView(composer, matchWrap());
 
-        Button apps = makeButton("DISCOVER INSTALLED APPS");
-        apps.setOnClickListener(v -> showApps());
-        voicePanel.addView(apps, matchWrap());
+        Button tools = makeButton("TOOLS & DEVICE CONTROLS  ▾");
+        tools.setTextSize(12);
+        tools.setOnClickListener(v -> showTools());
+        root.addView(tools, matchWrap());
+        setContentView(root);
+    }
 
-        LinearLayout devicePanel = addPanel(root, "DEVICE & MEDIA CONTROL");
-        Button camera = makeButton("OPEN JARVIS CAMERA");
-        camera.setOnClickListener(v -> openCamera());
-        devicePanel.addView(camera, matchWrap());
+    private void sendChatMessage() {
+        if (chatInput == null) return;
+        String message = chatInput.getText().toString().trim();
+        if (message.isEmpty()) return;
+        chatInput.setText("");
+        addChatLine("YOU", message, true);
+        handleCommand(message);
+    }
 
+    private void addChatLine(String speaker, String message, boolean user) {
+        if (chatMessages == null) return;
+        TextView line = new TextView(this);
+        line.setText(speaker + "\n" + message);
+        line.setTextColor(Color.WHITE);
+        line.setTextSize(14);
+        line.setPadding(dp(12), dp(10), dp(12), dp(10));
+        android.graphics.drawable.GradientDrawable bg = new android.graphics.drawable.GradientDrawable();
+        bg.setColor(user ? Color.rgb(13, 54, 76) : Color.rgb(10, 37, 60));
+        bg.setCornerRadius(dp(14));
+        line.setBackground(bg);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(user ? (int)(getResources().getDisplayMetrics().widthPixels * .82f) : -1, -2);
+        lp.gravity = user ? Gravity.END : Gravity.START;
+        lp.setMargins(0, dp(4), 0, dp(6));
+        chatMessages.addView(line, lp);
+        if (chatScroll != null) chatScroll.post(() -> chatScroll.fullScroll(View.FOCUS_DOWN));
+    }
 
-        Button music = makeButton("SEARCH & PLAY MUSIC");
-        music.setOnClickListener(v -> playMusic("Back in Black"));
-        devicePanel.addView(music, matchWrap());
-
-        LinearLayout officePanel = addPanel(root, "OFFICE & EDUCATION STUDIO");
-        Button office = makeButton("CREATE WORD / POWERPOINT / EXCEL / PDF");
-        office.setOnClickListener(v -> showOfficeComposer());
-        officePanel.addView(office, matchWrap());
-
-        Button importFile = makeButton("IMPORT TXT / DOCX / PPTX / XLSX");
-        importFile.setOnClickListener(v -> importAttachment());
-        officePanel.addView(importFile, matchWrap());
-
-        Button study = makeButton("BUILD STUDY REVISION PACK");
-        study.setOnClickListener(v -> showStudyComposer());
-        officePanel.addView(study, matchWrap());
-
-        LinearLayout memoryPanel = addPanel(root, "PRIVATE MEMORY");
-        Button viewMemory = makeButton("VIEW RECENT MEMORY");
-        viewMemory.setOnClickListener(v -> showMemory());
-        memoryPanel.addView(viewMemory, matchWrap());
-
-        Button clearMemory = makeButton("CLEAR LOCAL MEMORY");
-        clearMemory.setOnClickListener(v -> confirmClearMemory());
-        memoryPanel.addView(clearMemory, matchWrap());
-
-        TextView note = new TextView(this);
-        note.setText("USER-CONTROLLED MICROPHONE • ENCRYPTED LOCAL MEMORY • PRIVATE CAMERA CAPTURE");
-        note.setTextColor(Color.rgb(90, 132, 158));
-        note.setTextSize(10);
-        note.setGravity(Gravity.CENTER);
-        note.setPadding(0, dp(14), 0, dp(2));
-        root.addView(note, matchWrap());
-        setContentView(scroll);
+    private void showTools() {
+        String[] tools = {"Talk to J.A.R.V.I.S", "Start background wake listening", "Stop wake listening", "Discover installed apps", "Open J.A.R.V.I.S camera", "Search music", "Create Office document", "Import attachment", "Build study revision pack", "View private memory", "Clear local memory"};
+        new android.app.AlertDialog.Builder(this).setTitle("J.A.R.V.I.S TOOLS")
+            .setItems(tools, (dialog, which) -> {
+                switch (which) {
+                    case 0: startListening(); break;
+                    case 1: startWakeListening(); break;
+                    case 2: stopWakeListening(); break;
+                    case 3: showApps(); break;
+                    case 4: openCamera(); break;
+                    case 5: playMusic("music"); break;
+                    case 6: showOfficeComposer(); break;
+                    case 7: importAttachment(); break;
+                    case 8: showStudyComposer(); break;
+                    case 9: showMemory(); break;
+                    case 10: confirmClearMemory(); break;
+                }
+            }).setNegativeButton("CLOSE", null).show();
     }
 
     private LinearLayout addPanel(LinearLayout root, String heading) {
@@ -192,7 +241,7 @@ public final class MainActivity extends Activity {
                     ArrayList<String> results = b.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
                     if (results != null && !results.isEmpty()) {
                         String command = results.get(0);
-                        transcript.setText("“" + command + "”");
+                        addChatLine("YOU • VOICE", command, true);
                         handleCommand(command);
                     } else setStatus("NO SPEECH DETECTED");
                 }
@@ -280,28 +329,28 @@ public final class MainActivity extends Activity {
         CommandParser.Command command = CommandParser.parse(raw);
         switch (command.action) {
             case OPEN_CAMERA:
+                addChatLine("J.A.R.V.I.S", "Opening the camera, Sir.", false);
                 openCamera();
                 break;
             case OPEN_APP:
+                addChatLine("J.A.R.V.I.S", "Opening " + command.argument + ", Sir.", false);
                 launchApp(command.argument);
                 break;
             case PLAY_MUSIC:
+                addChatLine("J.A.R.V.I.S", "Searching for " + (command.argument.isEmpty() ? "music" : command.argument) + ", Sir.", false);
                 playMusic(command.argument.isEmpty() ? "music" : command.argument);
                 break;
             case PAUSE_MEDIA:
             case RESUME_MEDIA:
             case NEXT_TRACK:
             case PREVIOUS_TRACK:
-                speak("I can open music apps and search for tracks, Sir, but direct controls of other apps are not available in this security-focused build.");
+                String mediaReply = "I can open music apps and search for tracks, Sir, but direct controls of other apps are not available in this security-focused build.";
+                addChatLine("ALFRED", mediaReply, false); speak(mediaReply);
                 setStatus("DIRECT THIRD-PARTY MEDIA CONTROL NOT INCLUDED");
-                break;
-            case GREETING:
-                speak(PersonalityEngine.respond(raw, memory == null ? null : memory.recent(12)));
-                setStatus("JARVIS ONLINE • ALFRED PERSONA ACTIVE");
                 break;
             default:
                 String reply = PersonalityEngine.respond(raw, memory == null ? null : memory.recent(12));
-                if (transcript != null) transcript.setText("“" + raw + "”\n\n" + reply);
+                addChatLine("ALFRED", reply, false);
                 speak(reply);
                 setStatus("ALFRED PERSONA • OFFLINE RESPONSE");
                 break;
@@ -332,7 +381,7 @@ public final class MainActivity extends Activity {
                 count++;
             }
         }
-        transcript.setText(names.toString());
+        addChatLine("SYSTEM", names.toString(), false);
         setStatus(count + " USER APPS DISCOVERED");
     }
 
@@ -375,8 +424,8 @@ public final class MainActivity extends Activity {
             try (java.io.InputStream in = getContentResolver().openInputStream(uri)) {
                 importedText = OfficeReader.read(in, displayName);
             }
-            transcript.setText("ATTACHMENT LOADED\n" + displayName + "\n\n" +
-                (importedText.length() > 2500 ? importedText.substring(0,2500) + "\n…" : importedText));
+            addChatLine("SYSTEM • ATTACHMENT", displayName + "\n" +
+                (importedText.length() > 2500 ? importedText.substring(0,2500) + "\n…" : importedText), false);
             setStatus("ATTACHMENT TEXT EXTRACTED • READY FOR STUDY PACK");
             speak("Attachment loaded, Sir.");
         } catch (Exception e) {
@@ -508,7 +557,7 @@ public final class MainActivity extends Activity {
             output.append(entry.role.equals("user") ? "YOU: " : "JARVIS: ")
                     .append(entry.text).append((char) 10);
         }
-        transcript.setText(output.toString());
+        addChatLine("PRIVATE MEMORY", output.toString(), false);
         setStatus(entries.size() + " RECENT ENTRIES");
     }
 
@@ -519,7 +568,7 @@ public final class MainActivity extends Activity {
                 .setNegativeButton("CANCEL", (dialog, which) -> dialog.dismiss())
                 .setPositiveButton("CLEAR", (dialog, which) -> {
                     if (memory != null) memory.clear();
-                    transcript.setText("Local memory cleared.");
+                    addChatLine("SYSTEM", "Local memory cleared.", false);
                     setStatus("LOCAL MEMORY CLEARED");
                 }).show();
     }
