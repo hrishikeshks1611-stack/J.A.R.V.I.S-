@@ -110,7 +110,7 @@ test("YouTube Music voice commands use the native playback bridge or search fall
   assert.ok(html.includes("window.AndroidJarvis.searchYouTubeMusic(query,requestId)"));
   assert.ok(html.includes("getYouTubeMusicPlaybackStatus"));
   assert.ok(html.includes("Playback state verified"));
-  assert.ok(html.includes("YouTube Music did not reach PLAYING state"));
+  assert.ok(html.includes("playback did not reach PLAYING state"));
   assert.ok(html.includes("window.AndroidJarvis.playYoutubeMusic(videoId)"));
   assert.ok(html.includes("const hasNativeMusicBridge=window.AndroidJarvis&&typeof window.AndroidJarvis.playYoutubeMusic==='function'"));
   assert.ok(html.includes("else window.location.href='https://music.youtube.com/'"));
