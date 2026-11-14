@@ -363,3 +363,15 @@ test("contact call and SMS commands use the local JARVIS contact list and native
   assert.match(html, /window\.location\.href='sms:'/);
   assert.match(html, /window\.location\.href='tel:'/);
 });
+
+
+test("Alfred voice keeps Algieba as the only generated voice and retries transient speech failures", async () => {
+  const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+  assert.match(html, /async function requestAlfredSpeech\(spoken\)/);
+  assert.match(html, /response\.status>=500&&response\.status<=599&&attempt===0/);
+  assert.match(html, /Retry-After/);
+  assert.match(html, /gemini-3\.1-flash-tts-preview/);
+  assert.match(html, /voiceName: "Algieba"/);
+  assert.match(html, /I will remain silent rather than use another voice/);
+  assert.match(html, /await requestAlfredSpeech\(spoken\)/);
+});
