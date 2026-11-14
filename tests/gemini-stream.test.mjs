@@ -10,7 +10,7 @@ test("Gemini streaming emits text deltas as SSE events arrive", async () => {
     'data: {"candidates":[{"content":{"parts":[{"text":" there, Sir."}]}}]}\n\n'
   ];
   global.fetch = async (url, options) => {
-    assert.match(String(url), /streamGenerateContent\\?alt=sse/);
+    assert.match(String(url), /streamGenerateContent\?alt=sse/);
     assert.equal(options.method, "POST");
     let index = 0;
     return {
