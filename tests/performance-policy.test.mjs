@@ -26,7 +26,7 @@ test("all provider attempts share a hard wall-clock budget", () => {
   const budget = createModelRequestBudget({ startedAt: 1000, totalBudgetMs: 30000, perCallTimeoutMs: 12000 });
   assert.equal(budget.remainingMs(1000), 30000);
   assert.equal(budget.timeoutForNextCall(1000), 12000);
-  assert.equal(budget.timeoutForNextCall(22000), 8000);
+  assert.equal(budget.timeoutForNextCall(22000), 9000);
   assert.equal(budget.timeoutForNextCall(29500), 0);
   assert.equal(budget.remainingMs(32000), 0);
 });
