@@ -1,7 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { executeJarvisTool } from "../lib/jarvis-tools.js";
-import { readTaskState } from "../lib/jarvis-store.js";
+import { readTaskState, saveTaskState } from "../lib/jarvis-store.js";
+import { attachTaskEvidence } from "../lib/jarvis-task-engine.js";
 
 test("task-plan tools persist state and require evidence for completion", async () => {
   const originalFetch = global.fetch;
@@ -32,12 +33,19 @@ test("task-plan tools persist state and require evidence for completion", async 
     const id = created.taskPlan.id;
     assert.equal(created.taskPlan.steps.length, 2);
     assert.equal((await readTaskState(id)).id, id);
+    const attached = attachTaskEvidence(context.taskPlan, { tool: "search_conversation", summary: "Retrieved the earlier project requirements and source notes." });
+    context.taskPlan = attached.plan;
+    await saveTaskState(context.taskPlan);
     await assert.rejects(() => executeJarvisTool("update_task_step", {
-      taskId: id, stepId: "draft", status: "completed",
+      taskId: id, stepId: "draft", status: "completed", evidenceRef: attached.evidence.id,
       evidence: "The report was drafted and checked against the source notes."
     }, context), /prerequisite/i);
+    await assert.rejects(() => executeJarvisTool("update_task_step", {
+      taskId: id, stepId: "research", status: "completed", evidenceRef: "fake-reference",
+      evidence: "Collected and checked 8 reliable sources from official publications."
+    }, context), /evidence reference/i);
     const updated = await executeJarvisTool("update_task_step", {
-      taskId: id, stepId: "research", status: "completed",
+      taskId: id, stepId: "research", status: "completed", evidenceRef: attached.evidence.id,
       evidence: "Collected and checked 8 reliable sources from official publications."
     }, context);
     assert.equal(updated.progress.completed, 1);
