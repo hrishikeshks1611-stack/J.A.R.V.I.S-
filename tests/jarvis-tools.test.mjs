@@ -21,7 +21,7 @@ test("calculator enforces input and result bounds", () => {
 
 test("tool registry exposes only the approved tools", () => {
   const names = JARVIS_TOOL_DECLARATIONS[0].function_declarations.map(item => item.name);
-  assert.deepEqual(names, ["calculate", "get_device_status", "request_alarm", "request_calendar_event", "search_saved_memories", "create_study_plan", "create_exam_revision_plan", "search_conversation"]);
+  assert.deepEqual(names, ["calculate", "get_device_status", "request_alarm", "request_calendar_event", "search_saved_memories", "create_study_plan", "create_exam_revision_plan", "create_task_plan", "update_task_step", "search_conversation"]);
 });
 
 test("device status reports only fields explicitly supplied by the app", async () => {
