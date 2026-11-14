@@ -417,3 +417,21 @@ test("generic call requests are handled locally instead of reaching the AI refus
   assert.equal(matches("Please call"), true);
   assert.equal(matches("What time is it?"), false);
 });
+
+test("camera and selfie commands are routed before instant and AI fallbacks", async () => {
+  const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+  const cameraAt = html.indexOf("const cameraCommandText=");
+  const instantAt = html.indexOf("const instant=attachment?null:instantReply(message);");
+  const aiAt = html.indexOf("if(!sessionToken){openSyncPanel()", instantAt);
+  assert.ok(cameraAt >= 0 && instantAt > cameraAt && aiAt > instantAt,
+    "native camera actions must be evaluated before generic instant/AI replies");
+  const start = html.indexOf("const cameraAction=");
+  const end = html.indexOf(";\nif(cameraAction)", start) + 1;
+  const declaration = html.slice(start, end);
+  const parse = new Function("cameraCommandText", declaration + "; return cameraAction;");
+  assert.equal(parse("take a selfie"), "selfie");
+  assert.equal(parse("can you take a selfie"), "selfie");
+  assert.equal(parse("please capture my selfie for me"), "selfie");
+  assert.equal(parse("open the camera"), "open");
+  assert.equal(parse("what time is it"), null);
+});
