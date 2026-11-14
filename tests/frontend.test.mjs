@@ -452,3 +452,16 @@ test("bare short song titles such as Numb route to native YouTube Music", async 
   assert.ok(musicAt >= 0 && instantAt > musicAt,
     "bare music-title handling must run before generic replies");
 });
+
+test("direct phone-number calls open the dialler safely without auto-calling", async () => {
+  const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+  const at = html.indexOf("const directNumberCall=");
+  const end = html.indexOf("if(directNumberCall){", at);
+  assert.ok(at >= 0 && end > at);
+  const declaration = html.slice(at, end).trim();
+  const parse = new Function("contactCommandText", declaration + "; return directNumberCall;");
+  assert.equal(parse("call +91 98765 43210")[1], "+91 98765 43210");
+  assert.equal(parse("dial 9876543210")[1], "9876543210");
+  assert.equal(parse("call Mom"), null);
+  assert.ok(html.includes("window.location.href='tel:'+number"));
+});
