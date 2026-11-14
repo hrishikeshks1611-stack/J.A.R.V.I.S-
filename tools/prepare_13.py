@@ -69,6 +69,47 @@ s = s[:start] + new_method + s[end:]
 s = re.sub(r'''                for \(Voice voice : voices\) \{\n                    Locale locale = voice\.getLocale\(\);\n                    String name = voice\.getName\(\)\.toLowerCase\(Locale\.ROOT\);\n                    if \("en"\.equals\(locale\.getLanguage\(\)\) && "GB"\.equalsIgnoreCase\(locale\.getCountry\(\)\)\n                            && name\.contains\("algieba"\)\) \{ chosen = voice; break; \}\n                \}\n''', "", s)
 s = s.replace("J.A.R.V.I.S online. J.A.R.V.I.S is at your service, Sir.", "J.A.R.V.I.S online. Ready when you are, Sir.")
 s = s.replace("J.A.R.V.I.S PERSONA • OFFLINE RESPONSE", "J.A.R.V.I.S CORE • OFFLINE MODE")
+
+# Constrain long Office and Study forms to the display and make their contents scroll.
+office_old = """        form.addView(bodyInput, matchWrap());
+        String[] formats = {"Word (.docx)", "PowerPoint (.pptx)", "Excel (.xlsx)", "PDF (.pdf)"};"""
+office_new = """        form.addView(bodyInput, matchWrap());
+        ScrollView formScroll = new ScrollView(this);
+        formScroll.setFillViewport(false);
+        formScroll.setVerticalScrollBarEnabled(true);
+        formScroll.addView(form, new ScrollView.LayoutParams(-1, -2));
+        formScroll.setLayoutParams(new LinearLayout.LayoutParams(-1,
+            (int)(getResources().getDisplayMetrics().heightPixels * 0.56f)));
+        String[] formats = {"Word (.docx)", "PowerPoint (.pptx)", "Excel (.xlsx)", "PDF (.pdf)"};"""
+if office_old not in s:
+    raise RuntimeError("Office form source changed; refusing to apply an uncertain patch.")
+s = s.replace(office_old, office_new, 1)
+office_view_old = '''new android.app.AlertDialog.Builder(this).setTitle("OFFICE DOCUMENT")
+            .setView(form).setItems'''
+office_view_new = '''new android.app.AlertDialog.Builder(this).setTitle("OFFICE DOCUMENT")
+            .setView(formScroll).setItems'''
+if office_view_old not in s:
+    raise RuntimeError("Office dialog source changed; refusing to apply an uncertain patch.")
+s = s.replace(office_view_old, office_view_new, 1)
+
+study_old = '''        form.addView(topic, matchWrap());
+        form.addView(notes, matchWrap());
+        new android.app.AlertDialog.Builder(this).setTitle("STUDY REVISION PACK")
+            .setView(form).setPositiveButton'''
+study_new = '''        form.addView(topic, matchWrap());
+        form.addView(notes, matchWrap());
+        ScrollView formScroll = new ScrollView(this);
+        formScroll.setFillViewport(false);
+        formScroll.setVerticalScrollBarEnabled(true);
+        formScroll.addView(form, new ScrollView.LayoutParams(-1, -2));
+        formScroll.setLayoutParams(new LinearLayout.LayoutParams(-1,
+            (int)(getResources().getDisplayMetrics().heightPixels * 0.56f)));
+        new android.app.AlertDialog.Builder(this).setTitle("STUDY REVISION PACK")
+            .setView(formScroll).setPositiveButton'''
+if study_old not in s:
+    raise RuntimeError("Study form source changed; refusing to apply an uncertain patch.")
+s = s.replace(study_old, study_new, 1)
+
 main.write_text(s)
 
 # The triangle is a small, downward-pointing energy element INSIDE the reactor.
