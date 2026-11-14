@@ -624,14 +624,15 @@ public class MainActivity extends Activity {
         }
 
         @JavascriptInterface public String setAlarm(int hour, int minute, String label) {
-            if (hour < 0 || hour > 23 || minute < 0 || minute > 59) {
+            final Intent intent;
+            try {
+                intent = AlarmIntentFactory.create(hour, minute, label);
+            } catch (IllegalArgumentException invalidTime) {
                 return "That alarm time is invalid, Sir.";
             }
-            Intent intent = new Intent(AlarmClock.ACTION_SET_ALARM);
-            intent.putExtra(AlarmClock.EXTRA_HOUR, hour);
-            intent.putExtra(AlarmClock.EXTRA_MINUTES, minute);
-            intent.putExtra(AlarmClock.EXTRA_MESSAGE, label == null ? "JARVIS reminder" : label.trim());
-            intent.putExtra(AlarmClock.EXTRA_SKIP_UI, false);
+            if (intent.resolveActivity(getPackageManager()) == null) {
+                return "No compatible Clock app is available on this device, Sir.";
+            }
             runOnUiThread(() -> {
                 try { startActivity(intent); }
                 catch (ActivityNotFoundException e) {
