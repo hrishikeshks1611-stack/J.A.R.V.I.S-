@@ -42,17 +42,18 @@ test("APK workflow verifies separate-install builds and never publishes debug AP
 
 
 
-test("native contact calling requests runtime permissions and refuses ambiguous matches", async () => {
+test("native contact calling opens the dialler for confirmation and refuses ambiguous matches", async () => {
   const source = await readFile(new URL("../app/src/main/java/com/hrishikesh/jarvis/MainActivity.java", import.meta.url), "utf8");
   const manifest = await readFile(new URL("../app/src/main/AndroidManifest.xml", import.meta.url), "utf8");
   assert.match(source, /public String callContact\(String requested\)/);
   assert.match(source, /ContactsContract\.CommonDataKinds\.Phone\.CONTENT_FILTER_URI/);
   assert.match(source, /AMBIGUOUS:/);
   assert.match(source, /REQUEST_CONTACTS/);
-  assert.match(source, /REQUEST_CALL_PHONE/);
-  assert.match(source, /Intent\.ACTION_CALL/);
+  assert.match(source, /Intent\.ACTION_DIAL/);
+  assert.match(source, /DIALER_OPENED:/);
+  assert.doesNotMatch(source, /Intent\.ACTION_CALL/);
   assert.ok(manifest.includes('android.permission.READ_CONTACTS'));
-  assert.ok(manifest.includes('android.permission.CALL_PHONE'));
+  assert.ok(!manifest.includes('android.permission.CALL_PHONE'));
 });
 
 
@@ -63,6 +64,7 @@ test("contact commands reach the native Android caller before the VCF dialler fa
   const vcfFallback = html.indexOf("resolveJarvisContact(target)");
   assert.ok(nativeCall >= 0 && vcfFallback > nativeCall);
   assert.ok(html.includes("if(!nativeResult.startsWith('NOT_FOUND:'))"));
+  assert.ok(html.includes('DIALER_OPENED:'));
   assert.ok(!html.includes("const callCommand=message.match"));
 });
 
