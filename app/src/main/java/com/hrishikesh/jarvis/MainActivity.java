@@ -353,6 +353,32 @@ public final class MainActivity extends Activity {
         recognizer.startListening(i);
     }
 
+    private void requestAiReply(String raw) {
+        setStatus("J.A.R.V.I.S • THINKING…");
+        addChatLine("J.A.R.V.I.S", "One moment, Sir.", false);
+        java.util.List<ConversationStore.Entry> history =
+                memory == null ? new java.util.ArrayList<>() : memory.recent(14);
+        AiConversationClient.send(history, new AiConversationClient.Callback() {
+            @Override public void onSuccess(String answer) {
+                if (chatMessages != null && chatMessages.getChildCount() > 0) {
+                    chatMessages.removeViewAt(chatMessages.getChildCount() - 1);
+                }
+                addChatLine("J.A.R.V.I.S", answer, false);
+                speak(answer);
+                setStatus("J.A.R.V.I.S • ONLINE");
+            }
+            @Override public void onError(String message) {
+                if (chatMessages != null && chatMessages.getChildCount() > 0) {
+                    chatMessages.removeViewAt(chatMessages.getChildCount() - 1);
+                }
+                String reply = "I could not reach my reasoning service, Sir. " + message;
+                addChatLine("J.A.R.V.I.S", reply, false);
+                speak(reply);
+                setStatus("AI CONNECTION ERROR");
+            }
+        });
+    }
+
     private void handleCommand(String raw) {
         if (memory != null) memory.add("user", raw);
         String normalized = raw.trim().toLowerCase(Locale.ROOT);
@@ -403,10 +429,7 @@ public final class MainActivity extends Activity {
                 setStatus("DIRECT THIRD-PARTY MEDIA CONTROL NOT INCLUDED");
                 break;
             default:
-                String reply = PersonalityEngine.respond(raw, memory == null ? null : memory.recent(12));
-                addChatLine("J.A.R.V.I.S", reply, false);
-                speak(reply);
-                setStatus("J.A.R.V.I.S CORE • OFFLINE MODE");
+                requestAiReply(raw);
                 break;
         }
     }
