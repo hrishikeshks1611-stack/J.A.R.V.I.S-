@@ -1265,8 +1265,12 @@ async function startLiveVoice(){
     state.source.connect(state.processor);state.processor.connect(state.audioContext.destination);
     $('liveVoiceButton').textContent='Live Voice: On';liveVoiceStatus('Listening continuously, Sir. Tap Live Voice to stop.');status('Listening','listening');
    }
+   const interim=packet.serverContent?.interimInputTranscription?.text||packet.interimInputTranscription?.text||'';
    const transcript=packet.serverContent?.inputTranscription?.text||packet.inputTranscription?.text||'';
-   if(transcript)state.transcript=(state.transcript+' '+transcript).trim();
+   if(interim||transcript){
+    if(currentAudio){currentAudio.pause();currentAudio=null;status('Listening','listening');}
+    if(transcript)state.transcript=(state.transcript+' '+transcript).trim();
+   }
    if(packet.serverContent?.turnComplete&&state.transcript){
     const finalText=state.transcript.trim();state.transcript='';
     if(finalText){$('prompt').value=finalText;$('form').requestSubmit();}
