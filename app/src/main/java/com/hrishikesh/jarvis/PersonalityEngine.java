@@ -54,7 +54,7 @@ public final class PersonalityEngine {
             return "Very good, Sir. I shall use that in this conversation. I will not claim it has been permanently saved unless memory confirms it.";
         if (text.endsWith("?"))
             return "An interesting question, Sir. I do not have a reliable answer for that yet, and I would rather investigate than manufacture certainty.";
-        return "I follow you, Sir. I can respond to conversation and handle the supported phone commands, but I do not yet have open-ended reasoning. Give me a little more context and I shall do my best.";
+        return "I can handle the supported phone commands, Sir, but the open-ended reasoning service is not connected in this build. I will not pretend otherwise.";
     }
 
     private static String memoryReply(List<ConversationStore.Entry> history) {
