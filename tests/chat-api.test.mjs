@@ -142,8 +142,8 @@ test("chat API streams quick conversational tokens and persists the completed tu
   global.fetch = async (url, options) => {
     if (String(url).includes("generativelanguage.googleapis.com")) {
       const chunks = [
-        'data: {"candidates":[{"content":{"parts":[{"text":"The sky"}]}}]}\\n\\n',
-        'data: {"candidates":[{"content":{"parts":[{"text":" looks blue."}]}}]}\\n\\n'
+        'data: {"candidates":[{"content":{"parts":[{"text":"The sky"}]}}]}\n\n',
+        'data: {"candidates":[{"content":{"parts":[{"text":" looks blue."}]}}]}\n\n'
       ];
       let index = 0;
       return { ok: true, status: 200, body: new ReadableStream({
