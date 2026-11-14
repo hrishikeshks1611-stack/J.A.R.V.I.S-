@@ -54,11 +54,11 @@ public final class ArcReactorView extends GLSurfaceView {
             colorLocation = GLES20.glGetUniformLocation(program, "uColor");
             positionLocation = GLES20.glGetAttribLocation(program, "aPosition");
             normalLocation = GLES20.glGetAttribLocation(program, "aNormal");
-            outer = Mesh.torus(.88f, .045f, 128, 12);
-            middle = Mesh.torus(.67f, .035f, 112, 10);
-            inner = Mesh.torus(.46f, .026f, 96, 10);
+            outer = Mesh.torus(.88f, .055f, 128, 16);
+            middle = Mesh.torus(.65f, .045f, 112, 14);
+            inner = Mesh.torus(.40f, .035f, 96, 12);
             core = Mesh.sphere(.19f, 40, 32);
-            triangle = Mesh.invertedTriangle(.54f);
+            triangle = Mesh.invertedTriangle(.94f);
             started = System.nanoTime();
         }
 
@@ -75,30 +75,24 @@ public final class ArcReactorView extends GLSurfaceView {
             GLES20.glUseProgram(program);
             float seconds = (System.nanoTime() - started) / 1_000_000_000f;
             Matrix.setIdentityM(model, 0);
-            Matrix.rotateM(model, 0, seconds * 22f, 0f, 1f, 0f);
-            Matrix.rotateM(model, 0, 22f, 1f, 0f, 0f);
-            draw(outer, model, .22f, .43f, .53f, 1f);
-
+            Matrix.rotateM(model, 0, seconds * 13f, 0f, 0f, 1f);
+            draw(outer, model, .20f, .48f, .62f, 1f);
             Matrix.setIdentityM(model, 0);
-            Matrix.rotateM(model, 0, -seconds * 34f, 1f, .3f, .2f);
-            Matrix.rotateM(model, 0, 67f, 0f, 1f, 0f);
-            draw(middle, model, .29f, .48f, .51f, 1f);
-
+            Matrix.rotateM(model, 0, -seconds * 24f, 0f, 0f, 1f);
+            draw(middle, model, .28f, .62f, .78f, 1f);
             Matrix.setIdentityM(model, 0);
-            Matrix.rotateM(model, 0, seconds * 48f, .2f, 1f, .4f);
-            Matrix.rotateM(model, 0, -48f, 1f, 0f, 0f);
-            draw(inner, model, .42f, .67f, .72f, 1f);
-
+            Matrix.rotateM(model, 0, seconds * 38f, 0f, 0f, 1f);
+            draw(inner, model, .42f, .76f, .92f, 1f);
             Matrix.setIdentityM(model, 0);
-            Matrix.rotateM(model, 0, seconds * 15f, 0f, 1f, 0f);
-            drawLines(triangle, model, .08f, .48f, .82f, 1f);
-            drawLines(triangle, model, .30f, .78f, 1.0f, 1f);
-
+            Matrix.rotateM(model, 0, seconds * 5f, 0f, 0f, 1f);
+            GLES20.glDisable(GLES20.GL_DEPTH_TEST);
+            drawLines(triangle, model, .10f, .62f, 1.0f, 1f);
+            drawLines(triangle, model, .34f, .86f, 1.0f, 1f);
+            GLES20.glEnable(GLES20.GL_DEPTH_TEST);
             Matrix.setIdentityM(model, 0);
-            float pulse = 0.94f + 0.07f * (float)Math.sin(seconds * 2.0f);
+            float pulse = 0.90f + 0.10f * (float)Math.sin(seconds * 2.2f);
             Matrix.scaleM(model, 0, pulse, pulse, pulse);
-            Matrix.rotateM(model, 0, seconds * 12f, 0f, 1f, 0f);
-            draw(core, model, .12f, .34f, .43f, 1f);
+            draw(core, model, .18f, .62f, .82f, 1f);
         }
 
         private void drawLines(Mesh mesh, float[] transform, float r, float g, float b, float a) {
