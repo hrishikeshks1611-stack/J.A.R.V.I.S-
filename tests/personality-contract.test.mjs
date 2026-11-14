@@ -42,10 +42,12 @@ test("JARVIS keeps spoken replies natural and memory notes non-authoritative", (
 });
 
 
-test("Alfred mode uses a distinct refined British butler voice and natural courtesy", () => {
-  const alfred = buildJarvisSystemInstruction("alfred");
-  assert.match(alfred, /refined British butler manner/i);
-  assert.match(alfred, /modern British gentleman’s personal butler/i);
-  assert.match(alfred, /Do not force the word Sir into every reply/i);
-  assert.notEqual(alfred, buildJarvisSystemInstruction("witty"));
+test("J.A.R.V.I.S mode keeps its own identity and never switches to Alfred", () => {
+  const jarvis = buildJarvisSystemInstruction("jarvis");
+  const legacyMode = buildJarvisSystemInstruction("alfred");
+  assert.match(jarvis, /Speak as J\.A\.R\.V\.I\.S\./i);
+  assert.match(jarvis, /polished British English/i);
+  assert.doesNotMatch(jarvis, /Alfred/i);
+  assert.doesNotMatch(legacyMode, /Alfred/i);
+  assert.notEqual(jarvis, buildJarvisSystemInstruction("witty"));
 });
