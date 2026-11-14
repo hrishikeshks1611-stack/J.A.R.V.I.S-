@@ -1257,6 +1257,7 @@ async function startLiveVoice(){
     state.source=state.audioContext.createMediaStreamSource(state.stream);
     state.processor=state.audioContext.createScriptProcessor(4096,1,1);
     state.processor.onaudioprocess=event=>{
+     event.outputBuffer.getChannelData(0).fill(0);
      if(liveVoice!==state||!state.setup||ws.readyState!==WebSocket.OPEN)return;
      const pcm=audioFloatToPcm16Base64(event.inputBuffer.getChannelData(0),state.audioContext.sampleRate);
      if(pcm)ws.send(JSON.stringify({realtimeInput:{audio:{mimeType:'audio/pcm;rate=16000',data:pcm}}}));
