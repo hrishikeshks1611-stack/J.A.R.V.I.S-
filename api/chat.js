@@ -3,6 +3,7 @@ import { getSession, readHistory, readMemories, appendConversationTurn } from ".
 import { JARVIS_TOOL_DECLARATIONS, executeJarvisTool } from "../lib/jarvis-tools.js";
 import { buildJarvisSystemInstruction } from "../lib/jarvis-personality.js";
 import { classifyJarvisIntent, buildIntentRoutingInstruction } from "../lib/jarvis-intent.js";
+import { runOpenAIAgent } from "../lib/openai-agent.js";
 
 export default async function handler(req, res) {
   const origin = req.headers.origin || "";
@@ -37,10 +38,11 @@ export default async function handler(req, res) {
     return res.status(503).json({ error: "JARVIS shared memory is temporarily unavailable. Please try again shortly." });
   }
 
+  const openAIKey = process.env.OPENAI_API_KEY;
   const apiKey = process.env.JARVIS || process.env.GEMINI_API_KEY;
-  if (!apiKey) {
+  if (!openAIKey && !apiKey) {
     return res.status(503).json({
-      error: "No Gemini API key is configured. Add GEMINI_API_KEY (or JARVIS) in this Vercel project's Environment Variables, then redeploy."
+      error: "No AI provider is configured. Add OPENAI_API_KEY for J.A.R.V.I.S. 17.0, or GEMINI_API_KEY for the compatibility fallback."
     });
   }
 
@@ -124,6 +126,42 @@ export default async function handler(req, res) {
     }
     if (contextLines.length && contents.length) {
       contents[contents.length - 1].parts.push({ text: "[Live device context — use this for time/location questions; do not guess beyond it.]\n" + contextLines.join("\n") });
+    }
+
+    // J.A.R.V.I.S. 17.0 prefers OpenAI Responses when configured.
+    // Gemini remains a compatibility fallback; provider keys stay server-side.
+    if (openAIKey) {
+      try {
+        const result = await runOpenAIAgent({
+          apiKey: openAIKey,
+          model: process.env.OPENAI_MODEL || "gpt-6-astra",
+          system,
+          message,
+          prior: sharedHistory,
+          attachment,
+          deviceContext,
+          savedMemories,
+          toolDeclarations: JARVIS_TOOL_DECLARATIONS,
+          executeTool: (name, args) => executeJarvisTool(name, args, {
+            deviceContext, memories: savedMemories, history: sharedHistory, userMessage: message
+          })
+        });
+        await appendConversationTurn(message, result.reply);
+        return res.status(200).json({
+          reply: result.reply,
+          deviceId: session.deviceId,
+          provider: "openai",
+          model: process.env.OPENAI_MODEL || "gpt-6-astra",
+          toolCalls: result.toolTrace,
+          pendingActions: result.pendingActions
+        });
+      } catch (error) {
+        console.error("J.A.R.V.I.S. OpenAI provider failure:", error);
+        const status = error.status === 429 ? 429 : error.status === 401 || error.status === 403 ? 503 : 502;
+        return res.status(status).json({
+          error: "J.A.R.V.I.S. intelligence service: " + String(error?.message || error).slice(0, 420)
+        });
+      }
     }
 
     // Bounded Gemini function-calling loop. Only the local allow-list below
