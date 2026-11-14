@@ -2,6 +2,7 @@
 import { getSession, readHistory, readMemories, appendConversationTurn } from "../lib/jarvis-store.js";
 import { JARVIS_TOOL_DECLARATIONS, executeJarvisTool } from "../lib/jarvis-tools.js";
 import { buildJarvisSystemInstruction } from "../lib/jarvis-personality.js";
+import { classifyJarvisIntent, buildIntentRoutingInstruction } from "../lib/jarvis-intent.js";
 
 export default async function handler(req, res) {
   const origin = req.headers.origin || "";
@@ -50,7 +51,8 @@ export default async function handler(req, res) {
     const mode = String(body.mode || "witty").toLowerCase();
     if (!message) return res.status(400).json({ error: "Please enter a request." });
 
-    const system = buildJarvisSystemInstruction(mode);
+    const intent = classifyJarvisIntent(message);
+    const system = buildJarvisSystemInstruction(mode) + "\\n\\n" + buildIntentRoutingInstruction(intent.intent);
 
     // Every paired device reads the same central conversation rather than sending
     // a private browser-only history. Only the latest eight turns enter the prompt.
