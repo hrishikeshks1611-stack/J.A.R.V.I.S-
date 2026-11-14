@@ -1,0 +1,79 @@
+name: Build J.A.R.V.I.S 14.0 Android phone and TV packages
+on:
+  workflow_dispatch:
+  push:
+    branches: [ jarvis-14.0 ]
+    paths:
+      - 'app/**'
+      - '*.gradle'
+      - 'settings.gradle'
+      - '.github/workflows/android-apk.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'app/**'
+      - '*.gradle'
+      - 'settings.gradle'
+      - '.github/workflows/android-apk.yml'
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          accept-android-sdk-licenses: true
+          packages: platform-tools
+      - name: Install Android platform
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+      - name: Run phone and Android TV unit tests
+        run: gradle --no-daemon testPhoneDebugUnitTest testTvDebugUnitTest
+      - name: Build phone and Android TV APKs
+        run: gradle --no-daemon assemblePhoneDebug assembleTvDebug
+      - name: Verify new independent app identities
+        shell: bash
+        run: |
+          set -euo pipefail
+          AAPT="$ANDROID_HOME/build-tools/35.0.0/aapt"
+          PHONE_APK="app/build/outputs/apk/phone/debug/app-phone-debug.apk"
+          TV_APK="app/build/outputs/apk/tv/debug/app-tv-debug.apk"
+          test -s "$PHONE_APK"
+          test -s "$TV_APK"
+          PHONE_BADGING="$("$AAPT" dump badging "$PHONE_APK")"
+          TV_BADGING="$("$AAPT" dump badging "$TV_APK")"
+          echo "$PHONE_BADGING" | grep -Fq "package: name='com.hrishikesh.jarvis.fourteen.release' versionCode='1400' versionName='14.0'"
+          echo "$TV_BADGING" | grep -Fq "package: name='com.hrishikesh.jarvis.fourteen.release.tv' versionCode='1400' versionName='14.0-tv'"
+          if echo "$PHONE_BADGING" | grep -Eq "package: name='com.hrishikesh.jarvis(\.next)?'"; then
+            echo "ERROR: JARVIS 7.0 package collides with an earlier JARVIS app"
+            exit 1
+          fi
+          sha256sum "$PHONE_APK" "$TV_APK"
+          echo "Verified independent phone package: com.hrishikesh.jarvis.seven.release"
+          echo "Verified independent TV package: com.hrishikesh.jarvis.seven.release.tv"
+      - name: Upload phone build artifact for QA
+        uses: actions/upload-artifact@v4
+        with:
+          name: JARVIS-14.0-Android-phone-QA
+          path: app/build/outputs/apk/phone/debug/app-phone-debug.apk
+          if-no-files-found: error
+          retention-days: 30
+      - name: Upload Android TV build artifact for QA
+        uses: actions/upload-artifact@v4
+        with:
+          name: JARVIS-14.0-Android-TV-QA
+          path: app/build/outputs/apk/tv/debug/app-tv-debug.apk
+          if-no-files-found: error
+          retention-days: 30
