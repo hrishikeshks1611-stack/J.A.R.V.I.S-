@@ -32,11 +32,11 @@ test("JARVIS 14.0 uses an independent package identity and version", async () =>
 });
 
 test("APK workflow verifies separate-install builds and never publishes debug APKs as releases", async () => {
-  const workflow = await readFile(new URL("../.github/workflows/android-apk.yml", import.meta.url), "utf8");
+  const workflow = await readFile(new URL("../.github/workflows/android-14.yml", import.meta.url), "utf8");
   assert.match(workflow, /contents:\s*read/);
   assert.doesNotMatch(workflow, /gh release create|action-gh-release|Publish.*APK/);
   assert.match(workflow, /Build J.A.R.V.I.S 14.0 Android phone and TV packages/);
-  assert.ok(workflow.includes("com.hrishikesh.jarvis.seven.release"));
+  assert.ok(workflow.includes("com.hrishikesh.jarvis.fourteen.release"));
   assert.ok(workflow.includes("com.hrishikesh.jarvis.seven.release.tv"));
 });
 
