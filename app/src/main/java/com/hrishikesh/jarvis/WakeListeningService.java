@@ -99,7 +99,7 @@ public final class WakeListeningService extends Service {
     }
 
     /** Wake replies use the same male-only JARVIS voice policy as the main app. */
-    private boolean configureJ.A.R.V.I.SVoice() {
+    private boolean configureJarvisVoice() {
         try {
             Set<Voice> voices = tts.getVoices();
             Voice chosen = null;
