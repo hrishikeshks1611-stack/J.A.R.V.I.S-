@@ -866,14 +866,14 @@ const contactCommandText=message.replace(/^\s*(?:hey\s+)?jarvis[, ]*/i,'').trim(
   if(window.AndroidJarvis&&typeof window.AndroidJarvis.callContact==='function'){
    const nativeResult=window.AndroidJarvis.callContact(target)||'';
    if(!nativeResult.startsWith('NOT_FOUND:')){
-    const nativeReply=nativeResult.startsWith('DIALER_OPENED:')?'Opening the dialler for '+target+'. Please review and confirm the call, Sir.':
+    const nativeReply=nativeResult.startsWith('CALL_STARTING:')?'Certainly, Sir.':
      nativeResult.startsWith('PERMISSION_REQUIRED:')?'Please allow Contacts access, Sir. I will continue with the call afterwards.':
      nativeResult.startsWith('AMBIGUOUS:')?'I found more than one phone number for '+target+'. Please specify the full contact name, Sir.':
      'I could not prepare that call, Sir.';
     add(nativeReply,'jarvis');history.push({role:'model',text:nativeReply});history=history.slice(-20);
     pairApi({action:'append-local',message,reply:nativeReply}).catch(()=>{});
-    $('hint').textContent=nativeResult.startsWith('DIALER_OPENED:')?'Dialler ready for '+target+'. Review and confirm the call.':nativeReply;
-    status(nativeResult.startsWith('DIALER_OPENED:')?'Dialler ready':'System ready');speak(nativeReply);return;
+    $('hint').textContent=nativeResult.startsWith('CALL_STARTING:')?'Calling '+target+'.':nativeReply;
+    status(nativeResult.startsWith('CALL_STARTING:')?'Calling':'System ready');speak(nativeReply);return;
    }
   }
   const result=resolveJarvisContact(target);
@@ -881,12 +881,17 @@ const contactCommandText=message.replace(/^\s*(?:hey\s+)?jarvis[, ]*/i,'').trim(
   if(result.missing)reply='I cannot find '+target+' in my JARVIS contact list, Sir. Say “import contacts” to load your contacts VCF, or “remember contact '+target+' as [number]”.';
   else if(result.ambiguous)reply='I found more than one matching contact: '+result.names.join(', ')+'. Please use the full contact name, Sir.';
   else{
-   reply='Certainly, Sir. Opening the dialler for '+result.contact.name+'. Please review and confirm the call.';
+   if(window.AndroidJarvis&&typeof window.AndroidJarvis.callNumber==='function'){
+    const nativeResult=window.AndroidJarvis.callNumber(result.contact.number,result.contact.name)||'';
+    reply=nativeResult.startsWith('CALL_STARTING:')?'Certainly, Sir.':'I could not start that call, Sir.';
+    add(reply,'jarvis');history.push({role:'model',text:reply});history=history.slice(-20);pairApi({action:'append-local',message,reply}).catch(()=>{});
+    $('hint').textContent=nativeResult.startsWith('CALL_STARTING:')?'Calling '+result.contact.name+'.':reply;
+    status(nativeResult.startsWith('CALL_STARTING:')?'Calling':'System ready');speak(reply);return;
+   }
+   reply='Certainly, Sir. Opening the phone dialler for '+result.contact.name+'.';
    add(reply,'jarvis');history.push({role:'model',text:reply});history=history.slice(-20);pairApi({action:'append-local',message,reply}).catch(()=>{});
    $('hint').textContent='Opening Android dialler. No call is placed automatically.';
-   speak(reply);
-   setTimeout(()=>{window.location.href='tel:'+result.contact.number;},450);
-   return;
+   speak(reply);setTimeout(()=>{window.location.href='tel:'+result.contact.number;},450);return;
   }
   add(reply,'jarvis');history.push({role:'model',text:reply});history=history.slice(-20);speak(reply);return;
  }
