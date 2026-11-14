@@ -8,6 +8,7 @@ import { buildMedicalEmergencyReply, buildMedicalSystemInstruction, detectMedica
 import { buildMentalistSystemInstruction, buildEmotionalAvailabilityInstruction, isMentalistRequest } from "../lib/jarvis-mentalist.js";
 import { selectRelevantContext } from "../lib/jarvis-context.js";
 import { buildChatPerformancePolicy, createModelRequestBudget } from "../lib/jarvis-performance.js";
+import { streamGeminiText } from "../lib/gemini-stream.js";
 
 export default async function handler(req, res) {
   const requestStartedAt = Date.now();
@@ -81,7 +82,7 @@ export default async function handler(req, res) {
     const tutorMode = isTutorRequest(message);
     const medicalMode = isMedicalRequest(message);
     const mentalistMode = isMentalistRequest(message);
-    const system = [buildJarvisSystemInstruction(mode), "You are emotionally available as described here: " + buildEmotionalAvailabilityInstruction(), "Response quality and speed contract: answer the actual question directly, avoid filler and repeated disclaimers, and keep simple answers concise. For complex requests, reason carefully, use the supplied tools when needed, and report uncertainty rather than guessing. Do not sacrifice correctness or safety for brevity.", tutorMode ? buildTutorSystemInstruction() : "", medicalMode ? buildMedicalSystemInstruction() : "", mentalistMode ? buildMentalistSystemInstruction() : ""].filter(Boolean).join(" ");
+    const system = [buildJarvisSystemInstruction(mode), "You are emotionally available as described here: " + buildEmotionalAvailabilityInstruction(), "Response quality and speed contract: answer the actual question directly, avoid filler and repeated disclaimers, and keep simple answers concise. For complex requests, reason carefully, use the supplied tools when needed, and report uncertainty rather than guessing. For compound action requests, create a task plan before execution, update step status as work proceeds, and mark steps complete only with concrete verification evidence. Respect dependencies and confirmation gates. Do not sacrifice correctness or safety for brevity.", tutorMode ? buildTutorSystemInstruction() : "", medicalMode ? buildMedicalSystemInstruction() : "", mentalistMode ? buildMentalistSystemInstruction() : ""].filter(Boolean).join(" ");
 
     // Select relevant shared context instead of blindly injecting only the newest
     // messages. Preserve chronological order so follow-up turns remain coherent.
@@ -155,10 +156,57 @@ export default async function handler(req, res) {
       contents[contents.length - 1].parts.push({ text: "[Live device context — use this for time/location questions; do not guess beyond it.]\n" + contextLines.join("\n") });
     }
 
+    // Stream short, text-only conversational answers token-by-token. Action requests,
+    // attachments, and complex turns keep the full tool-enabled JSON workflow below.
+    if (body.stream === true && performancePolicy.tier === "quick" && !attachment && typeof res.write === "function") {
+      const sendEvent = (event, payload) => res.write("event: " + event + "\\ndata: " + JSON.stringify(payload) + "\\n\\n");
+      res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
+      res.setHeader("Cache-Control", "no-cache, no-transform");
+      res.setHeader("Connection", "keep-alive");
+      res.setHeader("X-Accel-Buffering", "no");
+      res.flushHeaders?.();
+      const streamBudget = createModelRequestBudget({ totalBudgetMs: 38000, perCallTimeoutMs: 12000 });
+      const streamModels = ["gemini-3.5-flash-lite", "gemini-3.8-flash", "gemini-3.5-flash"];
+      let streamedReply = "", streamError = "";
+      for (const model of streamModels) {
+        const timeoutMs = streamBudget.timeoutForNextCall();
+        if (!timeoutMs) break;
+        let emittedThisAttempt = false;
+        try {
+          streamedReply = await streamGeminiText({
+            apiKey, model, system: system + " You may not call tools in this quick conversational response.",
+            contents, maxOutputTokens: performancePolicy.maxOutputTokens,
+            signal: AbortSignal.timeout(timeoutMs),
+            onDelta: delta => {
+              emittedThisAttempt = true;
+              sendEvent("delta", { text: delta });
+            }
+          });
+          streamError = "";
+          break;
+        } catch (error) {
+          streamError = String(error?.message || "The streaming model request failed.").slice(0, 400);
+          if (emittedThisAttempt) break;
+        }
+      }
+      if (!streamedReply && !streamError) streamError = "JARVIS exhausted its response-time budget before receiving a streamed answer.";
+      if (streamedReply) {
+        await appendConversationTurn(message, streamedReply);
+        sendEvent("done", {
+          reply: streamedReply, deviceId: session.deviceId, toolCalls: [], pendingActions: [],
+          responseTier: "quick", latencyMs: Date.now() - requestStartedAt, streamed: true
+        });
+      } else {
+        sendEvent("error", { error: "Sir, the live response could not be completed. " + streamError });
+      }
+      res.end();
+      return;
+    }
+
     // Bounded Gemini function-calling loop. Only the local allow-list below
     // can execute; model output is never interpreted as code or arbitrary URLs.
     const models = ["gemini-3.5-flash-lite", "gemini-3.8-flash", "gemini-3.5-flash"];
-    const toolContext = { deviceContext, memories: savedMemories, history: sharedHistory, userMessage: message };
+    const toolContext = { deviceContext, memories: savedMemories, history: sharedHistory, userMessage: message, taskPlan: null };
     const toolTrace = [];
     const pendingActions = [];
     const MAX_TOOL_CALLS = performancePolicy.maxToolCalls;
@@ -320,7 +368,7 @@ export default async function handler(req, res) {
     }
 
     await appendConversationTurn(message, reply);
-    return res.status(200).json({ reply, deviceId: session.deviceId, toolCalls: toolTrace, pendingActions, engine: medicalMode ? "medical" : tutorMode ? "tutor" : mentalistMode ? "mentalist" : "general", emotionalAvailability: true, responseTier: performancePolicy.tier, latencyMs: Date.now() - requestStartedAt });
+    return res.status(200).json({ reply, deviceId: session.deviceId, toolCalls: toolTrace, pendingActions, engine: medicalMode ? "medical" : tutorMode ? "tutor" : mentalistMode ? "mentalist" : "general", emotionalAvailability: true, responseTier: performancePolicy.tier, latencyMs: Date.now() - requestStartedAt, taskPlan: toolContext.taskPlan || null });
   } catch (error) {
     console.error("JARVIS API failure:", error);
     return res.status(500).json({ error: "JARVIS server error: " + String(error?.message || error).slice(0, 300) });
