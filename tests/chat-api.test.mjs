@@ -230,6 +230,14 @@ test("chat API streams progress and final result for complex tool-enabled turns"
     }, res);
     const wire = res.chunks.join("");
     assert.equal(res.headers["Content-Type"], "text/event-stream; charset=utf-8");
+    const frames = wire.trim().split(/\r?\n\r?\n/);
+    assert.ok(frames.length >= 2, "progress and final events must be separate SSE frames");
+    for (const frame of frames) {
+      const [eventLine, dataLine] = frame.split(/\r?\n/);
+      assert.match(eventLine, /^event: [a-z]+$/);
+      assert.match(dataLine, /^data: /);
+      assert.doesNotThrow(() => JSON.parse(dataLine.slice(6)), "each SSE data line must contain valid JSON");
+    }
     assert.match(wire, /event: progress/);
     assert.match(wire, /Breaking your request into steps/);
     assert.match(wire, /event: done/);
