@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { hashToken } from "../lib/jarvis-store.js";
 import pairHandler from "../api/pair.js";
+import memoryHandler from "../api/memory.js";
 
 const originalFetch = globalThis.fetch;
 const envKeys = ["UPSTASH_REDIS_REST_URL", "UPSTASH_REDIS_REST_TOKEN", "JARVIS_SETUP_CODE"];
@@ -69,6 +70,15 @@ function makeRedis() {
         values.set(key, JSON.stringify(history));
         return JSON.stringify(history);
       }
+      if (script.includes("table.insert(items")) {
+        const key = keys[0];
+        const items = values.has(key) ? JSON.parse(values.get(key)) : [];
+        items.push({ id: argv[0], text: argv[1], createdAt: Number(argv[2]) });
+        while (items.length > 100) items.shift();
+        values.set(key, JSON.stringify(items));
+        return JSON.stringify(items);
+      }
+
       if (script.includes("target.role = 'owner'")) {
         const [ownerKey, currentDeviceKey, targetDeviceKey, currentSessionKey, targetSessionKey] = keys;
         const [currentHash, targetHash] = argv;
@@ -135,6 +145,16 @@ async function request(body, token) {
   return res;
 }
 
+async function memoryRequest(body, token) {
+  const res = response();
+  await memoryHandler({
+    method: "POST",
+    headers: token ? { authorization: "Bearer " + token } : {},
+    body
+  }, res);
+  return res;
+}
+
 test.afterEach(() => {
   globalThis.fetch = originalFetch;
   for (const key of envKeys) {
@@ -177,6 +197,12 @@ test("15.0 device-sync lifecycle preserves shared history through pairing, owner
   assert.deepEqual(newHistory.body.messages, oldHistory.body.messages);
   assert.equal(newHistory.body.messages.at(-1).text, "History is shared.");
 
+  const savedOn15 = await memoryRequest({ action: "add", text: "15.0 shared-memory verification note" }, newToken);
+  assert.equal(savedOn15.statusCode, 200);
+  const listedOn14 = await memoryRequest({ action: "list" }, oldToken);
+  assert.equal(listedOn14.statusCode, 200);
+  assert.ok(listedOn14.body.memories.some(item => item.text === "15.0 shared-memory verification note"));
+
   const transfer = await request({ action: "transfer-owner", deviceId: newDeviceId }, oldToken);
   assert.equal(transfer.statusCode, 200);
   assert.equal(transfer.body.transferred, true);
@@ -206,6 +232,8 @@ test("15.0 device-sync lifecycle preserves shared history through pairing, owner
   const preservedHistory = await request({ action: "history" }, newToken);
   assert.equal(preservedHistory.statusCode, 200);
   assert.equal(preservedHistory.body.messages.at(-1).text, "History is shared.");
+  const preservedMemories = await memoryRequest({ action: "list" }, newToken);
+  assert.ok(preservedMemories.body.memories.some(item => item.text === "15.0 shared-memory verification note"));
 
   assert.ok(redis.deletedKeys.includes("jarvis:v1:session:" + hashToken(oldToken)));
   assert.ok(redis.deletedKeys.includes("jarvis:v1:device:" + oldDeviceId));
