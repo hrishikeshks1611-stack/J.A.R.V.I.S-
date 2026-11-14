@@ -402,3 +402,18 @@ test("music requests are routed before instant replies and the general AI fallba
   assert.ok(match, "plain typed song requests must be recognised");
   assert.equal(match[1].trim(), "Numb by Linkin Park");
 });
+
+test("generic call requests are handled locally instead of reaching the AI refusal", async () => {
+  const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+  const callHandlerAt = html.indexOf("const genericCallIntent=");
+  const instantAt = html.indexOf("const instant=attachment?null:instantReply(message);");
+  const aiFallbackAt = html.indexOf("if(!sessionToken){openSyncPanel()", instantAt);
+  assert.ok(callHandlerAt >= 0 && instantAt > callHandlerAt && aiFallbackAt > instantAt);
+  const start = html.indexOf("const genericCallIntent=");
+  const end = html.indexOf("if(genericCallIntent){", start);
+  const declaration = html.slice(start, end).trim();
+  const matches = new Function("contactCommandText", declaration + "; return genericCallIntent;");
+  assert.equal(matches("Can you make a call?"), true);
+  assert.equal(matches("Please call"), true);
+  assert.equal(matches("What time is it?"), false);
+});
