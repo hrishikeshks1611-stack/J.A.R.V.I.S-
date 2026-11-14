@@ -431,6 +431,39 @@ public class MainActivity extends Activity {
         }
 
 
+        @JavascriptInterface public String searchYouTubeVideos(String query) {
+            String cleanQuery = query == null ? "" : query.trim();
+            if (cleanQuery.isEmpty()) return "ERROR:Tell me what you would like to find on YouTube.";
+            if (cleanQuery.length() > 300) cleanQuery = cleanQuery.substring(0, 300);
+            Uri searchUri = Uri.parse("https://www.youtube.com/results?search_query=" + Uri.encode(cleanQuery));
+            Intent intent = new Intent(Intent.ACTION_VIEW, searchUri);
+            if (getPackageManager().getLaunchIntentForPackage("com.google.android.youtube") != null) {
+                intent.setPackage("com.google.android.youtube");
+            }
+            AtomicReference<String> outcome = new AtomicReference<>("ERROR:Android did not confirm that YouTube search opened.");
+            CountDownLatch completed = new CountDownLatch(1);
+            final String requested = cleanQuery;
+            runOnUiThread(() -> {
+                try {
+                    startActivity(intent);
+                    outcome.set("SEARCH_OPENED:YouTube search opened for " + requested + ".");
+                } catch (ActivityNotFoundException error) {
+                    outcome.set("ERROR:No YouTube app or browser can open search results.");
+                } catch (RuntimeException error) {
+                    outcome.set("ERROR:Android could not open YouTube search.");
+                } finally {
+                    completed.countDown();
+                }
+            });
+            try {
+                if (!completed.await(5, TimeUnit.SECONDS)) return "ERROR:Timed out while opening YouTube search.";
+            } catch (InterruptedException error) {
+                Thread.currentThread().interrupt();
+                return "ERROR:Opening YouTube search was interrupted.";
+            }
+            return outcome.get();
+        }
+
         @JavascriptInterface public void searchYouTubeMusic(String query, String requestId) {
             final String callbackId = requestId == null ? "" : requestId.trim();
             final String cleanQuery = query == null ? "" : query.trim();
