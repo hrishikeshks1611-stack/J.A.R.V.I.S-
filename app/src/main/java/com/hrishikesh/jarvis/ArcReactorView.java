@@ -91,7 +91,8 @@ public final class ArcReactorView extends GLSurfaceView {
 
             Matrix.setIdentityM(model, 0);
             Matrix.rotateM(model, 0, seconds * 15f, 0f, 1f, 0f);
-            drawLines(triangle, model, .08f, .48f, .82f, 1f);\n            drawLines(triangle, model, .30f, .78f, 1.0f, 1f);
+            drawLines(triangle, model, .08f, .48f, .82f, 1f);
+            drawLines(triangle, model, .30f, .78f, 1.0f, 1f);
 
             Matrix.setIdentityM(model, 0);
             float pulse = 0.94f + 0.07f * (float)Math.sin(seconds * 2.0f);
