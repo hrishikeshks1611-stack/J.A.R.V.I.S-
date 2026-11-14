@@ -1,0 +1,1 @@
+J.A.R.V.I.S 13.0 fresh-install build trigger. This release retains the J.A.R.V.I.S identity and existing launcher icon. Build and verification must pass before an APK is distributed. A CI build does not constitute Android 10 device verification.
