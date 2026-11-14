@@ -53,7 +53,7 @@ export default async function handler(req, res) {
         expireTime,
         newSessionExpireTime,
         liveConnectConstraints: {
-          model: "models/gemini-3.8-live",
+          model: "models/gemini-3.5-transcribe-live",
           config: {
             responseModalities: ["TEXT"],
             inputAudioTranscription: {},
@@ -79,7 +79,7 @@ export default async function handler(req, res) {
 
     return res.status(200).json({
       token: data.name,
-      model: "models/gemini-3.8-live",
+      model: "models/gemini-3.5-transcribe-live",
       expiresAt: data.expireTime || expireTime,
       newSessionExpiresAt: data.newSessionExpireTime || newSessionExpireTime,
       responseMode: "transcription-only"
