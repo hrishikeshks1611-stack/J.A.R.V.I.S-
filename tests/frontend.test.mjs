@@ -351,7 +351,7 @@ test("J.A.R.V.I.S male voice mode is selectable and the Android voice test exerc
   const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
   assert.ok(html.includes('<option value="jarvis" selected>J.A.R.V.I.S · Male British voice</option>'));
   assert.ok(html.includes("The car is parked near the garden. The water is rather warm"));
-  assert.ok(html.includes("jarvis-alfred-male-british-v3|gemini-3.1-flash-tts-preview"));
+  assert.ok(html.includes("jarvis-male-british-v4|gemini-3.1-flash-tts-preview"));
   assert.ok(html.includes("jarvisPersonalityModeV1"));
   assert.ok(html.includes("localStorage.setItem(PERSONALITY_MODE_KEY,$('mode').value)"));
 });
