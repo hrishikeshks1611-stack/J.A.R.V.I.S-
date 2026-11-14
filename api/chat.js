@@ -328,7 +328,7 @@ export default async function handler(req, res) {
           let evidenceAdded = false;
           for (const item of functionResults) {
             if (item.status !== "success" || ["create_task_plan", "update_task_step"].includes(item.name)) continue;
-            const summary = JSON.stringify(item.result || {}).slice(0, 600);
+            const summary = Number.isFinite(Number(item.result?.count)) ? Number(item.result.count) + " result(s) returned by " + item.name + "." : "The approved " + item.name + " tool returned a successful result.";
             const attached = attachTaskEvidence(toolContext.taskPlan, { tool: item.name, summary });
             toolContext.taskPlan = attached.plan;
             item.result = { ...item.result, evidenceRef: attached.evidence.id };
