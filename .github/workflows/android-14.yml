@@ -81,7 +81,7 @@ jobs:
         run: gradle --no-daemon testPhoneDebugUnitTest testTvDebugUnitTest
       - name: Build phone and Android TV APKs
         run: gradle --no-daemon assemblePhoneDebug assembleTvDebug
-      - name: Verify new independent app identities
+      - name: Verify stable app identities and 14.0.1 version
         shell: bash
         run: |
           set -euo pipefail
@@ -95,12 +95,12 @@ jobs:
           echo "$PHONE_BADGING" | grep -Fq "package: name='com.hrishikesh.jarvis.fourteen.release' versionCode='1401' versionName='14.0.1'"
           echo "$TV_BADGING" | grep -Fq "package: name='com.hrishikesh.jarvis.fourteen.release.tv' versionCode='1401' versionName='14.0.1-tv'"
           if echo "$PHONE_BADGING" | grep -Eq "package: name='com.hrishikesh.jarvis(\.next)?'"; then
-            echo "ERROR: JARVIS 7.0 package collides with an earlier JARVIS app"
+            echo "ERROR: unexpected legacy package identity"
             exit 1
           fi
           sha256sum "$PHONE_APK" "$TV_APK"
-          echo "Verified independent phone package: com.hrishikesh.jarvis.seven.release"
-          echo "Verified independent TV package: com.hrishikesh.jarvis.seven.release.tv"
+          echo "Verified stable phone package: com.hrishikesh.jarvis.seven.release"
+          echo "Verified stable TV package: com.hrishikesh.jarvis.seven.release.tv"
       - name: Upload phone build artifact for QA
         uses: actions/upload-artifact@v4
         with:

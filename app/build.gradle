@@ -18,8 +18,8 @@ android {
     compileSdk 35
     buildFeatures { buildConfig true }
     defaultConfig {
-        // A fresh application ID avoids colliding with previously installed JARVIS packages.
-        // Keep existing installations untouched; this is a separately installable 14.0 release.
+        // Keep this application ID stable so 14.0.1 updates the 14.0 installation in place.
+        // Increment versionCode for each compatible phone update.
         applicationId 'com.hrishikesh.jarvis.fourteen.release'
         minSdk 23
         targetSdk 35
