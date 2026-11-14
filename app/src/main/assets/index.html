@@ -1,0 +1,1339 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#050b18"><meta name="description" content="J.A.R.V.I.S. — Personal voice-first AI assistant">
+<link rel="manifest" href="./manifest.webmanifest"><link rel="icon" href="./jarvis-icon.svg" type="image/svg+xml"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="JARVIS"><link rel="apple-touch-icon" href="./jarvis-icon.svg">
+<title>J.A.R.V.I.S.</title>
+<style>
+:root{color-scheme:dark;--bg:#050b18;--panel:#0a1426;--line:#183b59;--cyan:#62d9ff;--blue:#218bff;--muted:#8ba6bd;--white:#eaf7ff}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 50% 24%,#0c2944 0,#071426 38%,#030711 78%);color:var(--white);font:15px/1.5 system-ui,-apple-system,Segoe UI,sans-serif;min-height:100vh}
+.shell{max-width:900px;margin:auto;min-height:100dvh;padding:14px 16px calc(16px + env(safe-area-inset-bottom));overflow-x:hidden;display:flex;flex-direction:column}
+header{display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #17334b;padding:8px 2px 16px}.brand{letter-spacing:.2em;font-size:clamp(21px,4.5vw,28px);font-weight:850;color:#e5f8ff;text-shadow:0 0 16px #42caff88}.brand small{display:block;letter-spacing:.18em;color:#6e9bb9;font-size:9px;margin-top:3px}.status{font-size:11px;color:#8acfe9;letter-spacing:.12em}
+main{flex:1;display:flex;flex-direction:column;align-items:center}
+ .core-wrap{height:clamp(150px,28vh,260px);min-height:150px;width:100%;display:grid;place-items:center;position:relative;overflow:hidden}
+.core{width:190px;height:190px;position:relative;display:grid;place-items:center;filter:drop-shadow(0 0 24px #168bff66)}
+.core:before,.core:after{content:"";position:absolute;border:1px solid #49caff88;border-radius:50%;inset:0;box-shadow:0 0 24px #168bff33,inset 0 0 22px #168bff22}
+.core:before{transform:scaleX(.48) rotate(35deg);animation:spin 9s linear infinite}.core:after{transform:scaleX(.72) rotate(-35deg);animation:spin 12s linear infinite reverse}
+.ring{position:absolute;inset:15px;border:2px solid transparent;border-top-color:#72e4ff;border-bottom-color:#238fff;border-radius:50%;animation:spin 5s linear infinite}
+.ring.two{inset:29px;border-width:1px;border-left-color:#51bfff;border-right-color:#51bfff;animation-duration:3.5s;animation-direction:reverse}
+.reactor{width:116px;height:116px;position:relative;border-radius:50%;display:grid;place-items:center;background:radial-gradient(circle,#0b3b67 0,#061a34 43%,#020a18 70%);box-shadow:0 0 20px #39cfff88,0 0 58px #087bff66,inset 0 0 24px #53dfff55;animation:reactorBreath 3.2s ease-in-out infinite}.reactor:before{content:"";position:absolute;inset:8px;border-radius:50%;border:4px solid transparent;border-top-color:#c9faff;border-bottom-color:#36bfff;box-shadow:0 0 16px #42d9ff;animation:spin 4s linear infinite}.reactor:after{content:"";position:absolute;inset:20px;border-radius:50%;border:2px dashed #7be7ff;opacity:.85;animation:spin 13s linear infinite reverse}.reactor-core{width:43px;height:43px;position:relative;z-index:2;clip-path:polygon(50% 0,91% 24%,91% 76%,50% 100%,9% 76%,9% 24%);background:radial-gradient(circle at 35% 28%,#fff 0,#aaf4ff 13%,#39c9ff 35%,#0872c8 65%,#03132c 100%);box-shadow:0 0 20px #a9f5ff;filter:drop-shadow(0 0 12px #5be4ff);animation:corePulse 1.8s ease-in-out infinite}.reactor-cross{position:absolute;inset:-8px;border-radius:50%;border:1px solid #58d8ff88;transform:rotate(45deg) scaleX(.72);box-shadow:0 0 14px #178fff55}.core.listening .reactor{box-shadow:0 0 35px #7affdc,0 0 85px #16dba988}.core.thinking .reactor:before{animation-duration:1s}.core.speaking .reactor-core{animation-duration:.5s}@keyframes reactorBreath{50%{filter:brightness(1.25);transform:scale(1.045)}}@keyframes corePulse{50%{transform:scale(1.12);filter:brightness(1.4)}}
+.core.thinking .ring{animation-duration:1s}
+@keyframes spin{to{rotate:360deg}}@keyframes pulse{50%{transform:scale(1.09);filter:brightness(1.25)}}
+@media (prefers-reduced-motion: reduce){
+  .core:before,.core:after,.ring,.reactor,.reactor:before,.reactor:after,.reactor-core{animation:none!important}
+  *,*::before,*::after{transition-duration:0.01ms!important;scroll-behavior:auto!important}
+}
+.greeting{text-align:center;margin-top:-7px}.greeting h1{font-size:clamp(22px,5vw,32px);font-weight:400;letter-spacing:.14em;margin:0}.greeting p{color:var(--muted);font-size:13px;margin:7px 0}
+.controls{display:flex;gap:9px;flex-wrap:wrap;justify-content:center;margin:18px 0}.control,select{background:#0b1a2d;color:#c8eaff;border:1px solid #24506e;border-radius:20px;padding:9px 14px;font:inherit;font-size:12px}.control:active,.control.active{border-color:var(--cyan);background:#102c45}
+.chat{width:100%;max-width:720px;display:flex;flex-direction:column;gap:12px;margin:8px 0 14px}.messages{display:flex;flex-direction:column;gap:10px;max-height:32vh;overflow:auto;padding:2px}.msg{max-width:88%;padding:11px 14px;border:1px solid #1c3b56;border-radius:14px;background:#091629;white-space:pre-wrap;overflow-wrap:anywhere}.msg.user{align-self:flex-end;background:#102b45;border-color:#23628a}.msg.jarvis{align-self:flex-start}.composer{display:flex;gap:7px;align-items:center;background:#081426;border:1px solid #1b4564;border-radius:17px;padding:7px}.composer input{min-width:0;flex:1;background:transparent;border:0;outline:0;color:white;padding:8px;font:inherit}.send{border:0;border-radius:12px;background:linear-gradient(135deg,#087dcb,#1c55aa);color:white;padding:0 17px;font-weight:600}.mic,.attach-btn{width:42px;min-width:42px;height:42px;border-radius:12px;border:1px solid #286083;background:#102c45;color:#a8e9ff;font-size:18px}.attach-btn{font-size:20px}.copy-btn{display:block;margin:9px 0 0 auto;border:1px solid #24506e;border-radius:8px;background:#0b1a2d;color:#a8dfff;padding:5px 10px;font-size:11px}.attachment-chip{display:flex;align-items:center;gap:8px;padding:8px 12px;margin:0 0 8px;border:1px solid #24506e;border-radius:12px;background:#0b1a2d;color:#bdeaff;font-size:12px}.attachment-chip button{margin-left:auto;border:0;background:transparent;color:#ff9a9a;font-size:18px}.msg img{display:block;max-width:180px;max-height:150px;object-fit:cover;border-radius:8px;margin-top:7px}
+.sync-panel{position:fixed;inset:0;z-index:50;background:#020711ed;display:grid;place-items:center;padding:18px}.sync-panel[hidden]{display:none}.sync-card{width:min(520px,100%);max-height:88dvh;overflow:auto;background:linear-gradient(145deg,#0d2037,#07101e);border:1px solid #28719b;border-radius:20px;padding:22px;box-shadow:0 0 55px #168bff33}.sync-card h2{margin:0 0 8px;letter-spacing:.08em}.sync-card p{color:#a8c7df;font-size:13px}.sync-card input{width:100%;padding:13px;margin:8px 0;background:#061324;border:1px solid #24506e;border-radius:10px;color:white;font:inherit}.sync-actions{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}.sync-actions button,.sync-device button{background:#0d3150;color:#d8f4ff;border:1px solid #2d7198;border-radius:10px;padding:11px 14px;font:inherit}.sync-primary{background:linear-gradient(135deg,#087dcb,#1c55aa)!important}.sync-code{font-size:26px!important;letter-spacing:.22em;text-align:center;color:#8cecff!important;font-weight:800}.sync-device{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid #17334b;font-size:13px}.sync-device button{padding:7px 10px;color:#ffb3b3;border-color:#70404a}.sync-muted{color:#779bb7!important;font-size:11px!important}.sync-card textarea{width:100%;min-height:90px;resize:vertical;padding:12px;margin:8px 0;background:#061324;border:1px solid #24506e;border-radius:10px;color:white;font:inherit}.memory-item{display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid #17334b;font-size:13px}.memory-item span{flex:1;white-space:pre-wrap;overflow-wrap:anywhere}.memory-item button{background:#0d3150;color:#ffb3b3;border:1px solid #70404a;border-radius:9px;padding:7px 10px}
+
+.mission-panel{position:fixed;inset:0;z-index:60;background:#020711ed;display:grid;place-items:center;padding:18px}.mission-panel[hidden]{display:none}.mission-card{width:min(620px,100%);max-height:88dvh;overflow:auto;background:linear-gradient(145deg,#0d2037,#07101e);border:1px solid #28719b;border-radius:20px;padding:20px;box-shadow:0 0 55px #168bff33}.mission-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin:14px 0}.mission-tile{background:#081629;border:1px solid #1b4564;border-radius:12px;padding:12px}.mission-tile strong{display:block;color:#75dfff;font-size:11px;letter-spacing:.1em;margin-bottom:5px}.mission-tile span{font-size:13px;overflow-wrap:anywhere}.mission-actions{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}.mission-actions button{background:#0d3150;color:#d8f4ff;border:1px solid #2d7198;border-radius:10px;padding:10px 13px;font:inherit}.mission-actions input{min-width:0;flex:1;max-width:190px;background:#061324;border:1px solid #24506e;border-radius:10px;color:white;padding:9px 10px;font:inherit}.mission-note{font-size:11px;color:#86a9c4}.jarvis-focus .core-wrap{opacity:.55}.jarvis-night{filter:brightness(.68)}
+footer{text-align:center;color:#577c99;font-size:10px;letter-spacing:.12em;padding-top:10px}
+.jarvis-tv-mode #castButton{display:none}\n@media(max-width:520px){.shell{padding:10px 12px calc(12px + env(safe-area-inset-bottom))}.core-wrap{height:clamp(138px,22vh,205px);min-height:138px}.core{width:min(154px,46vw);height:min(154px,46vw)}.reactor{width:96px;height:96px}.reactor-core{width:36px;height:36px}.greeting h1{font-size:clamp(19px,5vw,26px)}.greeting p{font-size:12px;margin:4px 0}.controls{gap:7px;margin:10px 0}.control{padding:8px 11px;font-size:11px}.messages{max-height:26vh}.chat{margin:4px 0 10px}.composer{gap:5px;padding:5px}.mic,.attach-btn{width:38px;min-width:38px;height:38px}.send{padding:0 12px}}
+</style></head>
+<body><div class="shell">
+<header><div class="brand">J.A.R.V.I.S.<small>PERSONAL INTELLIGENCE SYSTEM</small></div><div class="status" id="status">● SYSTEM READY</div></header>
+<main><div class="core-wrap"><div class="core" id="core"><div class="ring"></div><div class="ring two"></div><div class="reactor"><div class="reactor-cross"></div><div class="reactor-core"></div></div></div></div>
+<div class="greeting"><h1>AT YOUR SERVICE, SIR.</h1><p id="hint">Your personal assistant is standing by. Tap the microphone button when you want to speak.</p></div>
+<div class="controls"><select id="mode" aria-label="Personality mode"><option value="professional">Professional</option><option value="witty">Witty</option><option value="philosophical">Philosophical</option><option value="alfred" selected>Alfred · British butler</option></select><button class="control" id="testVoice">Test Alfred voice</button><button class="control" id="voiceToggle">Voice: On</button><button class="control" id="wakeWordButton" type="button">Wake-word microphone</button><button class="control" id="locationEnable">Enable precise location</button><button class="control" id="syncButton">Devices &amp; Sync</button><button class="control" id="memoryButton" type="button">Saved Memory</button><button class="control" id="missionButton" type="button">Mission Control</button><button class="control" id="castButton" type="button" aria-label="Open Android Cast settings">📺 Cast</button><button class="control" id="clear">Clear conversation</button></div>
+<section class="chat"><div class="messages" id="messages" aria-live="polite"><div class="msg jarvis">Good evening, Sir. J.A.R.V.I.S. is online. How may I assist?</div></div><div id="attachmentChip" class="attachment-chip" hidden></div><form class="composer" id="form"><button class="mic" type="button" id="mic" aria-label="Speak">🎙</button><button class="attach-btn" type="button" id="attach" aria-label="Attach a file" title="Attach a file">＋</button><button class="attach-btn" type="button" id="camera" aria-label="Take a photo" title="Take a photo">▣</button><input id="prompt" autocomplete="off" placeholder="Ask me anything, Sir…" maxlength="12000"><button class="send" type="submit">SEND</button></form><input id="fileInput" type="file" accept="image/*,application/pdf,text/plain,text/csv,application/json,text/markdown" hidden><input id="cameraInput" type="file" accept="image/*" capture="environment" hidden></section>
+</main><footer>J.A.R.V.I.S. · PERSONAL AI · VOICE-FIRST INTERFACE</footer></div>
+<section class="sync-panel" id="syncPanel" hidden aria-modal="true" role="dialog" aria-labelledby="syncTitle">
+ <div class="sync-card">
+  <h2 id="syncTitle">J.A.R.V.I.S. · DEVICES &amp; SYNC</h2>
+  <p id="syncStatus">Connecting to your shared JARVIS memory…</p>
+  <p id="deviceIdentity" class="sync-muted">Device identity will appear after verification.</p>
+  <div id="setupArea" hidden>
+   <p>Claim this first device as the owner. Enter the one-time owner setup code supplied to you.</p>
+   <input id="setupCode" type="password" autocomplete="off" placeholder="Owner setup code">
+   <div class="sync-actions"><button class="sync-primary" id="claimDevice" type="button">Make this the owner device</button></div>
+  </div>
+  <div id="pairArea" hidden>
+   <p>Enter the temporary pairing code generated on your owner device.</p>
+   <input id="pairCode" autocomplete="off" maxlength="12" placeholder="8-character pairing code">
+   <div class="sync-actions"><button class="sync-primary" id="pairDevice" type="button">Pair this device</button></div>
+  </div>
+  <div id="recoveryArea" hidden>
+   <h3>Recover owner access</h3>
+   <p>The previous owner app is no longer available? Use your one-time owner recovery credential to make this phone the owner. Shared memory and paired devices are preserved.</p>
+   <input id="ownerRecoveryCode" type="password" autocomplete="off" spellcheck="false" placeholder="One-time owner recovery code">
+   <div class="sync-actions"><button id="checkOwnerRecovery" type="button">Verify code safely</button><button class="sync-primary" id="recoverOwner" type="button">Recover ownership on this phone</button></div>
+   <p id="ownerRecoveryCheckStatus" class="sync-muted" aria-live="polite">Verify first. The check does not consume your code or change device ownership.</p>
+   <p class="sync-muted">Keep this credential private. Recovery itself is a separate, one-time action.</p>
+  </div>
+  <div id="deviceArea" hidden>
+   <h3>Connected device</h3>
+   <p>This phone is paired as a regular device. The current owner can transfer ownership to this phone. Shared conversation sync remains active.</p>
+   <div class="sync-actions"><button class="sync-primary" id="refreshDeviceRole" type="button">Check owner status</button></div>
+  </div>
+  <div id="ownerArea" hidden>
+   <p>This is your owner device. Generate a temporary code to connect your other devices.</p>
+   <div class="sync-actions"><button class="sync-primary" id="createPairCode" type="button">Generate pairing code</button></div>
+   <p id="pairDisplay" class="sync-code"></p>
+   <p class="sync-muted">Each code expires after 10 minutes and can be used once.</p>
+   <h3>Paired devices</h3><div id="deviceList"></div><div class="sync-actions"><button id="openSecurityAudit" type="button">Security Audit</button></div>
+  </div>
+  <div class="sync-actions"><button id="closeSync" type="button">Close</button></div>
+ </div>
+</section>
+<section class="sync-panel" id="securityPanel" hidden aria-modal="true" role="dialog" aria-labelledby="securityTitle"><div class="sync-card"><h2 id="securityTitle">J.A.R.V.I.S. · SECURITY AUDIT</h2><p id="securityStatus">Owner-only security activity. Loading…</p><div class="mission-grid"><div class="mission-tile"><strong>RECENT EVENTS</strong><span id="auditTotal">—</span></div><div class="mission-tile"><strong>FAILED ATTEMPTS</strong><span id="auditFailed">—</span></div><div class="mission-tile"><strong>FIRST-SEEN SOURCES</strong><span id="auditNewSources">—</span></div></div><p class="sync-muted">Source IDs are privacy-protected fingerprints of a browser and network combination, not exact device identities. They may change when networks or browsers change, and are not proof of an attacker. Passwords, session tokens, setup codes, pairing codes and raw IP addresses are never shown.</p><div class="sync-actions"><button id="auditAll" type="button">All activity</button><button id="auditFailedOnly" type="button">Failed attempts</button><button id="auditNewOnly" type="button">First-seen sources</button><button id="refreshAudit" type="button">Refresh</button></div><div id="auditList"></div><div class="sync-actions"><button id="closeSecurityAudit" type="button">Close</button></div></div></section>
+<section class="sync-panel" id="memoryPanel" hidden aria-modal="true" role="dialog" aria-labelledby="memoryTitle">
+ <div class="sync-card">
+  <h2 id="memoryTitle">J.A.R.V.I.S. · SAVED MEMORY</h2>
+  <p id="memoryStatus">Loading your shared saved memories…</p>
+  <p class="sync-muted">Only notes you explicitly save here become long-term memory. JARVIS does not automatically save every conversation. Do not store passwords, API keys, or highly sensitive information here.</p>
+  <textarea id="memoryText" maxlength="1000" rows="3" placeholder="Write exactly what you want JARVIS to remember…"></textarea>
+  <div class="sync-actions"><button class="sync-primary" id="saveMemory" type="button">Save memory</button><button id="cancelMemoryEdit" type="button" hidden>Cancel edit</button><button id="exportMemories" type="button">Copy export JSON</button><button id="clearMemories" type="button">Clear all memories</button></div>
+  <h3>Your saved notes</h3><div id="memoryList"></div>
+  <h3>Full backup</h3>
+  <p class="sync-muted">Migration backup includes your shared conversation, saved notes, and this device’s custom routines. It excludes sign-in tokens and temporary speech cache. It contains private chat data; keep the exported JSON somewhere secure.</p>
+  <textarea id="backupText" rows="5" placeholder="Exported backup appears here. To restore, paste a JARVIS backup JSON here…" disabled></textarea>
+  <div class="sync-actions"><button id="exportBackup" type="button">Export full backup</button><button class="sync-primary" id="restoreBackup" type="button">Restore full backup</button></div>
+  <div class="sync-actions"><button id="closeMemory" type="button">Close</button></div>
+ </div>
+</section>
+
+<section class="mission-panel" id="missionPanel" hidden aria-modal="true" role="dialog" aria-labelledby="missionTitle"><div class="mission-card"><h2 id="missionTitle">J.A.R.V.I.S. · MISSION CONTROL</h2><p id="missionSummary" class="mission-note">Live device diagnostics. Values are read from this device and browser.</p><div class="mission-grid"><div class="mission-tile"><strong>LOCAL TIME</strong><span id="mcTime">—</span></div><div class="mission-tile"><strong>DEVICE</strong><span id="mcDevice">—</span></div><div class="mission-tile"><strong>NETWORK</strong><span id="mcNetwork">—</span></div><div class="mission-tile"><strong>BATTERY</strong><span id="mcBattery">Checking…</span></div><div class="mission-tile"><strong>SHARED BRAIN</strong><span id="mcPair">Checking…</span></div><div class="mission-tile"><strong>BACKEND CHECK</strong><span id="mcBackend">Checking…</span></div><div class="mission-tile"><strong>PAIRED DEVICES</strong><span id="mcDevices">Checking…</span></div><div class="mission-tile"><strong>VOICE</strong><span id="mcVoice">—</span></div></div><h3>Daily Briefing</h3><p id="dailyBrief" class="mission-note">Generate a local briefing using the device clock and available system status.</p><div class="mission-actions"><button id="runBriefing" type="button">Prepare briefing</button><button id="refreshMission" type="button">Refresh diagnostics</button></div><h3>Smart Routines · Local controls</h3><p class="mission-note">These routines change JARVIS interface and voice settings on this device only. They do not run background jobs or control other devices.</p><div class="mission-actions"><button id="focusRoutine" type="button">Focus mode</button><button id="nightRoutine" type="button">Good night</button><button id="normalRoutine" type="button">Normal mode</button></div><h3>Custom routines</h3><p class="mission-note">Create up to eight named routines using these safe, on-device modes. They are saved only in this browser and do not trigger background actions.</p><div class="mission-actions"><input id="customRoutineName" maxlength="32" placeholder="Routine name" aria-label="Routine name"><select id="customRoutineMode" aria-label="Routine mode"><option value="focus">Focus</option><option value="night">Good night</option><option value="normal">Normal</option></select><button id="saveCustomRoutine" type="button">Save routine</button></div><div id="customRoutineList" class="mission-actions" aria-live="polite"></div><div class="mission-actions"><button id="closeMission" type="button">Close</button></div></div></section>
+<script>
+const $=id=>document.getElementById(id), core=$('core'), messages=$('messages');let history=[],voiceOn=true,pendingAttachment=null,deviceLocation=null,currentAudio=null;
+const PERSONALITY_MODE_KEY='jarvisPersonalityModeV1';
+try{const savedMode=localStorage.getItem(PERSONALITY_MODE_KEY);if(['professional','witty','philosophical','alfred'].includes(savedMode))$('mode').value=savedMode;}catch{}
+$('mode').addEventListener('change',()=>{try{localStorage.setItem(PERSONALITY_MODE_KEY,$('mode').value);}catch{}});
+const JARVIS_API='https://jarvis-6-0-yys5.onrender.com/api';
+const JARVIS_AUX_API='https://jarvis-6-0-yys5.onrender.com/api';
+let sessionToken=localStorage.getItem('jarvisSessionToken')||'',sessionRole='',sessionDeviceId='',chatBusy=false,lastSharedHistorySignature='';
+let editingMemoryId=null;
+async function memoryApi(payload){
+ const headers={'Content-Type':'application/json'};
+ if(sessionToken)headers.Authorization='Bearer '+sessionToken;
+ const response=await fetch(JARVIS_AUX_API+'/memory',{method:'POST',headers,body:JSON.stringify(payload)});
+ const raw=await response.text();let data={};try{data=JSON.parse(raw)}catch{}
+ if(!response.ok)throw new Error(data.error||'Memory service returned HTTP '+response.status);
+ return data;
+}
+async function backupApi(payload){
+ const headers={'Content-Type':'application/json'};
+ if(sessionToken)headers.Authorization='Bearer '+sessionToken;
+ const response=await fetch(JARVIS_AUX_API+'/backup',{method:'POST',headers,body:JSON.stringify(payload)});
+ const raw=await response.text();let data={};try{data=JSON.parse(raw)}catch{}
+ if(!response.ok)throw new Error(data.error||'Backup service returned HTTP '+response.status);
+ return data;
+}
+async function renderMemories(){
+ const data=await memoryApi({action:'list'}),list=$('memoryList');list.innerHTML='';
+ const items=Array.isArray(data.memories)?data.memories:[];
+ if(!items.length){const empty=document.createElement('p');empty.className='sync-muted';empty.textContent='No saved memories yet.';list.appendChild(empty);}
+ items.forEach(item=>{
+  const row=document.createElement('div');row.className='memory-item';
+  const note=document.createElement('span');note.textContent=item.text||'';row.appendChild(note);
+  const edit=document.createElement('button');edit.type='button';edit.textContent='Edit';
+  edit.onclick=()=>{editingMemoryId=item.id;$('memoryText').value=item.text||'';$('saveMemory').textContent='Update memory';$('cancelMemoryEdit').hidden=false;$('memoryStatus').textContent='Editing this saved note. Save when ready, Sir.';$('memoryText').focus();};
+  row.appendChild(edit);
+  const remove=document.createElement('button');remove.type='button';remove.textContent='Delete';
+  remove.onclick=async()=>{if(!confirm('Delete this saved memory?'))return;try{await memoryApi({action:'delete',id:item.id});if(editingMemoryId===item.id)resetMemoryEditor();await renderMemories();$('memoryStatus').textContent='Memory deleted across your devices.';}catch(e){$('memoryStatus').textContent=e.message}};
+  row.appendChild(remove);list.appendChild(row);
+ });
+}
+async function openMemoryPanel(){
+ $('memoryPanel').hidden=false;
+ const paired=!!sessionToken;
+ $('memoryText').disabled=!paired;$('saveMemory').disabled=!paired;$('clearMemories').disabled=!paired;
+ $('backupText').disabled=!paired;$('exportBackup').disabled=!paired;$('restoreBackup').disabled=!paired||sessionRole!=='owner';
+ if(!paired){$('memoryStatus').textContent='Pair this device with your JARVIS owner device before managing shared memory.';return;}
+ try{
+  await renderMemories();
+  $('memoryStatus').textContent=sessionRole==='owner'
+   ?'Your saved memories are shared across all paired JARVIS devices.'
+   :'Your saved memories are shared across all paired JARVIS devices. Only the owner device can restore a full backup.';
+ }
+ catch(e){$('memoryStatus').textContent=e.message;}
+}
+$('memoryButton').onclick=openMemoryPanel;
+$('closeMemory').onclick=()=>$('memoryPanel').hidden=true;
+function resetMemoryEditor(){editingMemoryId=null;$('memoryText').value='';$('saveMemory').textContent='Save memory';$('cancelMemoryEdit').hidden=true;}
+$('cancelMemoryEdit').onclick=()=>resetMemoryEditor();
+$('saveMemory').onclick=async()=>{
+ const value=$('memoryText').value.trim();if(!value){$('memoryStatus').textContent='Write a note first, Sir.';return;}
+ try{
+  const action=editingMemoryId?'update':'add';
+  const payload=editingMemoryId?{action,id:editingMemoryId,text:value}:{action,text:value};
+  await memoryApi(payload);resetMemoryEditor();await renderMemories();
+  $('memoryStatus').textContent=action==='update'?'Saved memory updated across your devices, Sir.':'Saved across your paired JARVIS devices, Sir.';
+ }catch(e){$('memoryStatus').textContent=e.message;}
+};
+$('exportMemories').onclick=async()=>{
+ try{
+  const data=await memoryApi({action:'list'}),json=JSON.stringify({exportedAt:new Date().toISOString(),memories:data.memories||[]},null,2);
+  if(navigator.clipboard&&navigator.clipboard.writeText){await navigator.clipboard.writeText(json);}
+  else{const box=document.createElement('textarea');box.value=json;document.body.appendChild(box);box.select();document.execCommand('copy');box.remove();}
+  $('memoryStatus').textContent='Your saved memories have been copied as JSON. Paste them into a file to keep a backup, Sir.';
+ }catch(e){$('memoryStatus').textContent=e.message;}
+};
+function normalizeMigrationRoutines(value){
+ if(!Array.isArray(value)||value.length>8)throw new Error('The backup contains an invalid number of custom routines.');
+ const allowedModes=new Set(['focus','night','normal']);
+ return value.map((item,index)=>{
+  if(!item||typeof item.name!=='string'||!item.name.trim()||item.name.trim().length>32||!allowedModes.has(item.mode))throw new Error('The backup contains an invalid custom routine.');
+  const id=typeof item.id==='string'&&item.id.length>0&&item.id.length<=80?item.id:'migration-'+index;
+  return {id,name:item.name.trim(),mode:item.mode};
+ });
+}
+$('exportBackup').onclick=async()=>{
+ try{
+  const data=await backupApi({action:'export'}),cloud=data.backup;
+  const backup={format:'jarvis-device-migration',version:1,exportedAt:new Date().toISOString(),cloud,device:{customRoutines:readCustomRoutines()}};
+  const json=JSON.stringify(backup,null,2);
+  $('backupText').value=json;
+  if(navigator.clipboard&&navigator.clipboard.writeText)await navigator.clipboard.writeText(json);
+  else{$('backupText').focus();$('backupText').select();document.execCommand('copy');}
+  $('memoryStatus').textContent='Migration backup copied. It includes '+(cloud.conversation||[]).length+' conversation messages, '+(cloud.memories||[]).length+' saved notes and '+backup.device.customRoutines.length+' custom routines, Sir. Keep it somewhere secure.';
+ }catch(e){$('memoryStatus').textContent=e.message;}
+};
+$('restoreBackup').onclick=async()=>{
+ if(chatBusy){$('memoryStatus').textContent='Please wait for the current conversation request to finish before restoring a backup, Sir.';return;}
+ const raw=$('backupText').value.trim();
+ if(!raw){$('memoryStatus').textContent='Paste a JARVIS migration backup JSON document first, Sir.';return;}
+ let backup;
+ try{backup=JSON.parse(raw);}catch(e){$('memoryStatus').textContent='That backup is not valid JSON, Sir.';return;}
+ const isMigration=backup&&backup.format==='jarvis-device-migration'&&backup.version===1;
+ const cloudBackup=isMigration?backup.cloud:backup;
+ let localRoutines=null;
+ try{if(isMigration)localRoutines=normalizeMigrationRoutines(backup.device&&backup.device.customRoutines);}
+ catch(e){$('memoryStatus').textContent=e.message;return;}
+ if(!confirm('Restore this backup? It will replace the shared conversation and saved memories on every paired JARVIS device'+(isMigration?' and restore this device’s custom routines':'')+'. This cannot be undone.'))return;
+ try{
+  const result=await backupApi({action:'restore',backup:cloudBackup,confirm:true});
+  let localStatus='';
+  if(isMigration){
+   try{localStorage.setItem(CUSTOM_ROUTINE_KEY,JSON.stringify(localRoutines));renderCustomRoutines();localStatus=' and '+localRoutines.length+' custom routines on this device';}
+   catch(e){localStatus='; shared data was restored, but this device could not save its custom routines';}
+  }
+  resetMemoryEditor();await restoreSharedHistory();await renderMemories();
+  $('memoryStatus').textContent='Restored '+result.counts.conversation+' conversation messages and '+result.counts.memories+' saved notes across your paired devices'+localStatus+', Sir.';
+ }catch(e){$('memoryStatus').textContent=e.message;}
+};
+$('clearMemories').onclick=async()=>{
+ if(!confirm('Clear every saved memory on all paired JARVIS devices? This cannot be undone.'))return;
+ try{await memoryApi({action:'clear',confirm:true});await renderMemories();$('memoryStatus').textContent='All saved memories have been cleared.';}
+ catch(e){$('memoryStatus').textContent=e.message;}
+};
+async function pairApi(payload){
+ const headers={'Content-Type':'application/json'};
+ if(sessionToken)headers.Authorization='Bearer '+sessionToken;
+ const response=await fetch(JARVIS_API+'/pair',{method:'POST',headers,body:JSON.stringify(payload)});
+ const raw=await response.text();let data={};try{data=JSON.parse(raw)}catch{}
+ if(!response.ok){const error=new Error(data.error||'Pairing service returned HTTP '+response.status);error.status=response.status;throw error;}
+ return data;
+}
+function currentDeviceName(){
+ const ua=navigator.userAgent||'';
+ if(window.AndroidJarvis)return /Mobile/i.test(ua)?'Android phone':'Android TV';
+ return /Android/i.test(ua)?'Android device':'Laptop browser';
+}
+async function restoreSharedHistory(){
+ const data=await pairApi({action:'history'});history=Array.isArray(data.messages)?data.messages:[];
+ messages.innerHTML='';
+ lastSharedHistorySignature=JSON.stringify(history);
+ history.forEach(item=>add(item.text,item.role==='model'?'jarvis':'user'));
+ if(!history.length)add('Good evening, Sir. J.A.R.V.I.S. is online. How may I assist?','jarvis');
+}
+function storeSession(data){
+ sessionToken=data.token;sessionRole=data.role;sessionDeviceId=data.deviceId;
+ localStorage.setItem('jarvisSessionToken',sessionToken);
+ localStorage.setItem('jarvisDeviceId',sessionDeviceId);
+ $('syncPanel').hidden=true;
+ $('hint').textContent='Connected to your shared JARVIS memory, Sir.';
+}
+async function syncSharedHistory(){
+ if(!sessionToken||chatBusy||document.visibilityState==='hidden')return;
+ const data=await pairApi({action:'history'}),next=Array.isArray(data.messages)?data.messages:[];
+ const signature=JSON.stringify(next);
+ if(signature!==lastSharedHistorySignature){
+  history=next;lastSharedHistorySignature=signature;messages.innerHTML='';
+  history.forEach(item=>add(item.text,item.role==='model'?'jarvis':'user'));
+ }
+}
+setInterval(()=>syncSharedHistory().catch(()=>{}),10000);
+async function renderPairedDevices(){
+ const data=await pairApi({action:'devices'}),list=$('deviceList');list.innerHTML='';
+ (data.devices||[]).forEach(device=>{
+  const row=document.createElement('div');row.className='sync-device';
+  const label=document.createElement('span');
+  const shortId=String(device.deviceId||'').slice(-8);
+  const isCurrent=device.deviceId===sessionDeviceId;
+  label.textContent=device.deviceName+' · '+(device.role==='owner'?'CURRENT OWNER': 'DEVICE')+(isCurrent?' · THIS PHONE':'')+' · FULL ID '+device.deviceId;
+  label.title='Exact device identity: '+device.deviceId;
+  row.appendChild(label);
+  if(device.role!=='owner'){
+   const transfer=document.createElement('button');transfer.type='button';transfer.textContent='Transfer owner here';
+   transfer.title='Transfer ownership to device ID '+device.deviceId;
+   transfer.onclick=async()=>{
+    const targetDescription=device.deviceName+' (FULL DEVICE ID '+device.deviceId+')';
+    if(!confirm('TRANSFER JARVIS OWNERSHIP TO THIS DEVICE?\n\nTarget: '+targetDescription+'\nFull device ID: '+device.deviceId+'\n\nThe current owner will become a regular device. Shared conversations and saved memories will be preserved.'))return;
+    try{
+     transfer.disabled=true;
+     const result=await pairApi({action:'transfer-owner',deviceId:device.deviceId});
+     sessionRole='device';$('ownerArea').hidden=true;$('syncStatus').textContent=result.message+' New owner full device ID: '+device.deviceId+'. Re-open Devices & Sync on the target device and verify it says OWNER.';
+    }catch(e){$('syncStatus').textContent=e.message;transfer.disabled=false}
+   };
+   row.appendChild(transfer);
+   const revoke=document.createElement('button');revoke.type='button';revoke.textContent='Revoke';
+   revoke.onclick=async()=>{if(!confirm('Revoke access for '+device.deviceName+' (device ID …'+shortId+')?'))return;try{await pairApi({action:'revoke',deviceId:device.deviceId});await renderPairedDevices()}catch(e){$('syncStatus').textContent=e.message}};
+   row.appendChild(revoke);
+  }
+  list.appendChild(row);
+ });
+}
+async function openSyncPanel(){
+ $('syncPanel').hidden=false;$('setupArea').hidden=true;$('pairArea').hidden=true;$('recoveryArea').hidden=true;$('ownerArea').hidden=true;$('deviceArea').hidden=true;
+ try{
+  if(sessionToken){
+   const v=await pairApi({action:'verify'});sessionRole=v.role;sessionDeviceId=v.deviceId;
+   $('syncStatus').textContent='Connected as '+v.deviceName+'. Shared conversation sync is active.';
+   $('deviceIdentity').textContent='THIS DEVICE: '+(v.role==='owner'?'OWNER':'DEVICE')+' · '+v.deviceName+' · FULL DEVICE ID '+v.deviceId;
+   if(v.role==='owner'){$('ownerArea').hidden=false;await renderPairedDevices();}
+   else {$('deviceArea').hidden=false;}
+   return;
+  }
+  const statusData=await pairApi({action:'status'});
+  $('syncStatus').textContent=statusData.ownerClaimed?'This JARVIS system already has an owner. Pair this device using a code from the owner device.':'This is the first device. Claim it as the owner to initialise your private JARVIS memory.';
+  $('deviceIdentity').textContent='THIS DEVICE: NOT PAIRED';
+  $('setupArea').hidden=statusData.ownerClaimed;
+  $('pairArea').hidden=!statusData.ownerClaimed;
+  $('recoveryArea').hidden=!statusData.ownerClaimed;
+ }catch(e){$('syncStatus').textContent=e.message}
+}
+$('syncButton').onclick=openSyncPanel;
+let securityEvents=[],securityDevices=[],securityFilter='all';
+function renderSecurityAudit(){
+ const firstSeen=new Map();
+ [...securityEvents].slice().reverse().forEach(e=>{if(e.sourceId&&!firstSeen.has(e.sourceId))firstSeen.set(e.sourceId,e.timestamp)});
+ const firstSources=new Set(securityEvents.filter(e=>e.sourceId&&firstSeen.get(e.sourceId)===e.timestamp).map(e=>e.sourceId));
+ $('auditTotal').textContent=String(securityEvents.length);
+ $('auditFailed').textContent=String(securityEvents.filter(e=>e.outcome==='denied'||e.outcome==='failed').length);
+ $('auditNewSources').textContent=String(firstSources.size);
+ const shown=securityEvents.filter(e=>securityFilter==='failed'?(e.outcome==='denied'||e.outcome==='failed'):securityFilter==='new'?(e.sourceId&&firstSources.has(e.sourceId)):true);
+ const list=$('auditList');list.innerHTML='';
+ if(!shown.length){const empty=document.createElement('p');empty.className='sync-muted';empty.textContent='No events in this view.';list.appendChild(empty);return;}
+ shown.forEach(e=>{
+  const row=document.createElement('div');row.className='memory-item';row.style.display='block';
+  const heading=document.createElement('strong');heading.textContent=(e.outcome==='denied'?'FAILED · ':e.outcome==='success'?'SUCCESS · ':'ACTIVITY · ')+String(e.action||'unknown').replace(/-/g,' ').toUpperCase();
+  const detail=document.createElement('div');detail.className='sync-muted';
+  const when=e.timestamp?new Date(e.timestamp).toLocaleString():'Time unavailable';
+  const device=e.deviceName||e.deviceId||'Device not identified';
+  const source=e.sourceId?(firstSources.has(e.sourceId)?'FIRST SEEN IN RECENT LOG · ':'SOURCE · ')+e.sourceId:'Source fingerprint unavailable';
+  detail.textContent=[when,device,source,e.reason||''].filter(Boolean).join(' · ');
+  row.append(heading,detail);list.appendChild(row);
+ });
+}
+async function loadSecurityAudit(){
+ $('securityStatus').textContent='Checking owner access and loading recent events…';
+ try{
+  const [audit]=await Promise.all([pairApi({action:'security-audit'})]);
+  securityEvents=Array.isArray(audit.events)?audit.events:[];
+  $('securityStatus').textContent='Showing up to 100 recent events. Audit history is retained for up to 90 days.';renderSecurityAudit();
+ }catch(e){$('securityStatus').textContent=e.message;$('auditList').innerHTML='';}
+}
+$('openSecurityAudit').onclick=async()=>{$('securityPanel').hidden=false;securityFilter='all';await loadSecurityAudit()};
+$('closeSecurityAudit').onclick=()=>$('securityPanel').hidden=true;
+$('refreshAudit').onclick=loadSecurityAudit;
+$('auditAll').onclick=()=>{securityFilter='all';renderSecurityAudit()};
+$('auditFailedOnly').onclick=()=>{securityFilter='failed';renderSecurityAudit()};
+$('auditNewOnly').onclick=()=>{securityFilter='new';renderSecurityAudit()};
+$('closeSync').onclick=()=>{$('syncPanel').hidden=true};
+$('claimDevice').onclick=async()=>{
+ try{const data=await pairApi({action:'claim',setupCode:$('setupCode').value,deviceName:currentDeviceName()});storeSession(data);await restoreSharedHistory();$('hint').textContent=data.message+' Shared memory is ready, Sir.';}
+ catch(e){$('syncStatus').textContent=e.message}
+};
+$('checkOwnerRecovery').onclick=async()=>{
+ const recoveryCode=$('ownerRecoveryCode').value.trim();
+ if(!recoveryCode){$('ownerRecoveryCheckStatus').textContent='Enter your recovery code first.';return;}
+ const button=$('checkOwnerRecovery');button.disabled=true;button.textContent='Checking…';
+ $('ownerRecoveryCheckStatus').textContent='Checking privately. This will not consume the code.';
+ try{
+  const result=await pairApi({action:'check-recovery',recoveryCode});
+  if(!result.configured)$('ownerRecoveryCheckStatus').textContent='Recovery is not configured on this JARVIS server. The code was not consumed.';
+  else if(!result.ownerExists)$('ownerRecoveryCheckStatus').textContent='No existing owner record was found. No changes were made.';
+  else if(result.valid)$('ownerRecoveryCheckStatus').textContent='✓ Valid recovery code. It has NOT been used. Your current owner and devices are unchanged.';
+  else $('ownerRecoveryCheckStatus').textContent='The code does not match. It has NOT been consumed.';
+ }catch(e){$('ownerRecoveryCheckStatus').textContent='Could not verify: '+e.message+' No recovery action was performed.';}
+ finally{button.disabled=false;button.textContent='Verify code safely';}
+};
+$('recoverOwner').onclick=async()=>{
+ const recoveryCode=$('ownerRecoveryCode').value.trim();
+ if(!recoveryCode){$('syncStatus').textContent='Enter your one-time owner recovery code.';return;}
+ const button=$('recoverOwner');button.disabled=true;
+ try{
+  const data=await pairApi({action:'recover-owner',recoveryCode,deviceName:currentDeviceName()});
+  $('ownerRecoveryCode').value='';
+  storeSession(data);
+  await restoreSharedHistory();
+  $('hint').textContent=data.message+' Shared memory is ready, Sir.';
+ }catch(e){$('syncStatus').textContent=e.message;}
+ finally{button.disabled=false;}
+};
+$('refreshDeviceRole').onclick=async()=>{
+ try{
+  const v=await pairApi({action:'verify'});sessionRole=v.role;sessionDeviceId=v.deviceId;
+  if(v.role==='owner'){$('deviceArea').hidden=true;$('ownerArea').hidden=false;$('syncStatus').textContent='Ownership confirmed on this phone. Shared conversation sync is active.';await renderPairedDevices();}
+  else {$('syncStatus').textContent='Still connected as a regular device. Ownership has not been transferred yet.\nACTIVE DEVICE ID: '+v.deviceId+'\nVERIFIED ROLE: '+v.role+'\nPAIRING API: '+JARVIS_API;}
+ }catch(e){$('syncStatus').textContent=e.message}
+};
+$('pairDevice').onclick=async()=>{
+ try{const data=await pairApi({action:'pair',pairingCode:$('pairCode').value,deviceName:currentDeviceName()});storeSession(data);await restoreSharedHistory();$('hint').textContent=data.message+' Shared memory is ready, Sir.';}
+ catch(e){$('syncStatus').textContent=e.message}
+};
+$('createPairCode').onclick=async()=>{
+ try{const data=await pairApi({action:'create-code'});$('pairDisplay').textContent=data.code;$('syncStatus').textContent='Give this code to the device you wish to pair. It expires in 10 minutes.';await renderPairedDevices();}
+ catch(e){$('syncStatus').textContent=e.message}
+};
+(async()=>{
+ if(sessionToken){
+  try{const v=await pairApi({action:'verify'});sessionRole=v.role;sessionDeviceId=v.deviceId;await restoreSharedHistory();$('hint').textContent='Connected to your shared JARVIS memory, Sir.';}
+  catch(e){
+   if(e.status===401){
+    sessionToken='';localStorage.removeItem('jarvisSessionToken');localStorage.removeItem('jarvisDeviceId');$('hint').textContent='Welcome back, Sir. Open Devices & Sync whenever you are ready to reconnect this device.';
+   }else{
+    $('syncPanel').hidden=false;$('setupArea').hidden=true;$('pairArea').hidden=true;$('ownerArea').hidden=true;
+    $('syncStatus').textContent='JARVIS could not verify this device because the service is temporarily unavailable. Your saved pairing has been kept. Reopen JARVIS when the connection is restored.';
+   }
+  }
+ }else $('hint').textContent='Welcome, Sir. Your assistant is ready. Open Devices & Sync to connect shared memory.';
+})();
+function status(s,cls=''){ $('status').textContent='● '+s.toUpperCase();core.className='core '+cls}
+function add(text,who,attachment,downloadFile,toolCalls,pendingActions){const d=document.createElement('div');d.className='msg '+who;const body=document.createElement('div');body.textContent=text;d.appendChild(body);if(attachment&&attachment.mimeType&&attachment.mimeType.startsWith('image/')){const img=document.createElement('img');img.alt=attachment.name||'Attached image';img.src='data:'+attachment.mimeType+';base64,'+attachment.data;d.appendChild(img)}if(downloadFile&&(downloadFile.downloadUrl||downloadFile.data)){const row=document.createElement('div');row.className='attachment-chip';const label=document.createElement('span');label.textContent='📎 '+downloadFile.filename+' · '+Math.max(1,Math.round(downloadFile.size/1024))+' KB';row.appendChild(label);const link=document.createElement('a');link.textContent='Download';if(downloadFile.downloadUrl){link.href=downloadFile.downloadUrl}else{link.href=URL.createObjectURL(new Blob([Uint8Array.from(atob(downloadFile.data),c=>c.charCodeAt(0))],{type:downloadFile.mimeType||'application/octet-stream'}));link.download=downloadFile.filename;link.onclick=(event)=>{if(window.AndroidJarvis&&typeof window.AndroidJarvis.saveFile==='function'){event.preventDefault();const result=window.AndroidJarvis.saveFile(downloadFile.filename,downloadFile.mimeType||'application/octet-stream',downloadFile.data);if(typeof result==='string'&&result.startsWith('SAVED:')){link.textContent='Saved to Downloads';$('hint').textContent=result.slice(6)}else if(typeof result==='string'){$('hint').textContent=result.replace(/^ERROR:/,'')}return;}setTimeout(()=>URL.revokeObjectURL(link.href),60000)}}link.style.cssText='color:#8cecff;font-weight:700;text-decoration:underline;margin-left:auto';row.appendChild(link);d.appendChild(row)}if(Array.isArray(toolCalls)&&toolCalls.length){
+  const report=document.createElement('div');report.style.cssText='margin-top:9px;padding:8px 10px;border:1px solid #24506e;border-radius:9px;background:#071426;color:#9bcce5;font-size:11px';report.setAttribute('aria-live','polite');
+  const heading=document.createElement('strong');heading.textContent='TOOL REPORT';heading.style.cssText='display:block;color:#75dfff;letter-spacing:.1em;margin-bottom:4px';report.appendChild(heading);
+  const detail=document.createElement('span');
+  const labels={calculate:'Calculator',get_device_status:'Device status',request_alarm:'Alarm request',request_calendar_event:'Calendar request',search_saved_memories:'Saved memory search',search_conversation:'Conversation search'};
+  detail.textContent=toolCalls.map(item=>(labels[item.tool]||'Approved tool')+' · '+(item.status==='success'?'completed':item.status==='confirmation_required'?'awaiting your approval':item.status==='blocked'?'blocked':'failed')).join('  |  ');
+  report.appendChild(detail);d.appendChild(report);
+ }
+ if(Array.isArray(pendingActions)&&pendingActions.length){
+  const actionPanel=document.createElement('div');actionPanel.style.cssText='display:flex;flex-direction:column;gap:7px;margin-top:9px';
+  pendingActions.forEach(action=>{
+   const button=document.createElement('button');button.type='button';button.className='control';button.style.cssText='align-self:flex-start;border-color:#d7ad55;color:#ffe1a0';
+   if(action.type==='alarm'){
+    const hour=Number(action.hour),minute=Number(action.minute);
+    button.textContent='Review alarm in Clock · '+String(hour).padStart(2,'0')+':'+String(minute).padStart(2,'0');
+    button.setAttribute('aria-label','Review alarm in Clock');
+    if(!Number.isInteger(hour)||hour<0||hour>23||!Number.isInteger(minute)||minute<0||minute>59){button.textContent='Invalid alarm request';button.disabled=true;}
+    else button.onclick=()=>{
+     if(!window.AndroidJarvis||typeof window.AndroidJarvis.setAlarm!=='function'){button.textContent='Available in the Android JARVIS app only';button.disabled=true;return;}
+     const result=window.AndroidJarvis.setAlarm(hour,minute,String(action.label||'JARVIS alarm'));
+     button.textContent='Clock opened · confirm the alarm there';
+     const note=document.createElement('div');note.style.cssText='color:#9bcce5;font-size:11px';note.textContent=String(result||'Please review and confirm in Clock.');actionPanel.appendChild(note);button.disabled=true;
+    };
+   }else if(action.type==='calendar'){
+    button.textContent='Review calendar event · '+String(action.title||'Event');
+    button.setAttribute('aria-label','Review calendar event');
+    const begin=Number(action.beginMillis),end=Number(action.endMillis);
+    if(!String(action.title||'').trim()||!Number.isFinite(begin)||!Number.isFinite(end)||begin<=Date.now()||end<=begin||end-begin>12*60*60*1000){button.textContent='Invalid calendar request';button.disabled=true;}
+    else button.onclick=()=>{
+     if(!window.AndroidJarvis||typeof window.AndroidJarvis.createCalendarEvent!=='function'){button.textContent='Available in the Android JARVIS app only';button.disabled=true;return;}
+     const result=window.AndroidJarvis.createCalendarEvent(String(action.title),begin,end,String(action.description||''));
+     button.textContent='Calendar editor opened · save there to confirm';
+     const note=document.createElement('div');note.style.cssText='color:#9bcce5;font-size:11px';note.textContent=String(result||'Please review and save in your calendar app.');actionPanel.appendChild(note);button.disabled=true;
+    };
+   }else{return;}
+   actionPanel.appendChild(button);
+  });
+  d.appendChild(actionPanel);
+ }
+ if(who==='jarvis'){const copy=document.createElement('button');copy.className='copy-btn';copy.type='button';copy.textContent='▢ Copy';copy.onclick=async()=>{try{await navigator.clipboard.writeText(text)}catch(e){const t=document.createElement('textarea');t.value=text;document.body.appendChild(t);t.select();document.execCommand('copy');t.remove()}copy.textContent='✓ Copied';setTimeout(()=>copy.textContent='▢ Copy',1500)};d.appendChild(copy)}messages.appendChild(d);messages.scrollTop=messages.scrollHeight;return d}
+
+function setAttachment(file){if(!file)return;const allowed=['application/pdf','text/plain','text/csv','application/json','text/markdown'];if(!(file.type.startsWith('image/')||allowed.includes(file.type))){$('hint').textContent='Please choose an image, PDF, TXT, CSV, JSON or Markdown file, Sir.';return;}if(file.size>3*1024*1024){$('hint').textContent='That file is larger than the 3 MB limit, Sir.';return;}const reader=new FileReader();reader.onload=()=>{const data=String(reader.result).split(',')[1]||'';pendingAttachment={name:file.name||'Camera photo',mimeType:file.type||'image/jpeg',data};renderAttachment()};reader.onerror=()=>{$('hint').textContent='I could not read that file, Sir.'};reader.readAsDataURL(file)}
+function renderAttachment(){const chip=$('attachmentChip');chip.innerHTML='';if(!pendingAttachment){chip.hidden=true;return}chip.hidden=false;const label=document.createElement('span');label.textContent='📎 '+pendingAttachment.name;chip.appendChild(label);const remove=document.createElement('button');remove.type='button';remove.textContent='×';remove.setAttribute('aria-label','Remove attachment');remove.onclick=()=>{pendingAttachment=null;renderAttachment()};chip.appendChild(remove)}
+$('attach').onclick=()=>{if(window.AndroidJarvis&&window.AndroidJarvis.chooseFile){window.AndroidJarvis.chooseFile()}else{$('fileInput').click()}};
+$('camera').onclick=()=>{if(window.AndroidJarvis&&window.AndroidJarvis.takePhoto){window.AndroidJarvis.takePhoto()}else{$('cameraInput').click()}};
+$('fileInput').onchange=e=>{if(e.target.files[0])setAttachment(e.target.files[0]);e.target.value=''};
+$('cameraInput').onchange=e=>{if(e.target.files[0])setAttachment(e.target.files[0]);e.target.value=''};
+function detectFileRequest(text){
+ const q=String(text||'').toLowerCase();
+ if(!/(create|make|prepare|generate|export|convert|build|draft|give me|put (?:this|it) (?:into|in)|as an attachment|attachment form)/i.test(q))return null;
+ let format=null;
+ if(/\b(pdf)\b/.test(q))format='pdf';
+ else if(/\b(docx|word document|word file)\b/.test(q))format='docx';
+ else if(/\b(xlsx|excel|spreadsheet|workbook)\b/.test(q))format='xlsx';
+ else if(/\b(pptx|ppt|powerpoint|presentation|slides)\b/.test(q))format='pptx';
+ else if(/\b(csv)\b/.test(q))format='csv';
+ else if(/\b(markdown|\.md)\b/.test(q))format='md';
+ else if(/\b(text file|plain text|\.txt)\b/.test(q))format='txt';
+ else if(/\b(budget|expense tracker|income tracker|marksheet|attendance sheet|inventory|sales tracker|financial tracker|data analysis|spreadsheet|workbook)\b/.test(q))format='xlsx';
+ else if(/\b(assignment|essay|report|letter|resume|résumé|proposal|meeting minutes|notes|document)\b/.test(q))format='docx';
+ else if(/\b(presentation|seminar|pitch deck|slide deck)\b/.test(q))format='pptx';
+ else if(/\b(timetable|schedule|planner|checklist|meal plan|shopping list|grocery list|itinerary|packing list|household plan|weekly plan)\b/.test(q))format='pdf';
+ else if(/\b(attachment form|as an attachment|attached file)\b/.test(q))format='pdf';
+ return format?{format}:null;
+}
+async function createOfficeFile(prompt,format,attachment){status('Creating file','thinking');$('hint').textContent='Preparing '+format.toUpperCase()+' attachment…';chatBusy=true;try{const response=await fetch(JARVIS_AUX_API+'/create-file',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+sessionToken},body:JSON.stringify({prompt,format,attachment,deviceContext:getDeviceContext()})});const raw=await response.text();let data={};try{data=JSON.parse(raw)}catch{}if(!response.ok)throw new Error(data.error||'File creation failed (HTTP '+response.status+').');chatBusy=false;add(data.reply||'Your file is ready, Sir.','jarvis',null,data);history.push({role:'model',text:data.reply||'Your file is ready, Sir.'});history=history.slice(-20);$('hint').textContent='File created. Tap Download to save it. The file is delivered directly to this device and is not retained in durable server history, Sir.';speak(data.reply||'Your file is ready, Sir.');if(!voiceOn)status('System ready');}catch(error){chatBusy=false;add('Sir, I could not create that attachment: '+error.message,'jarvis');$('hint').textContent='File creation was not completed. Your original request is still available in the conversation.';status('System ready');}}
+function getDeviceContext(){const now=new Date();const deviceType=detectJarvisDevice();return {localTime:now.toLocaleString('en-IN',{dateStyle:'full',timeStyle:'long'}),isoTime:now.toISOString(),timeZone:Intl.DateTimeFormat().resolvedOptions().timeZone||'unknown',deviceType,deviceName:deviceType,networkOnline:navigator.onLine!==false,location:deviceLocation};}
+function requestPreciseLocation(){if(!navigator.geolocation){$('hint').textContent='Location services are not available in this browser, Sir.';return;}$('hint').textContent='Requesting precise location permission…';navigator.geolocation.getCurrentPosition(pos=>{deviceLocation={latitude:Number(pos.coords.latitude.toFixed(6)),longitude:Number(pos.coords.longitude.toFixed(6)),accuracyMeters:Math.round(pos.coords.accuracy),capturedAt:new Date().toISOString()};$('locationEnable').textContent='Location: Enabled';$('hint').textContent='Precise location received (±'+deviceLocation.accuracyMeters+' m). It will accompany your AI requests, Sir.';},err=>{$('hint').textContent=err.code===1?'Location permission was denied. Enable Precise location for J.A.R.V.I.S. in Android App permissions, Sir.':err.code===2?'The phone could not determine its location. Check that Location is switched on, Sir.':'Location request timed out. Please try again, Sir.';},{enableHighAccuracy:true,timeout:20000,maximumAge:0});}
+$('locationEnable').onclick=requestPreciseLocation;
+$('castButton').onclick=()=>{
+  if(window.AndroidJarvis&&typeof window.AndroidJarvis.openCastSettings==='function'){
+    const result=window.AndroidJarvis.openCastSettings();
+    if(result)$('hint').textContent=result+' This is an Android settings shortcut; JARVIS does not mirror the screen itself.';
+  }else if(window.AndroidJarvis&&typeof window.AndroidJarvis.openApp==='function'){
+    const result=window.AndroidJarvis.openApp('settings');
+    $('hint').textContent='Android Settings is open. Look for Connected devices, Connection & sharing, or Cast / Wireless display. This is a settings shortcut; JARVIS does not mirror the screen itself.';
+    add((result||'Opening Android Settings, Sir.')+' Then choose Cast / Screen Cast / Wireless display to select a compatible TV.','jarvis');
+  }else{
+    $('hint').textContent='To start mirroring, open Android Quick Settings and choose Cast, Screen Cast, Smart View or Wireless Display. JARVIS does not stream the screen itself; your TV must support a compatible wireless-display standard.';
+    add('Sir, this opens the phone’s own Cast controls. Select a compatible TV there; JARVIS does not mirror the screen itself. The TV and phone may need to be on the same Wi-Fi network.','jarvis');
+  }
+};
+function offlineReply(message,mode){const q=message.toLowerCase(),p=mode==='philosophical'?'A thought, Sir: ':mode==='witty'?'Certainly, Sir. ':'';if(/\b(where am i|my location|current location|where are we)\b/.test(q))return deviceLocation?'Your current coordinates are latitude '+deviceLocation.latitude+', longitude '+deviceLocation.longitude+', with an estimated accuracy of '+deviceLocation.accuracyMeters+' metres, Sir.':'I do not have your location yet, Sir. Tap Enable precise location and grant permission.';if(/\b(hello|hi|hey|good morning|good afternoon|good evening|good night)\b/.test(q))return 'Good day, Sir. All systems are standing by. What can I do for you?';if(/\b(time|what time)\b/.test(q))return 'The time on this device is '+new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})+', Sir.';if(/\b(date|today'?s date|what day)\b/.test(q))return 'Today is '+new Date().toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long',year:'numeric'})+', Sir.';if(/\b(who are you|your name|introduce yourself)\b/.test(q))return 'I am J.A.R.V.I.S., your personal assistant interface, Sir.';if(/\b(search|google|look up)\b/.test(q)){const t=message.replace(/^(please\s+)?(search( for)?|google|look up)\s*/i,'').trim();return t?'Here is your search: https://www.google.com/search?q='+encodeURIComponent(t):'What shall I search for, Sir?'}if(/\b(open|visit|go to)\b/.test(q)){const sites=[['youtube','https://youtube.com'],['google','https://google.com'],['gmail','https://mail.google.com'],['wikipedia','https://wikipedia.org'],['github','https://github.com']];const h=sites.find(([n])=>q.includes(n));return h?'Opening '+h[0]+': '+h[1]:'Name a site such as Google, YouTube, Gmail, Wikipedia, or GitHub, Sir.'}if(/\b(thanks|thank you)\b/.test(q))return 'Always a pleasure, Sir.';return p+'my online AI service is temporarily unavailable, Sir. Your question needs the AI model, so I cannot answer it reliably right now. Greetings, time, date, basic identity, common websites, and web searches remain available locally.'}
+// Cache exact Algieba recordings on this device. Cached speech is replayed
+// locally; new wording still requires an authorised Gemini TTS request.
+const speechMemoryCache=new Map();
+let speechDbPromise=null;
+const SPEECH_MEMORY_LIMIT=20,SPEECH_CACHE_MAX_ITEMS=150,SPEECH_CACHE_MAX_BYTES=40*1024*1024;
+function rememberSpeech(key,blob){
+  speechMemoryCache.delete(key);speechMemoryCache.set(key,blob);
+  while(speechMemoryCache.size>SPEECH_MEMORY_LIMIT)speechMemoryCache.delete(speechMemoryCache.keys().next().value);
+}
+function openSpeechCache(){
+  if(!('indexedDB' in window))return Promise.resolve(null);
+  if(speechDbPromise)return speechDbPromise;
+  speechDbPromise=new Promise(resolve=>{
+    const request=indexedDB.open('jarvis-speech-cache-v1',1);
+    request.onupgradeneeded=()=>{const db=request.result;if(!db.objectStoreNames.contains('audio'))db.createObjectStore('audio',{keyPath:'key'});};
+    request.onsuccess=()=>resolve(request.result);
+    request.onerror=()=>{speechDbPromise=null;resolve(null);};
+    request.onblocked=()=>{speechDbPromise=null;resolve(null);};
+  });
+  return speechDbPromise;
+}
+function speechCacheKey(text){return 'jarvis-alfred-male-british-v3|gemini-3.1-flash-tts-preview|Algieba|en-GB|'+text;}
+async function getCachedSpeech(key){
+  if(speechMemoryCache.has(key)){
+    const blob=speechMemoryCache.get(key);rememberSpeech(key,blob);return blob;
+  }
+  const db=await openSpeechCache();if(!db)return null;
+  return new Promise(resolve=>{
+    const tx=db.transaction('audio','readonly'),request=tx.objectStore('audio').get(key);
+    request.onsuccess=()=>{
+      const record=request.result,blob=record?.blob||null;
+      if(blob){
+        rememberSpeech(key,blob);
+        const touch=db.transaction('audio','readwrite');
+        touch.objectStore('audio').put({...record,lastUsed:Date.now()});
+      }
+      resolve(blob);
+    };
+    request.onerror=()=>resolve(null);
+  });
+}
+async function saveCachedSpeech(key,blob){
+  rememberSpeech(key,blob);
+  const db=await openSpeechCache();if(!db)return;
+  await new Promise(resolve=>{
+    const tx=db.transaction('audio','readwrite');
+    tx.objectStore('audio').put({key,blob,savedAt:Date.now(),lastUsed:Date.now(),size:blob.size||0});
+    tx.oncomplete=resolve;tx.onerror=resolve;tx.onabort=resolve;
+  });
+  // LRU eviction is bounded by both clip count and storage size.
+  await new Promise(resolve=>{
+    const tx=db.transaction('audio','readwrite'),store=tx.objectStore('audio'),items=[];
+    const cursor=store.openCursor();
+    cursor.onsuccess=()=>{
+      const c=cursor.result;
+      if(c){items.push({key:c.key,lastUsed:c.value.lastUsed||c.value.savedAt||0,size:c.value.size||c.value.blob?.size||0});c.continue();return;}
+      items.sort((a,b)=>b.lastUsed-a.lastUsed);
+      let bytes=0,kept=0;
+      for(const item of items){
+        if(kept>=SPEECH_CACHE_MAX_ITEMS||bytes+item.size>SPEECH_CACHE_MAX_BYTES){store.delete(item.key);speechMemoryCache.delete(item.key);}
+        else{bytes+=item.size;kept++;}
+      }
+      resolve();
+    };
+    cursor.onerror=resolve;
+  });
+}
+let speechAudioContext=null;
+function pcmToWav(pcm){
+  const wav=new ArrayBuffer(44+pcm.length),view=new DataView(wav);
+  const put=(s,o)=>{for(let i=0;i<s.length;i++)view.setUint8(o+i,s.charCodeAt(i));};
+  put('RIFF',0);view.setUint32(4,36+pcm.length,true);put('WAVE',8);put('fmt ',12);
+  view.setUint32(16,16,true);view.setUint16(20,1,true);view.setUint16(22,1,true);
+  view.setUint32(24,24000,true);view.setUint32(28,48000,true);view.setUint16(32,2,true);
+  view.setUint16(34,16,true);put('data',36);view.setUint32(40,pcm.length,true);
+  new Uint8Array(wav,44).set(pcm);return new Blob([wav],{type:'audio/wav'});
+}
+async function playPcmStream(response,cacheKey){
+  const AudioCtx=window.AudioContext||window.webkitAudioContext;
+  if(!AudioCtx)throw new Error('This device does not support low-latency audio playback.');
+  if(!speechAudioContext)speechAudioContext=new AudioCtx({sampleRate:24000});
+  const ctx=speechAudioContext;
+  if(ctx.state==='suspended')await ctx.resume();
+  const sources=new Set(),parts=[],initialChunks=[];
+  const START_BUFFER_BYTES=12000; // 250 ms at 24 kHz, 16-bit mono.
+  let initialBytes=0,started=false,nextStart=ctx.currentTime+0.06,carry=null,stopped=false,streamDone=false;
+  const controller={
+    pause(){stopped=true;sources.forEach(source=>{try{source.stop()}catch(e){}});sources.clear();}
+  };
+  currentAudio=controller;
+  const queuePcm=(chunk)=>{
+    if(stopped||!chunk.length)return;
+    let bytes=chunk;
+    if(carry){const joined=new Uint8Array(bytes.length+1);joined[0]=carry[0];joined.set(bytes,1);bytes=joined;carry=null;}
+    if(bytes.length%2){carry=bytes.slice(-1);bytes=bytes.slice(0,-1);}
+    if(!bytes.length)return;
+    const samples=new Int16Array(bytes.buffer,bytes.byteOffset,bytes.byteLength/2);
+    const floats=new Float32Array(samples.length);
+    for(let i=0;i<samples.length;i++)floats[i]=samples[i]/32768;
+    const buffer=ctx.createBuffer(1,floats.length,24000);buffer.copyToChannel(floats,0);
+    const source=ctx.createBufferSource();source.buffer=buffer;source.connect(ctx.destination);
+    const startAt=Math.max(nextStart,ctx.currentTime+0.025);nextStart=startAt+buffer.duration;
+    sources.add(source);
+    source.onended=()=>{sources.delete(source);if(streamDone&&!sources.size&&!stopped&&currentAudio===controller){currentAudio=null;status('System ready');}};
+    source.start(startAt);
+    status('Speaking','speaking');
+  };
+  const deliverChunk=(chunk)=>{
+    if(!chunk.length||stopped)return;
+    if(!started){
+      initialChunks.push(chunk.slice());initialBytes+=chunk.length;
+      if(initialBytes<START_BUFFER_BYTES)return;
+      started=true;
+      for(const buffered of initialChunks)queuePcm(buffered);
+      initialChunks.length=0;
+      return;
+    }
+    queuePcm(chunk);
+  };
+  const reader=response.body?.getReader?.();
+  if(reader){
+    while(true){const {value,done}=await reader.read();if(done)break;if(stopped)break;
+      const chunk=value instanceof Uint8Array?value:new Uint8Array(value);
+      if(chunk.length){parts.push(chunk.slice());deliverChunk(chunk);}
+    }
+  }else{
+    const chunk=new Uint8Array(await response.arrayBuffer());
+    if(chunk.length){parts.push(chunk);deliverChunk(chunk);}
+  }
+  if(stopped)return;
+  streamDone=true;
+  if(!started&&initialChunks.length){
+    started=true;
+    for(const buffered of initialChunks)queuePcm(buffered);
+    initialChunks.length=0;
+  }
+  if(carry)throw new Error('The speech stream ended unexpectedly.');
+  const total=parts.reduce((sum,p)=>sum+p.length,0),joined=new Uint8Array(total);
+  let offset=0;for(const part of parts){joined.set(part,offset);offset+=part.length;}
+  if(!total)throw new Error('Gemini returned an empty speech stream.');
+  // Playback begins after a short pre-buffer; the remainder is queued as it streams in.
+  // Save the complete original PCM response in the background for exact-voice replay.
+  saveCachedSpeech(cacheKey,pcmToWav(joined)).catch(()=>{});
+  if(!sources.size&&currentAudio===controller){currentAudio=null;status('System ready');}
+}
+let speechQuotaCooldownUntil=0;
+let speechQuotaCooldownReason='';
+function startOfflineFallback(spoken,error){
+  // Alfred voice policy: fail silent. Never hand speech to Android's default TTS
+  // engine, an unverified voice, or any female/unknown voice.
+  status('Alfred voice unavailable');
+  $('hint').textContent=(error?.quota
+    ?'The Alfred voice service is temporarily rate-limited. '
+    :'The Alfred voice service is unavailable. ')+(error?.message||'Speech generation failed.')+' I will remain silent rather than use another voice, Sir.';
+  return false;
+}
+async function speak(text){
+  if(!voiceOn)return;
+  if(currentAudio){currentAudio.pause();currentAudio=null;}
+  const spoken=String(text).trim().slice(0,4000);
+  if(!spoken)return;
+  const cacheKey=speechCacheKey(spoken);
+  status('Preparing voice','thinking');
+  try{
+    const cached=await getCachedSpeech(cacheKey);
+    if(cached){
+      $('hint').textContent='Using the saved Algieba recording, Sir.';
+      const audioUrl=URL.createObjectURL(cached),audio=new Audio(audioUrl);currentAudio=audio;
+      audio.onended=()=>{URL.revokeObjectURL(audioUrl);if(currentAudio===audio)currentAudio=null;status('System ready');};
+      audio.onerror=()=>{URL.revokeObjectURL(audioUrl);if(currentAudio===audio)currentAudio=null;status('Speech playback failed');$('hint').textContent='I generated the voice, but this device could not play the audio, Sir.';};
+      await audio.play();status('Speaking','speaking');return;
+    }
+    if(Date.now()<speechQuotaCooldownUntil){
+      const seconds=Math.ceil((speechQuotaCooldownUntil-Date.now())/1000);
+      const cooldownError=new Error('I am pausing new Google speech requests for '+seconds+' seconds to avoid repeatedly hitting the rate limit.');
+      cooldownError.quota=true;
+      startOfflineFallback(spoken,cooldownError);return;
+    }
+    status('Generating voice','thinking');
+    const response=await fetch(JARVIS_API+'/speech',{
+      method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+sessionToken},body:JSON.stringify({text:spoken})
+    });
+    if(!response.ok){
+      const raw=await response.text();let data={};try{data=JSON.parse(raw)}catch{}
+      const error=new Error(data.error||('Speech service returned HTTP '+response.status));
+      error.status=response.status;
+      if(response.status===429){
+        error.quota=/quota|rate.?limit|resource.?exhausted|limit:\s*0|exceeded/i.test(error.message);
+        speechQuotaCooldownUntil=Date.now()+(error.quota?5*60*1000:45*1000);
+        speechQuotaCooldownReason=error.message;
+      }
+      throw error;
+    }
+    await playPcmStream(response,cacheKey);
+  }catch(error){
+    if(currentAudio){try{currentAudio.pause();}catch(e){}currentAudio=null;}
+    startOfflineFallback(spoken,error);
+  }
+}
+$('testVoice').onclick=()=>{speak('Good evening, Sir. The car is parked near the garden. The water is rather warm, and the weather is changing. Would you care for a cup of tea?');$('hint').textContent='Testing the British voice…';};
+$('voiceToggle').onclick=()=>{voiceOn=!voiceOn;$('voiceToggle').textContent='Voice: '+(voiceOn?'On':'Off');if(!voiceOn){if(currentAudio){currentAudio.pause();currentAudio=null;}}};
+$('clear').onclick=async()=>{if(!sessionToken){openSyncPanel();return;}if(!confirm('Clear the shared JARVIS conversation on all paired devices? This cannot be undone.'))return;try{await pairApi({action:'clear',confirm:true});history=[];messages.innerHTML='';add('Conversation cleared across all your devices, Sir. What shall we discuss?','jarvis')}catch(e){$('hint').textContent=e.message}};
+function instantReply(text){
+ const q=String(text||'').trim().toLowerCase().replace(/[.!?]+$/,'').trim();
+ if(/^(?:hey(?: jarvis)?|hi(?: jarvis)?|hello(?: jarvis)?|good morning|good afternoon|good evening|good night)(?: jarvis)?$/.test(q))return 'Good '+(q.includes('morning')?'morning':q.includes('afternoon')?'afternoon':q.includes('evening')?'evening':q.includes('night')?'night':'day')+', Sir. I am here and ready.';
+ if(/^(?:thanks|thank you|thank you jarvis|thanks jarvis)$/.test(q))return 'Always a pleasure, Sir.';
+ if(/^(?:what time is it|tell me the time|current time)$/.test(q))return 'The time is '+new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})+', Sir.';
+ if(/^(?:what is the date|what is today'?s date|what day is it|today'?s date)$/.test(q))return 'Today is '+new Date().toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long',year:'numeric'})+', Sir.';
+ if(/^(?:please\s+)?(?:introduce yourself|introduce yourself to (?:my )?(?:friend|friends)|tell (?:my )?(?:friend|friends) who you are|say hello to (?:my )?(?:friend|friends))$/.test(q))return 'Good day. I am J.A.R.V.I.S., an intelligent personal assistant designed to help my owner with information, everyday tasks, device controls and music. I aim to be capable, discreet and always at your service. It is a pleasure to meet you.';
+ return null;
+}
+const jarvisNativeMusicSearchPending=new Map();
+let jarvisNativeMusicSearchSequence=0;
+window.jarvisNativeMusicSearchResult=function(requestId,payloadText){
+ const pending=jarvisNativeMusicSearchPending.get(requestId);
+ if(!pending)return;
+ jarvisNativeMusicSearchPending.delete(requestId);
+ clearTimeout(pending.timeout);
+ try{pending.resolve(JSON.parse(payloadText));}
+ catch(error){pending.reject(new Error('JARVIS could not read the YouTube Music search result.'));}
+};
+function searchYouTubeMusicOnPhone(query){
+ return new Promise((resolve,reject)=>{
+  const requestId='music_'+(++jarvisNativeMusicSearchSequence)+'_'+Date.now();
+  const timeout=setTimeout(()=>{
+   jarvisNativeMusicSearchPending.delete(requestId);
+   reject(new Error('YouTube Music search timed out on this phone.'));
+  },12000);
+  jarvisNativeMusicSearchPending.set(requestId,{resolve,reject,timeout});
+  try{window.AndroidJarvis.searchYouTubeMusic(query,requestId);}
+  catch(error){clearTimeout(timeout);jarvisNativeMusicSearchPending.delete(requestId);reject(error);}
+ });
+}
+async function lookupYoutubeMusicTrack(query){
+ if(window.AndroidJarvis&&typeof window.AndroidJarvis.searchYouTubeMusic==='function'){
+  const nativeData=await searchYouTubeMusicOnPhone(query);
+  if(nativeData.error)throw new Error(nativeData.error);
+  if(!nativeData.selected||!nativeData.selected.videoId)throw new Error('No matching YouTube Music track was returned.');
+  return nativeData.selected;
+ }
+ const response=await fetch(JARVIS_API+'/music-search',{
+  method:'POST',
+  headers:{'Content-Type':'application/json','Authorization':'Bearer '+sessionToken},
+  body:JSON.stringify({query})
+ });
+ const raw=await response.text();let data={};try{data=JSON.parse(raw)}catch{}
+ if(!response.ok||!data.selected||!data.selected.videoId)throw new Error(data.error||'No matching YouTube Music track was returned.');
+ return data.selected;
+}
+function readYouTubeMusicState(){
+ if(!window.AndroidJarvis||typeof window.AndroidJarvis.getYouTubeMusicPlaybackStatus!=='function')return {state:'UNAVAILABLE'};
+ try{return JSON.parse(window.AndroidJarvis.getYouTubeMusicPlaybackStatus()||'{}');}
+ catch(error){return {state:'ERROR'};}
+}
+function musicDelay(ms){return new Promise(resolve=>setTimeout(resolve,ms));}
+async function openYoutubeMusicTrack(track){
+ const videoId=String(track&&track.videoId||'').trim();
+ if(!/^[A-Za-z0-9_-]{11}$/.test(videoId))throw new Error('The selected YouTube Music result has an invalid track ID.');
+ if(!window.AndroidJarvis||typeof window.AndroidJarvis.playYoutubeMusic!=='function'){
+  window.location.href='https://music.youtube.com/watch?v='+encodeURIComponent(videoId);
+  $('hint').textContent='Opened the track link. Playback cannot be verified outside the JARVIS Android app.';
+  status('External music link opened');
+  return false;
+ }
+ const launch=window.AndroidJarvis.playYoutubeMusic(videoId)||'';
+ if(launch.startsWith('ERROR:'))throw new Error(launch.replace(/^ERROR:/,''));
+ if(!launch.startsWith('TRACK_OPENED:'))throw new Error('Android did not confirm that YouTube Music opened the selected track.');
+ let playRequested=false,lastState='NO_SESSION';
+ for(let attempt=0;attempt<32;attempt++){
+  const playback=readYouTubeMusicState();
+  lastState=playback.state||'UNKNOWN';
+  if(lastState==='PERMISSION_REQUIRED'){
+   $('hint').textContent='Enable Notification Access for J.A.R.V.I.S. so Android can verify and control playback.';
+   status('Notification access required');
+   if(typeof window.AndroidJarvis.openNotificationAccessSettings==='function')window.AndroidJarvis.openNotificationAccessSettings();
+   throw new Error('Android Notification Access is required to verify YouTube Music playback. Enable J.A.R.V.I.S. and repeat the song request.');
+  }
+  if(lastState==='PLAYING'){
+   $('hint').textContent='Confirmed: '+(playback.title||track.title||'the selected track')+' is playing in YouTube Music.';
+   status('Playback confirmed');
+   return true;
+  }
+  if(lastState==='PAUSED'&&!playRequested){
+   const command=window.AndroidJarvis.controlMusic('play')||'';
+   if(command.startsWith('ERROR:'))throw new Error(command.replace(/^ERROR:/,''));
+   playRequested=true;
+  }
+  await musicDelay(500);
+ }
+ $('hint').textContent='YouTube Music was opened, but Android never confirmed active playback. Last state: '+lastState+'.';
+ status('Playback not confirmed');
+ throw new Error('YouTube Music opened the track, but playback did not reach PLAYING state. Last state: '+lastState+'.');
+}
+async function controlYouTubeMusic(action){
+ const before=readYouTubeMusicState();
+ if(before.state==='PERMISSION_REQUIRED'){
+  if(typeof window.AndroidJarvis.openNotificationAccessSettings==='function')window.AndroidJarvis.openNotificationAccessSettings();
+  throw new Error('Enable J.A.R.V.I.S. in Android Notification Access, then repeat the command.');
+ }
+ if(before.state==='NO_SESSION')throw new Error('YouTube Music has no active session. Ask JARVIS to play a song by title first.');
+ if(before.state==='PLAYING'&&action==='play')return 'YouTube Music is already playing.';
+ if(before.state==='PAUSED'&&action==='pause')return 'YouTube Music is already paused.';
+ const command=window.AndroidJarvis.controlMusic(action)||'';
+ if(command.startsWith('ERROR:'))throw new Error(command.replace(/^ERROR:/,''));
+ for(let attempt=0;attempt<16;attempt++){
+  await musicDelay(400);
+  const after=readYouTubeMusicState();
+  if(after.state==='PERMISSION_REQUIRED')throw new Error('Android Notification Access is required to verify playback controls.');
+  if(action==='play'&&after.state==='PLAYING')return 'Confirmed: YouTube Music is playing.';
+  if(action==='pause'&&after.state==='PAUSED')return 'Confirmed: YouTube Music is paused.';
+  if((action==='next'||action==='previous')&&after.state!=='NO_SESSION'&&
+     ((after.mediaId&&before.mediaId&&after.mediaId!==before.mediaId)||
+      (after.title&&before.title&&after.title!==before.title)||
+      (after.artist&&before.artist&&after.artist!==before.artist))){
+   return 'Confirmed: YouTube Music changed tracks.';
+  }
+ }
+ throw new Error('Android sent the '+action+' command, but YouTube Music did not confirm the expected playback-state change.');
+}
+ $('form').onsubmit=async e=>{e.preventDefault();const message=$('prompt').value.trim();if(!message&&!pendingAttachment)return;$('prompt').value='';const attachment=pendingAttachment;pendingAttachment=null;renderAttachment();add(message||'Please examine this attachment, Sir.', 'user',attachment);history.push({role:'user',text:message||'Please examine the attached file.'});const fileRequest=detectFileRequest(message);if(fileRequest){await createOfficeFile(message,fileRequest.format,attachment);return;}
+const contactCommandText=message.replace(/^\s*(?:hey\s+)?jarvis[, ]*/i,'').trim().replace(/[.!?]+$/,'');
+ const importContactsCommand=/^(?:please\s+)?(?:import|load)\s+(?:my\s+)?contacts$|^(?:please\s+)?import\s+(?:a\s+)?contacts?\s+file$/i.test(contactCommandText);
+ if(importContactsCommand){
+  const reply='Certainly, Sir. Please choose your exported contacts file. If Android hides the .vcf file, rename its extension to .txt first. I will import the names and numbers locally on this device.';
+  add(reply,'jarvis');history.push({role:'model',text:reply});history=history.slice(-20);
+  if(window.AndroidJarvis&&typeof window.AndroidJarvis.chooseFile==='function')window.AndroidJarvis.chooseFile();
+  else $('attach').click();
+  $('hint').textContent='Choose the contacts export (.vcf, or .txt if renamed). JARVIS reads the vCard contents locally.';
+  status('Waiting for contacts file');speak(reply);return;
+ }
+ const rememberContact=contactCommandText.match(/^remember\s+contact\s+(.+?)\s+(?:as|number)\s+([+\d() .-]+)$/i);
+ if(rememberContact){
+  const name=rememberContact[1].trim(),number=cleanContactNumber(rememberContact[2]);
+  if(!number){const reply='That phone number does not look valid, Sir. Please include the country code if needed.';add(reply,'jarvis');history.push({role:'model',text:reply});history=history.slice(-20);speak(reply);return;}
+  const items=readJarvisContacts(),index=items.findIndex(x=>String(x.name||'').toLowerCase()===name.toLowerCase());
+  if(index>=0)items[index]={name,number};else items.push({name,number});
+  writeJarvisContacts(items);
+  const reply='Saved '+name+' in this device’s JARVIS contact list, Sir.';
+  add(reply,'jarvis');history.push({role:'model',text:reply});history=history.slice(-20);pairApi({action:'append-local',message,reply}).catch(()=>{});speak(reply);return;
+ }
+ const callContact=contactCommandText.match(/^(?:(?:please|could you|can you|would you)\s+)?(?:call|phone|ring)\s+(?:my\s+)?(.+?)(?:\s+(?:mobile|mobile number|phone|number))?$/i);
+ if(callContact){
+  const target=callContact[1].trim().replace(/^(?:contact\s+)/i,'');
+  // Prefer Android's live contacts database and permissioned native calling.
+  // The local VCF list remains a fallback for contacts imported manually.
+  if(window.AndroidJarvis&&typeof window.AndroidJarvis.callContact==='function'){
+   const nativeResult=window.AndroidJarvis.callContact(target)||'';
+   if(!nativeResult.startsWith('NOT_FOUND:')){
+    const nativeReply=nativeResult.startsWith('CALL_STARTING:')?'Certainly, Sir.':
+     nativeResult.startsWith('PERMISSION_REQUIRED:')?'Please allow Contacts access, Sir. I will continue with the call afterwards.':
+     nativeResult.startsWith('AMBIGUOUS:')?'I found more than one phone number for '+target+'. Please specify the full contact name, Sir.':
+     'I could not prepare that call, Sir.';
+    add(nativeReply,'jarvis');history.push({role:'model',text:nativeReply});history=history.slice(-20);
+    pairApi({action:'append-local',message,reply:nativeReply}).catch(()=>{});
+    $('hint').textContent=nativeResult.startsWith('CALL_STARTING:')?'Calling '+target+'…':nativeReply;
+    status(nativeResult.startsWith('CALL_STARTING:')?'Calling':'System ready');speak(nativeReply);return;
+   }
+  }
+  const result=resolveJarvisContact(target);
+  let reply='';
+  if(result.missing)reply='I cannot find '+target+' in my JARVIS contact list, Sir. Say “import contacts” to load your contacts VCF, or “remember contact '+target+' as [number]”.';
+  else if(result.ambiguous)reply='I found more than one matching contact: '+result.names.join(', ')+'. Please use the full contact name, Sir.';
+  else{
+   reply='Certainly, Sir. Opening the dialler for '+result.contact.name+'. Please review and confirm the call.';
+   add(reply,'jarvis');history.push({role:'model',text:reply});history=history.slice(-20);pairApi({action:'append-local',message,reply}).catch(()=>{});
+   $('hint').textContent='Opening Android dialler. No call is placed automatically.';
+   speak(reply);
+   setTimeout(()=>{window.location.href='tel:'+result.contact.number;},450);
+   return;
+  }
+  add(reply,'jarvis');history.push({role:'model',text:reply});history=history.slice(-20);speak(reply);return;
+ }
+ 
+const instant=attachment?null:instantReply(message);
+if(instant){
+ add(instant,'jarvis');history.push({role:'model',text:instant});history=history.slice(-20);
+ pairApi({action:'append-local',message,reply:instant}).catch(()=>{});
+ $('hint').textContent='Ready when you are.';status('System ready');speak(instant);return;
+}
+// Handle a chained native command locally instead of sending it to the AI chat model.
+const multiAppMusic=message.match(/^\s*(?:jarvis[, ]+)?(?:please\s+)?(?:open|launch|start)\s+(whatsapp|chrome|gmail|instagram|facebook|telegram)\s+and\s+(?:then\s+)?(?:play|listen to)\s+(.+?)(?:\s+(?:on|in)\s+youtube\s+music)?[.!?]*\s*$/i);
+if(multiAppMusic && window.AndroidJarvis && typeof window.AndroidJarvis.openApp==='function'){
+ const appName=multiAppMusic[1].toLowerCase();
+ const songQuery=multiAppMusic[2].trim().replace(/\s+(?:on|in)\s+youtube\s+music$/i,'').trim();
+ const appReply=window.AndroidJarvis.openApp(appName);
+ let spokenReply;
+ try{
+  const track=await lookupYoutubeMusicTrack(songQuery);
+  await openYoutubeMusicTrack(track);
+  spokenReply='Sending '+track.title+' by '+track.artist+' in YouTube Music, Sir.';
+  $('hint').textContent='Exact track sent to YouTube Music; verify actual playback on the phone.';
+ }catch(error){
+  spokenReply='Sir, I could not open that song in YouTube Music: '+error.message;
+  $('hint').textContent='YouTube Music track lookup or launch failed.';
+ }
+ add(spokenReply,'jarvis');history.push({role:'model',text:spokenReply});history=history.slice(-20);
+ pairApi({action:'append-local',message,reply:spokenReply}).catch(()=>{});
+ status('System ready');speak(spokenReply);return;
+}
+const openYoutubeMusicOnly=/^\s*(?:jarvis[, ]+)?(?:please\s+)?(?:open|launch|start)\s+youtube\s+music(?:\s+app)?[.!?]*\s*$/i.test(message);
+const musicTransport = message.match(/^\s*(?:hey\s+)?(?:jarvis[, ]+)?(?:please\s+)?(?:play|pause|stop|resume|continue|next|skip|previous|back)\s*(?:(?:the|this|current)\s+)?(?:music|song|track)?[.!?]*\s*$/i);
+if(musicTransport && window.AndroidJarvis && typeof window.AndroidJarvis.controlMusic==='function'){
+ const raw=message.toLowerCase();
+ const action=/\b(pause|stop)\b/.test(raw)?'pause':/\b(play|resume|continue)\b/.test(raw)?'play':/\b(next|skip)\b/.test(raw)?'next':'previous';
+ let reply;
+ try{
+  reply=await controlYouTubeMusic(action);
+  $('hint').textContent=reply;
+  status('Playback state verified');
+ }catch(error){
+  reply='Sir, '+error.message;
+  $('hint').textContent=error.message;
+  status('Playback not confirmed');
+ }
+ add(reply,'jarvis');history.push({role:'model',text:reply});history=history.slice(-20);
+ pairApi({action:'append-local',message,reply}).catch(()=>{});
+ speak(reply);return;
+}
+
+const musicCommand=message.match(/^\s*(?:(?:hey\s+)?jarvis[, ]+)?(?:(?:please|could you|can you|would you|will you)\s+)*(?:play|search(?:\s+for)?|find|put on|listen to|i want to hear|i'd like to hear)\s+(.+?)(?:\s+(?:on|in)\s+youtube\s+music)?[.!?]*\s*$/i);
+const explicitMusicCommand=/\byoutube\s+music\b/i.test(message)&&musicCommand;
+const directMusicIntent=/^\s*(?:(?:hey\s+)?jarvis[, ]+)?(?:(?:please|could you|can you|would you|will you)\s+)*(?:play|put on|listen to|i want to hear|i'd like to hear)\b/i.test(message);
+if(openYoutubeMusicOnly){
+ const hasNativeMusicBridge=window.AndroidJarvis&&typeof window.AndroidJarvis.playYoutubeMusic==='function';
+ const reply=hasNativeMusicBridge
+  ?window.AndroidJarvis.openApp('youtube music'):'Opening YouTube Music, Sir.';
+ add(reply,'jarvis');history.push({role:'model',text:reply});history=history.slice(-20);
+ pairApi({action:'append-local',message,reply}).catch(()=>{});
+ $('hint').textContent='Opening YouTube Music, Sir.';status('System ready');
+ if(hasNativeMusicBridge)speak(reply);
+ else window.location.href='https://music.youtube.com/';
+ return;
+}
+if(musicCommand&&(explicitMusicCommand||directMusicIntent)){
+ const songQuery=musicCommand[1].trim().replace(/\s+(?:on|in)\s+youtube\s+music$/i,'').trim();
+ if(songQuery){
+  // A short acknowledgement is spoken immediately. Do not interrupt Algieba
+  // with a second, longer utterance just before launching the music app.
+  const acknowledgement='Certainly, Sir.';
+  add(acknowledgement,'jarvis');history.push({role:'model',text:acknowledgement});history=history.slice(-20);
+  pairApi({action:'append-local',message,reply:acknowledgement}).catch(()=>{});
+  $('hint').textContent='Finding your music, Sir…';status('Resolving track');
+  const acknowledgementFinished=(async()=>{
+   speak(acknowledgement);
+   const started=Date.now();
+   while(currentAudio&&Date.now()-started<7000)await new Promise(resolve=>setTimeout(resolve,100));
+  })();
+  try{
+   const track=await lookupYoutubeMusicTrack(songQuery);
+   $('hint').textContent='Sending '+track.title+' by '+track.artist+' to YouTube Music…';
+   status('Launching track');
+   await acknowledgementFinished;
+   // The watch URL is handed to Android after the acknowledgement finishes,
+   // avoiding navigation cutting off the Alfred/Algieba voice stream.
+   openYoutubeMusicTrack(track);
+  }catch(error){
+   $('hint').textContent='Could not select a song: '+error.message;
+   status('Music request failed');
+   await acknowledgementFinished;
+   const failure='I could not find and send that song to YouTube Music, Sir: '+error.message;
+   add(failure,'jarvis');history.push({role:'model',text:failure});history=history.slice(-20);speak(failure);
+  }
+  return;
+ }
+}
+const appCommand=message.match(/^\s*(?:jarvis[, ]+)?(?:please\s+)?(?:open|launch|start)\s+([a-z0-9 +.-]+?)(?:\s+app)?[.!?]*\s*$/i);
+const cameraCommandText=message.replace(/^\s*(?:hey\s+)?jarvis[, ]*/i,'').trim().replace(/[.!?]+$/,'').toLowerCase();
+const cameraAction=/^(?:please\s+)?(?:open|launch|start)(?:\s+the)?\s+camera$/.test(cameraCommandText)?'open':
+ /^(?:please\s+)?(?:take|capture)(?:\s+(?:a|the))?\s+selfie$/.test(cameraCommandText)?'selfie':
+ /^(?:please\s+)?(?:take|capture)(?:\s+(?:a|the))?\s+photos?$/.test(cameraCommandText)?'photo':
+ /^(?:please\s+)?(?:show|open|view)(?:\s+me)?(?:\s+the)?\s+(?:last\s+)?photo$/.test(cameraCommandText)?'show':null;
+if(cameraAction){
+ const replies={open:'Certainly, Sir. Opening the camera.',photo:'Certainly, Sir. Taking a photo now.',selfie:'Certainly, Sir. Switching to the front camera for your selfie.',show:'Certainly, Sir. Opening your latest JARVIS photo.'};
+ const reply=replies[cameraAction];
+ add(reply,'jarvis');history.push({role:'model',text:reply});history=history.slice(-20);
+ pairApi({action:'append-local',message,reply}).catch(()=>{});
+ $('hint').textContent=cameraAction==='show'?'Opening your latest saved photo…':'Camera requested. You can cancel before capture.';
+ status(cameraAction==='show'?'Opening photo':'Camera active');
+ try{
+  if(window.AndroidJarvis){
+   if(cameraAction==='open'&&typeof window.AndroidJarvis.openCamera==='function')window.AndroidJarvis.openCamera();
+   else if(cameraAction==='photo'&&typeof window.AndroidJarvis.capturePhoto==='function')window.AndroidJarvis.capturePhoto(false);
+   else if(cameraAction==='selfie'&&typeof window.AndroidJarvis.capturePhoto==='function')window.AndroidJarvis.capturePhoto(true);
+   else if(cameraAction==='show'&&typeof window.AndroidJarvis.showLastPhoto==='function')window.AndroidJarvis.showLastPhoto();
+   else if(cameraAction==='photo'||cameraAction==='selfie')$('camera').click();
+  }else if(cameraAction==='photo'||cameraAction==='selfie')$('camera').click();
+  else if(cameraAction==='open')$('cameraInput').click();
+  else $('hint').textContent='Your latest photo is available in your device gallery.';
+ }catch(error){$('hint').textContent='The camera action could not be started. Please try again, Sir.';status('System ready');}
+ speak(reply);
+ return;
+}
+const installedAppsRequest=/^\s*(?:hey\s+)?jarvis[, ]*(?:please\s+)?(?:list|show)(?:\s+me)?(?:\s+all)?\s+(?:my\s+)?(?:installed\s+)?apps\s*[.!?]*\s*$|^\s*(?:hey\s+)?jarvis[, ]*what apps are installed\s*[.!?]*\s*$/i.test(message);
+if(installedAppsRequest&&window.AndroidJarvis&&typeof window.AndroidJarvis.getInstalledApps==='function'){
+ let reply='I could not retrieve the installed-app list, Sir.';
+ try{const apps=JSON.parse(window.AndroidJarvis.getInstalledApps()||'[]');reply=apps.length?'These are the launchable apps I can see on this device, Sir: '+apps.map(app=>app.name).join(', '):'Android did not return any launchable apps, Sir.';}catch(error){}
+ add(reply,'jarvis');history.push({role:'model',text:reply});history=history.slice(-20);pairApi({action:'append-local',message,reply}).catch(()=>{});$('hint').textContent='Device app inventory checked.';status('System ready');speak(reply);return;
+}
+const appAliases={'whatsapp':'whatsapp','you tube':'youtube','youtube':'youtube','youtube music':'youtube music','chrome':'chrome','gmail':'gmail','google maps':'maps','maps':'maps','spotify':'spotify','instagram':'instagram','facebook':'facebook','telegram':'telegram','camera':'camera','play store':'play store','messages':'messages','message':'messages','phone':'phone','settings':'settings','phone settings':'settings','twitter':'twitter','x':'x','reddit':'reddit','photos':'photos','google photos':'photos','calendar':'calendar','google calendar':'calendar','keep':'keep','google keep':'keep','contacts':'contacts','drive':'drive','google drive':'drive','files':'files','file manager':'files','amazon':'amazon','flipkart':'flipkart','browser':'browser','calculator':'calculator','gallery':'gallery','swiggy':'swiggy','zomato':'zomato'};
+function handleCalendarOrAlarmCommand(text){
+ if(!window.AndroidJarvis)return null;
+ const reminder=text.match(/^\s*(?:jarvis[, ]+)?(?:please\s+)?remind me to (.+?) at (\d{1,2})(?::(\d{2}))?\s*(am|pm)\s*[.!?]*\s*$/i);
+ const alarm=text.match(/^\s*(?:jarvis[, ]+)?(?:please\s+)?(?:set|create)\s+(?:an?\s+)?alarm\s+(?:for|at)\s+(\d{1,2})(?::(\d{2}))?\s*(am|pm)?(?:\s+(?:called|named|labelled)\s+(.+?))?[.!?]*\s*$/i);
+ const match=reminder||alarm;
+ if(match){
+  if(typeof window.AndroidJarvis.setAlarm!=='function')return 'Sir, this installed JARVIS version does not include native Clock controls yet. Please open the Clock app to set that alarm.';
+  let hour=Number(reminder?match[2]:match[1]),minute=Number(reminder?match[3]||0:match[2]||0);
+  const period=reminder?match[4]?.toLowerCase():match[3]?.toLowerCase();
+  if(minute>59||(period&&(hour<1||hour>12))||(!period&&(hour<0||hour>23)))return 'That alarm time is invalid, Sir.';
+  if(period){hour=hour%12;if(period==='pm')hour+=12;}
+  else if(hour<=12)return null;
+  const label=reminder?'Reminder: '+match[1].trim():(match[4]||'JARVIS alarm').trim();
+  return window.AndroidJarvis.setAlarm(hour,minute,label);
+ }
+ const event=text.match(/^\s*(?:jarvis[, ]+)?(?:please\s+)?(?:create|add|schedule)\s+(?:a\s+)?(?:calendar\s+)?event\s+(.+?)\s+(?:on|for)\s+(\d{4})-(\d{2})-(\d{2})\s+at\s+(\d{1,2}):(\d{2})\s*$/i);
+ const datedReminder=text.match(/^\s*(?:jarvis[, ]+)?(?:please\s+)?remind me to (.+?) on (\d{4})-(\d{2})-(\d{2}) at (\d{1,2}):(\d{2})\s*$/i);
+ const scheduled=event||datedReminder;
+ if(scheduled){
+  if(typeof window.AndroidJarvis.createCalendarEvent!=='function')return 'Sir, this installed JARVIS version does not include native Calendar controls yet. Please open Calendar to add that event.';
+  const title=(datedReminder?'Reminder: ':'')+scheduled[1].trim();
+  const year=Number(scheduled[2]),month=Number(scheduled[3]),day=Number(scheduled[4]),hour=Number(scheduled[5]),minute=Number(scheduled[6]);
+  const start=new Date(year,month-1,day,hour,minute,0,0);
+  if(start.getFullYear()!==year||start.getMonth()!==month-1||start.getDate()!==day||hour>23||minute>59)return 'That calendar date or time is invalid, Sir.';
+  if(start.getTime()<=Date.now())return 'That date and time has already passed, Sir. Please choose a future time.';
+  return window.AndroidJarvis.createCalendarEvent(title,start.getTime(),start.getTime()+60*60*1000,'Created through J.A.R.V.I.S.');
+ }
+ return null;
+}
+const scheduledReply=handleCalendarOrAlarmCommand(message);
+if(scheduledReply){add(scheduledReply,'jarvis');history.push({role:'model',text:scheduledReply});history=history.slice(-20);pairApi({action:'append-local',message,reply:scheduledReply}).catch(()=>{});$('hint').textContent='Ready when you are.';status('System ready');speak(scheduledReply);return;}
+if(appCommand && window.AndroidJarvis){const requestedApp=appCommand[1].trim();const appName=appAliases[requestedApp.toLowerCase()]||requestedApp;{const reply=window.AndroidJarvis.openApp(appName);add(reply,'jarvis');history.push({role:'model',text:reply});history=history.slice(-20);pairApi({action:'append-local',message,reply}).catch(()=>{});$('hint').textContent='Ready when you are.';status('System ready');speak(reply);return;}}
+if(!sessionToken){openSyncPanel();$('syncStatus').textContent='Pair this device to use online AI features. Local device commands remain available, Sir.';return;}
+ status('Thinking','thinking');$('hint').textContent='Processing your request…';chatBusy=true;try{const r=await fetch(JARVIS_API+'/chat',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+sessionToken},body:JSON.stringify({message:message||'Please examine the attached file and describe its contents.',history,mode:$('mode').value,attachment,deviceContext:getDeviceContext()})});const raw=await r.text();let data={};try{data=JSON.parse(raw)}catch{}if(!r.ok){const error=new Error(data.error||('AI service returned HTTP '+r.status));error.status=r.status;throw error;}const reply=data.reply||'I have no response, Sir.';chatBusy=false;add(reply,'jarvis',null,null,data.toolCalls,data.pendingActions);history.push({role:'model',text:reply});history=history.slice(-20);$('hint').textContent=data.pendingActions&&data.pendingActions.length?'Review the proposed action below; nothing is confirmed yet, Sir.':data.toolCalls&&data.toolCalls.some(x=>x.status==='success')?'Task completed. Tool report attached, Sir.':data.toolCalls&&data.toolCalls.length?'No tool action was completed; see the report below, Sir.':'Ready when you are.';speak(reply);if(!voiceOn)status('System ready');}catch(err){
+ chatBusy=false;
+ let fallback;
+ if(err.status===401){
+  sessionToken='';localStorage.removeItem('jarvisSessionToken');localStorage.removeItem('jarvisDeviceId');
+  openSyncPanel();fallback='Sir, this device needs to be paired with your JARVIS owner device again before I can access the shared brain.';
+ }else if(err.status && err.status<500 && err.status!==429){
+  fallback=err.message||'That request could not be completed, Sir.';
+ }else{
+  fallback=attachment
+   ?'Sir, I cannot inspect this attachment while the intelligence service is offline. Please reconnect and send it again.'
+   :offlineReply(message,$('mode').value);
+  $('hint').textContent='The online intelligence service is unavailable. Basic local commands remain available; open-ended reasoning requires a connection, Sir.';
+  status('Offline mode');
+ }
+ add(fallback,'jarvis');history.push({role:'model',text:fallback});history=history.slice(-20);
+ // Preserve offline/basic-command exchanges in the same shared conversation so
+ // paired devices do not lose turns merely because Gemini was unavailable.
+ if(sessionToken)pairApi({action:'append-local',message,reply:fallback}).catch(()=>{});
+ speak(fallback);
+}};
+let browserWakeEnabled=false,browserWakeRecognition=null,browserWakeCommandCapture=false,browserWakeRestartTimer=null;
+const BrowserSpeechRecognition=window.SpeechRecognition||window.webkitSpeechRecognition;
+function scheduleBrowserWakeRestart(delay){
+ clearTimeout(browserWakeRestartTimer);
+ browserWakeRestartTimer=setTimeout(()=>{
+  if(!browserWakeEnabled||document.visibilityState==='hidden'||browserWakeCommandCapture)return;
+  if(chatBusy){scheduleBrowserWakeRestart(1500);return;}
+  startBrowserWakeListener();
+ },delay||900);
+}
+function parseBrowserWakePhrase(transcript){
+ const match=String(transcript||'').trim().match(/^(?:hey\s+jarvis|hello\s+jarvis|wake\s+up\s+jarvis|jarvis\s*,?\s*are\s+you\s+there)[,.\s!?]*(.*)$/i);
+ return match?{detected:true,command:(match[1]||'').trim()}:null;
+}
+function startBrowserWakeListener(){
+ if(!browserWakeEnabled||!BrowserSpeechRecognition||document.visibilityState==='hidden'||browserWakeCommandCapture)return;
+ try{
+  const recognition=new BrowserSpeechRecognition();
+  browserWakeRecognition=recognition;
+  recognition.lang='en-GB';recognition.continuous=true;recognition.interimResults=false;recognition.maxAlternatives=1;
+  recognition.onresult=event=>{
+   for(let i=event.resultIndex;i<event.results.length;i++){
+    if(!event.results[i].isFinal)continue;
+    const detected=parseBrowserWakePhrase(event.results[i][0].transcript);
+    if(!detected)continue;
+    browserWakeCommandCapture=true;
+    try{recognition.stop()}catch{}
+    browserWakeRecognition=null;
+    $('hint').textContent='Wake phrase recognised, Sir.';
+    status('Wake phrase detected','listening');
+    if(detected.command){
+     $('prompt').value=detected.command;
+     $('form').requestSubmit();
+     browserWakeCommandCapture=false;
+     scheduleBrowserWakeRestart(3500);
+    }else{
+     const promptStarted=Date.now();
+     Promise.resolve(speak('Yes, Sir?')).finally(()=>{
+      const waitForPrompt=()=>{
+       if(!browserWakeEnabled)return;
+       if(currentAudio&&!currentAudio.paused&&!currentAudio.ended&&Date.now()-promptStarted<8000){setTimeout(waitForPrompt,250);return;}
+       captureBrowserWakeCommand();
+      };
+      setTimeout(waitForPrompt,500);
+     });
+    }
+    break;
+   }
+  };
+  recognition.onerror=event=>{
+   if(event.error==='not-allowed'||event.error==='service-not-allowed'){
+    browserWakeEnabled=false;browserWakeCommandCapture=false;$('wakeWordButton').textContent='Wake-word microphone';
+    $('hint').textContent='Microphone permission was denied. Allow microphone access for JARVIS in Android settings, Sir.';
+    status('Microphone permission needed');
+   }else if(event.error!=='no-speech'&&event.error!=='aborted'){
+    $('hint').textContent='Wake-word listening paused: '+event.error+'. You can retry the wake-word button, Sir.';
+   }
+  };
+  recognition.onend=()=>{
+   if(browserWakeRecognition===recognition)browserWakeRecognition=null;
+   if(browserWakeEnabled&&!browserWakeCommandCapture)scheduleBrowserWakeRestart(1000);
+  };
+  recognition.start();
+  $('wakeWordButton').textContent='Wake-word mic: On';
+  $('hint').textContent='Listening for Hey JARVIS, Hello JARVIS, Wake up JARVIS, or JARVIS, are you there? Keep JARVIS open, Sir.';
+  status('Wake-word listening','listening');
+ }catch(error){
+  browserWakeRecognition=null;
+  $('hint').textContent='This browser could not start continuous wake-word listening. Use the microphone button instead, Sir.';
+  status('Wake-word unavailable');
+ }
+}
+function captureBrowserWakeCommand(){
+ if(!browserWakeEnabled)return;
+ if(window.AndroidJarvis&&typeof window.AndroidJarvis.startVoiceRecognition==='function'){
+  try{window.AndroidJarvis.startVoiceRecognition();return}catch{}
+ }
+ if(!BrowserSpeechRecognition){
+  browserWakeCommandCapture=false;
+  $('hint').textContent='The wake phrase was heard, but this browser cannot capture the follow-up command. Tap the microphone, Sir.';
+  scheduleBrowserWakeRestart(2500);return;
+ }
+ try{
+  const commandRecognition=new BrowserSpeechRecognition();
+  commandRecognition.lang='en-GB';commandRecognition.continuous=false;commandRecognition.interimResults=false;commandRecognition.maxAlternatives=1;
+  commandRecognition.onresult=event=>{
+   const transcript=event.results?.[0]?.[0]?.transcript||'';
+   if(transcript.trim()){$('prompt').value=transcript;$('form').requestSubmit();}
+  };
+  commandRecognition.onerror=()=>{$('hint').textContent='I did not catch that command, Sir.';};
+  commandRecognition.onend=()=>{browserWakeCommandCapture=false;scheduleBrowserWakeRestart(1800);};
+  commandRecognition.start();
+  $('hint').textContent='Yes, Sir? I am listening for your command.';
+  status('Listening for command','listening');
+ }catch(error){
+  browserWakeCommandCapture=false;
+  $('hint').textContent='Command capture could not start. Tap the microphone, Sir.';
+  scheduleBrowserWakeRestart(1800);
+ }
+}
+function stopBrowserWake(){
+ browserWakeEnabled=false;browserWakeCommandCapture=false;clearTimeout(browserWakeRestartTimer);
+ if(browserWakeRecognition){try{browserWakeRecognition.stop()}catch{}browserWakeRecognition=null;}
+ $('wakeWordButton').textContent='Wake-word microphone';
+ $('hint').textContent='Wake-word listening is off, Sir.';
+ status('System ready');
+}
+function readJarvisContacts(){
+ try{const v=JSON.parse(localStorage.getItem('jarvisContactsV1')||'[]');return Array.isArray(v)?v:[]}catch{return []}
+}
+function writeJarvisContacts(items){localStorage.setItem('jarvisContactsV1',JSON.stringify(items));}
+function cleanContactNumber(value){
+ const raw=String(value||'').trim();
+ const number=raw.replace(/[^0-9+]/g,'');
+ const digits=number.replace(/\D/g,'');
+ return digits.length>=7&&digits.length<=15&&(!number.slice(1).includes('+'))?number:'';
+}
+function importJarvisVcards(file){
+ try{
+  const bytes=Uint8Array.from(atob(file.data||''),c=>c.charCodeAt(0));
+  const source=new TextDecoder('utf-8').decode(bytes).replace(/\r\n[ \t]/g,'').replace(/\n[ \t]/g,'');
+  const cards=source.split(/BEGIN:VCARD/i).slice(1);
+  const imported=[];
+  for(const card of cards){
+   const block=card.split(/END:VCARD/i)[0]||'';
+   const lines=block.split(/\r?\n/);
+   let name='',fallback='',numbers=[];
+   for(const line of lines){
+    const m=line.match(/^(?:item\d+\.)?(FN|N|TEL)(?:;([^:]*))?:(.*)$/i);
+    if(!m)continue;
+    const key=m[1].toUpperCase(),meta=(m[2]||'').toUpperCase(),value=m[3].replace(/\\n/gi,' ').replace(/\\([,;\\])/g,'$1').trim();
+    if(key==='FN')name=value;
+    else if(key==='N')fallback=value.split(';').filter(Boolean).reverse().join(' ').trim();
+    else {const number=cleanContactNumber(value);if(number)numbers.push({number,priority:/CELL|MOBILE/.test(meta)?0:/WORK/.test(meta)?2:1});}
+   }
+   const number=numbers.sort((a,b)=>a.priority-b.priority)[0]?.number;
+   name=(name||fallback).trim();
+   if(name&&number)imported.push({name,number});
+  }
+  if(!imported.length)throw new Error('No usable names and phone numbers were found in that VCF file.');
+  const existing=readJarvisContacts();
+  for(const item of imported){
+   const key=item.name.toLocaleLowerCase();
+   const index=existing.findIndex(x=>String(x.name||'').toLocaleLowerCase()===key);
+   if(index>=0)existing[index]=item;else existing.push(item);
+  }
+  writeJarvisContacts(existing);
+  return imported.length;
+ }catch(error){throw new Error(error.message||'Could not import that contacts file.');}
+}
+function resolveJarvisContact(query){
+ const q=String(query||'').trim().toLocaleLowerCase();
+ const all=readJarvisContacts();
+ const exact=all.filter(x=>String(x.name||'').trim().toLocaleLowerCase()===q);
+ if(exact.length===1)return {contact:exact[0]};
+ if(exact.length>1)return {ambiguous:true,names:exact.map(x=>x.name)};
+ const partial=all.filter(x=>String(x.name||'').toLocaleLowerCase().includes(q)||q.includes(String(x.name||'').toLocaleLowerCase()));
+ if(partial.length===1)return {contact:partial[0]};
+ if(partial.length>1)return {ambiguous:true,names:partial.map(x=>x.name)};
+ return {missing:true};
+}
+window.jarvisNative={
+ onWakeWordDetected:()=>{$('hint').textContent='I am listening for your command, Sir.';status('Wake word detected','listening');speak('Yes, Sir?')},
+ onMicrophoneReady:()=>{$('hint').textContent='Microphone is active. Speak your command, Sir.';status('Listening','listening');},
+ onMicrophoneError:(message)=>{$('hint').textContent='Microphone unavailable: '+String(message||'Audio capture failed.');status('Microphone error');},
+ onSpeechPartial:(transcript)=>{$('prompt').value=transcript;status('Listening · '+transcript,'listening');},
+ onSpeechResult:(transcript)=>{
+  const command=String(transcript||'').trim().replace(/^(?:(?:hey|hello)\s+jarvis|wake\s+up\s+jarvis|jarvis(?:\s+are\s+you\s+there)?)[, ]*/i,'').trim();
+  if(!command){$('hint').textContent='I am ready for your command, Sir.';return;}
+  $('prompt').value=command;$('form').requestSubmit();
+  if(browserWakeCommandCapture){browserWakeCommandCapture=false;scheduleBrowserWakeRestart(3500);}
+ },
+ onAttachment:(raw)=>{try{const a=typeof raw==='string'?JSON.parse(raw):raw;if(/\.vcf$/i.test(a.name||'')||/vcard/i.test(a.mimeType||'')||/^BEGIN:VCARD/im.test(new TextDecoder('utf-8').decode(Uint8Array.from(atob(a.data||''),c=>c.charCodeAt(0)).slice(0,256)))){const count=importJarvisVcards(a);const reply='Imported '+count+' contacts into this JARVIS device, Sir. You can now say “call Amma” or “call [contact name]”.';add(reply,'jarvis');history.push({role:'model',text:reply});history=history.slice(-20);pairApi({action:'append-local',message:'Import contacts from VCF',reply}).catch(()=>{});$('hint').textContent='Contacts imported locally. No contacts permission was requested.';speak(reply);return;}pendingAttachment=a;renderAttachment();$('hint').textContent='Attachment ready, Sir. Add a question or send it as it is.'}catch(e){$('hint').textContent='Contact import failed: '+e.message}}
+};
+$('wakeWordButton').hidden=false;
+$('wakeWordButton').onclick=()=>{
+ if(window.AndroidJarvis&&typeof window.AndroidJarvis.openWakeWordSettings==='function'){
+  window.AndroidJarvis.openWakeWordSettings();return;
+ }
+ if(window.AndroidJarvis){
+  $('wakeWordButton').textContent='Wake phrases need app update';
+  $('hint').textContent='Build 39 does not include the Android microphone permission and native wake-word service. Use the separate microphone button for tap-to-speak; continuous wake phrases need a compatible app update, Sir.';
+  status('Native wake-word support needs app update');
+  return;
+ }
+ if(browserWakeEnabled){stopBrowserWake();return;}
+ if(!BrowserSpeechRecognition){
+  add('This browser does not support continuous wake-word recognition. The microphone button remains available, Sir.','jarvis');
+  $('hint').textContent='Continuous wake-word recognition is not supported by this browser.';
+  return;
+ }
+ browserWakeEnabled=true;startBrowserWakeListener();
+};
+document.addEventListener('visibilitychange',()=>{
+ if(!browserWakeEnabled)return;
+ if(document.visibilityState==='hidden'){
+  if(browserWakeRecognition){try{browserWakeRecognition.stop()}catch{}browserWakeRecognition=null;}
+  $('wakeWordButton').textContent='Wake-word mic: paused';
+  $('hint').textContent='Wake-word listening pauses while this browser tab is in the background. Return to JARVIS to resume, Sir.';
+  status('Wake-word paused');
+ }else if(!browserWakeCommandCapture){
+  $('wakeWordButton').textContent='Wake-word mic: On';
+  scheduleBrowserWakeRestart(500);
+ }
+});
+$('mic').onclick=()=>{
+ if(chatBusy){$('hint').textContent='I am finishing the current request, Sir. Please wait a moment.';return;}
+ if(window.AndroidJarvis&&typeof window.AndroidJarvis.startVoiceRecognition==='function'){window.AndroidJarvis.startVoiceRecognition();return;}
+ const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+ if(!SR){add('Voice recognition is not supported by this browser, Sir.','jarvis');$('hint').textContent='This browser does not provide speech recognition. You can still type your request.';return;}
+ const rec=new SR();rec.lang='en-GB';rec.continuous=false;rec.interimResults=true;rec.maxAlternatives=1;
+ rec.onstart=()=>{status('Listening','listening');$('hint').textContent='Listening, Sir. Speak now.';};
+ rec.onresult=e=>{const result=e.results[e.results.length-1];if(result&&result[0]){$('prompt').value=result[0].transcript;if(result.isFinal)$('form').requestSubmit();}};
+ rec.onerror=e=>{
+  const messages={'not-allowed':'Microphone permission is blocked. Allow microphone access for this site in your browser settings, Sir.','service-not-allowed':'Your browser speech service is unavailable. Check microphone and speech permissions, Sir.','audio-capture':'No working microphone was found. Check the phone microphone and try again, Sir.','network':'The browser speech service needs an internet connection, Sir.','no-speech':'I did not hear anything. Tap the microphone and try again, Sir.'};
+  $('hint').textContent=messages[e.error]||('Voice input stopped: '+e.error+'. You can try again or type your request, Sir.');
+  status('Voice input stopped');
+ };
+ rec.onend=()=>{if(!chatBusy&&statusText!=='Thinking')status('System ready');};
+ try{rec.start();}catch(error){$('hint').textContent='The microphone could not start. Please try again, Sir.';status('Microphone unavailable');}
+};
+
+// Mission Control: truthful, local diagnostics and explicitly local routines.
+function detectJarvisDevice(){const ua=navigator.userAgent||'';if(/Android/i.test(ua)&&/TV|BRAVIA|MiTV|AFT/i.test(ua))return 'Android TV';if(/Android/i.test(ua))return 'Android phone/tablet';if(/iPhone|iPad/i.test(ua))return 'iPhone/iPad';if(/Windows/i.test(ua))return 'Windows PC';if(/Macintosh|Mac OS/i.test(ua))return 'Mac';return 'Browser / desktop';}
+let missionBackendStatus='Not checked',missionDeviceStatus='Not checked';
+async function refreshMission(){
+ const now=new Date();
+ $('mcTime').textContent=now.toLocaleString(undefined,{weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
+ $('mcDevice').textContent=detectJarvisDevice()+' · '+screen.width+'×'+screen.height;
+ $('mcNetwork').textContent=navigator.onLine?'Online':'Offline';
+ $('mcVoice').textContent=voiceOn?'Enabled':'Muted';
+ $('mcBattery').textContent='Unavailable';
+ $('mcBackend').textContent='Checking…';$('mcDevices').textContent='Checking…';
+ try{
+  if(sessionToken){
+   const verified=await pairApi({action:'verify'});
+   sessionRole=verified.role;sessionDeviceId=verified.deviceId;
+   missionBackendStatus='Reachable · session verified';
+   if(sessionRole==='owner'){
+    const result=await pairApi({action:'devices'});
+    missionDeviceStatus=(result.devices||[]).length+' paired';
+   }else missionDeviceStatus='Owner-only count';
+   $('mcPair').textContent='Paired · '+sessionRole;
+  }else{
+   const state=await pairApi({action:'status'});
+   missionBackendStatus='Reachable';
+   missionDeviceStatus=state.ownerClaimed?'Owner configured':'Setup required';
+   $('mcPair').textContent='Not paired';
+  }
+ }catch(error){
+  missionBackendStatus='Unavailable';
+  missionDeviceStatus='Not verified';
+  $('mcPair').textContent=sessionToken?'Session not verified':'Not paired';
+ }
+ $('mcBackend').textContent=missionBackendStatus;
+ $('mcDevices').textContent=missionDeviceStatus;
+ if(navigator.getBattery){try{const b=await navigator.getBattery();$('mcBattery').textContent=Math.round(b.level*100)+'%'+(b.charging?' · charging':'');}catch{}}
+}
+$('missionButton').onclick=async()=>{$('missionPanel').hidden=false;renderCustomRoutines();await refreshMission();};$('closeMission').onclick=()=>$('missionPanel').hidden=true;$('refreshMission').onclick=refreshMission;
+$('runBriefing').onclick=async()=>{await refreshMission();const now=new Date();const parts=['Good '+(now.getHours()<12?'morning':now.getHours()<17?'afternoon':'evening')+', Sir.','Today is '+now.toLocaleDateString(undefined,{weekday:'long',day:'numeric',month:'long',year:'numeric'})+'.','The local time is '+now.toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit'})+'.','This device is '+detectJarvisDevice()+'.','Network: '+(navigator.onLine?'online':'offline')+'.','Shared brain: '+$('mcPair').textContent+'.','Backend: '+missionBackendStatus+'.','Devices: '+missionDeviceStatus+'.','Voice: '+(voiceOn?'enabled':'muted')+'.','Calendar, weather and external schedule data are not connected to this briefing yet.'];const briefing=parts.join(' ');$('dailyBrief').textContent=briefing;add(briefing,'jarvis');speak(briefing);};
+function applyLocalRoutine(mode,label){
+ voiceOn=mode==='normal';$('voiceToggle').textContent=voiceOn?'Voice: On':'Voice: Off';
+ if(currentAudio){currentAudio.pause();currentAudio=null;}
+ document.body.classList.remove('jarvis-focus','jarvis-night');
+ if(mode==='focus')document.body.classList.add('jarvis-focus');
+ if(mode==='night')document.body.classList.add('jarvis-night');
+ $('dailyBrief').textContent=label+' routine activated on this device. No background task or remote device action was started.';
+ refreshMission();
+}
+$('focusRoutine').onclick=()=>applyLocalRoutine('focus','Focus');
+$('nightRoutine').onclick=()=>applyLocalRoutine('night','Good night');
+$('normalRoutine').onclick=()=>applyLocalRoutine('normal','Normal');
+const CUSTOM_ROUTINE_KEY='jarvisCustomRoutinesV1';
+function readCustomRoutines(){try{const items=JSON.parse(localStorage.getItem(CUSTOM_ROUTINE_KEY)||'[]');return Array.isArray(items)?items.filter(x=>x&&typeof x.name==='string'&&['focus','night','normal'].includes(x.mode)).slice(0,8):[];}catch{return [];}}
+function renderCustomRoutines(){
+ const host=$('customRoutineList');host.replaceChildren();
+ const items=readCustomRoutines();
+ if(!items.length){const note=document.createElement('span');note.className='mission-note';note.textContent='No custom routines saved on this device yet.';host.appendChild(note);return;}
+ items.forEach(item=>{
+  const run=document.createElement('button');run.type='button';run.textContent='Run · '+item.name;run.onclick=()=>applyLocalRoutine(item.mode,item.name);host.appendChild(run);
+  const remove=document.createElement('button');remove.type='button';remove.textContent='Delete '+item.name;remove.setAttribute('aria-label','Delete routine '+item.name);remove.onclick=()=>{const next=readCustomRoutines().filter(x=>x.id!==item.id);localStorage.setItem(CUSTOM_ROUTINE_KEY,JSON.stringify(next));renderCustomRoutines();};host.appendChild(remove);
+ });
+}
+$('saveCustomRoutine').onclick=()=>{
+ const name=$('customRoutineName').value.trim().slice(0,32),mode=$('customRoutineMode').value;
+ if(!name){$('dailyBrief').textContent='Please give the routine a name, Sir.';return;}
+ const items=readCustomRoutines();
+ if(items.length>=8){$('dailyBrief').textContent='You can save up to eight custom routines on this device. Delete one before adding another.';return;}
+ if(items.some(x=>x.name.toLowerCase()===name.toLowerCase())){$('dailyBrief').textContent='A routine with that name already exists, Sir.';return;}
+ items.push({id:(crypto.randomUUID?crypto.randomUUID():String(Date.now())+'-'+Math.random().toString(36).slice(2)),name,mode});
+ try{localStorage.setItem(CUSTOM_ROUTINE_KEY,JSON.stringify(items));$('customRoutineName').value='';renderCustomRoutines();$('dailyBrief').textContent='Saved '+name+' on this device.';}
+ catch{$('dailyBrief').textContent='I could not save that routine in this browser, Sir.';}
+};
+
+
+
+if('serviceWorker'in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('./sw.js').catch(()=>{});
+</script></body></html>
