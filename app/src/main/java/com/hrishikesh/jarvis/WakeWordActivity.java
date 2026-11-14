@@ -103,9 +103,21 @@ public class WakeWordActivity extends Activity {
         if (Build.VERSION.SDK_INT >= 33) registerReceiver(serviceUpdates, filter, Context.RECEIVER_NOT_EXPORTED);
         else registerReceiver(serviceUpdates, filter);
         receiverRegistered = true;
+        boolean enabled = prefs.getBoolean("enabled", false);
         String saved = prefs.getString("status", null);
-        if (saved != null && prefs.getBoolean("enabled", false)) status.setText(saved);
-        else if (!prefs.getBoolean("enabled", false)) status.setText("Microphone is OFF.");
+        if (!enabled) {
+            status.setText("Microphone is OFF.");
+        } else if (WakeWordService.isActive()) {
+            if (saved != null) status.setText(saved);
+        } else if (saved != null && (saved.toLowerCase(java.util.Locale.ROOT).contains("ready")
+                || saved.toLowerCase(java.util.Locale.ROOT).contains("listening")
+                || saved.toLowerCase(java.util.Locale.ROOT).contains("microphone on"))) {
+            status.setText("The last status was READY, but the microphone service is not active now. Turn the switch OFF and ON to restart it.");
+        } else if (saved != null) {
+            status.setText(saved);
+        } else {
+            status.setText("Microphone is enabled. Waiting for the offline speech service to start.");
+        }
     }
 
     @Override protected void onPause() {
