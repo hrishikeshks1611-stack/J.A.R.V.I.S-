@@ -272,10 +272,38 @@ export default async function handler(req, res) {
       const raw = await redisCommand("GET", JARVIS_PREFIX + "device:" + target);
       if (!raw) return res.status(404).json({ error: "That device is not paired." });
       const item = typeof raw === "string" ? JSON.parse(raw) : raw;
-      await redisCommand("DEL", JARVIS_PREFIX + "session:" + item.sessionHash, JARVIS_PREFIX + "device:" + target);
-      await redisCommand("SREM", JARVIS_PREFIX + "devices", target);
+      if (!item.sessionHash) return res.status(409).json({ error: "That device has no active session to revoke. Refresh the device list." });
+      // Re-check the exact session hash and remove the session, device record,
+      // and registry entry atomically. Conversation, memory, and app-local data
+      // are deliberately outside this operation.
+      const revokeScript = [
+        "local raw = redis.call('GET', KEYS[1])",
+        "if not raw then return cjson.encode({ ok = false, reason = 'device_missing' }) end",
+        "local device = cjson.decode(raw)",
+        "if device.sessionHash ~= ARGV[1] then return cjson.encode({ ok = false, reason = 'session_changed' }) end",
+        "redis.call('DEL', KEYS[2], KEYS[1])",
+        "redis.call('SREM', KEYS[3], ARGV[2])",
+        "return cjson.encode({ ok = true })"
+      ].join("\\n");
+      const revokeRaw = await redisCommand(
+        "EVAL", revokeScript, "3",
+        JARVIS_PREFIX + "device:" + target,
+        JARVIS_PREFIX + "session:" + item.sessionHash,
+        JARVIS_PREFIX + "devices",
+        item.sessionHash, target
+      );
+      const revokeResult = typeof revokeRaw === "string" ? JSON.parse(revokeRaw) : revokeRaw;
+      if (!revokeResult?.ok) {
+        const missing = revokeResult?.reason === "device_missing";
+        await audit("denied", { deviceId: session.deviceId, deviceName: session.deviceName, role: "owner", targetDeviceId: target, reason: revokeResult?.reason || "revoke_failed" });
+        return res.status(missing ? 404 : 409).json({
+          error: missing
+            ? "That device is no longer paired. Refresh the device list."
+            : "That device session changed before revocation. Refresh the device list and try again."
+        });
+      }
       await audit("success", { deviceId: session.deviceId, deviceName: session.deviceName, role: "owner", targetDeviceId: target });
-      return res.status(200).json({ revoked: true });
+      return res.status(200).json({ revoked: true, serverSessionOnly: true, localAppDataChanged: false, sharedHistoryPreserved: true, sharedMemoriesPreserved: true });
     }
     return res.status(400).json({ error: "Unknown device action." });
   } catch (error) {
