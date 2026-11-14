@@ -82,6 +82,12 @@ test("live Android bridge opens the exact selected YouTube Music track", async (
   const source = await readFile(new URL("../app/src/main/java/com/hrishikesh/jarvis/MainActivity.java", import.meta.url), "utf8");
   const manifest = await readFile(new URL("../app/src/main/AndroidManifest.xml", import.meta.url), "utf8");
   assert.ok(source.includes("public String playYoutubeMusic(String videoId)"));
+  assert.ok(source.includes("public void searchYouTubeMusic(String query, String requestId)"));
+  assert.ok(source.includes("public String getYouTubeMusicPlaybackStatus()"));
+  assert.ok(source.includes("PlaybackState.STATE_PLAYING"));
+  assert.ok(source.includes("getAssets().open(\"index.html\")"));
+  assert.ok(source.includes("loadDataWithBaseURL("));
+  assert.ok(!source.includes("webView.loadUrl(\"https://hrishikeshks1611-stack.github.io/J.A.R.V.I.S-/v7/\"));
   assert.ok(source.includes('id.matches("[A-Za-z0-9_-]{11}")'));
   assert.ok(source.includes('Uri.parse("https://music.youtube.com/watch?v=" + Uri.encode(id))'));
   assert.ok(source.includes('playTrack.setPackage("com.google.android.apps.youtube.music")'));
