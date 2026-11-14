@@ -3,7 +3,7 @@ name: Build J.A.R.V.I.S. 16.0 Android phone release candidate
 on:
   workflow_dispatch:
   push:
-    branches: [ jarvis-16.0-foundation ]
+    branches: [ jarvis-16.0-foundation, jarvis-16-fresh-owner-memory ]
     paths:
       - 'app/**'
       - 'index.html'
