@@ -1,9 +1,9 @@
-name: Build J.A.R.V.I.S. 16.0 Android phone release candidate
+name: Build J.A.R.V.I.S. 17 clean Android phone release candidate
 # Build artifacts are not equivalent to a release installed and tested on a physical device.
 on:
   workflow_dispatch:
   push:
-    branches: [ jarvis-16.0-foundation ]
+    branches: [ jarvis-16.0-foundation, jarvis-17-clean-foundation ]
     paths:
       - 'app/**'
       - 'index.html'
@@ -68,7 +68,7 @@ jobs:
       - name: Upload phone release candidate APK
         uses: actions/upload-artifact@v4
         with:
-          name: JARVIS-16.0-phone-release-candidate
+          name: JARVIS-17-clean-phone-release-candidate
           path: app/build/outputs/apk/phone/release/app-phone-release.apk
           if-no-files-found: error
           retention-days: 30
