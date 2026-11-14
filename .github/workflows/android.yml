@@ -31,7 +31,7 @@ jobs:
           test -s "$APK"
           AAPT="$ANDROID_HOME/build-tools/35.0.0/aapt"
           "$AAPT" dump badging "$APK" | tee /tmp/jarvis-badging.txt
-          grep -q "package: name='com.hrishikesh.jarvis.fresh' versionCode='900' versionName='9.0'" /tmp/jarvis-badging.txt
+          grep -q "package: name='com.hrishikesh.jarvis.eight.release' versionCode='900' versionName='9.0'" /tmp/jarvis-badging.txt
           grep -q "application-icon-.*:.*res/" /tmp/jarvis-badging.txt
           "$AAPT" dump resources "$APK" > /tmp/jarvis-resources.txt
           grep -q 'jarvis_reactor' /tmp/jarvis-resources.txt
