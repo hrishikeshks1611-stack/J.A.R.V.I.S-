@@ -32,6 +32,12 @@ export default async function handler(req, res) {
     return res.status(503).json({ error: "JARVIS shared memory is temporarily unavailable." });
   }
 
+  if (process.env.JARVIS_LIVE_VOICE_FREE_TIER_CONFIRMED !== "true") {
+    return res.status(503).json({
+      error: "Live Voice is disabled until the owner confirms this Gemini API project has billing disabled and is restricted to the free tier."
+    });
+  }
+
   const apiKey = process.env.JARVIS || process.env.GEMINI_API_KEY;
   if (!apiKey) return res.status(503).json({ error: "The Gemini API key is not configured on the JARVIS server." });
 
