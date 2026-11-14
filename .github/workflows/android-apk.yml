@@ -45,10 +45,10 @@ jobs:
           AAPT="$ANDROID_HOME/build-tools/35.0.0/aapt"
           test -s "$APK"
           BADGING="$("$AAPT" dump badging "$APK")"
-          echo "$BADGING" | grep -Fq "package: name='com.hrishikesh.jarvis' versionCode='503' versionName='5.0.3'"
+          echo "$BADGING" | grep -Fq "package: name='com.hrishikesh.jarvis' versionCode='1600' versionName='16.0.0'"
           sha256sum "$APK"
           echo "Verified package: com.hrishikesh.jarvis"
-          echo "Verified version: 5.0.3 (503)"
+          echo "Verified version: 16.0.0 (1600)"
           echo "Note: this does not verify compatibility with the copy installed on a user's phone."
       - name: Upload phone verification artifact
         uses: actions/upload-artifact@v4
