@@ -1,7 +1,7 @@
-name: J.A.R.V.I.S 11.0 — Fresh Android Build
+name: J.A.R.V.I.S 12.0 — Fresh Android Build
 on:
   push:
-    branches: [jarvis-11.0]
+    branches: [jarvis-12.0]
   workflow_dispatch:
 jobs:
   build:
@@ -21,8 +21,8 @@ jobs:
           accept-android-sdk-licenses: true
       - name: Run unit tests
         run: gradle --no-daemon testDebugUnitTest
-      - name: Assemble 11.0 fresh-install APK
-        run: gradle --no-daemon clean assembleDebug
+      - name: Apply 12.0 source fixes and assemble fresh-install APK
+        run: python3 tools/prepare_12.py && gradle --no-daemon clean assembleDebug
       - name: Verify package, version, inverted-triangle identity and APK integrity
         shell: bash
         run: |
@@ -31,12 +31,16 @@ jobs:
           test -s "$APK"
           AAPT="$ANDROID_HOME/build-tools/35.0.0/aapt"
           "$AAPT" dump badging "$APK" | tee /tmp/jarvis-badging.txt
-          grep -q "package: name='com.hrishikesh.jarvis.eleven.release' versionCode='1100' versionName='11.0'" /tmp/jarvis-badging.txt
+          grep -q "package: name='com.hrishikesh.jarvis.twelve.release' versionCode='1200' versionName='12.0'" /tmp/jarvis-badging.txt
           grep -q "application-label:'J.A.R.V.I.S'" /tmp/jarvis-badging.txt
           "$AAPT" dump resources "$APK" > /tmp/jarvis-resources.txt
           grep -q 'jarvis_reactor' /tmp/jarvis-resources.txt
           grep -q 'M54,87 L24,31 L84,31 Z' app/src/main/res/drawable/jarvis_reactor.xml
           grep -q 'NO MALE ENGLISH VOICE FOUND' app/src/main/java/com/hrishikesh/jarvis/MainActivity.java
+          grep -q 'Response copied' app/src/main/java/com/hrishikesh/jarvis/MainActivity.java
+          grep -q 'setFillViewport(false)' app/src/main/java/com/hrishikesh/jarvis/MainActivity.java
+          ! grep -q 'ALFRED' app/src/main/java/com/hrishikesh/jarvis/MainActivity.java
+          grep -q 'trianglePulse' app/src/main/java/com/hrishikesh/jarvis/ArcReactorView.java
           grep -q 'restoreConversation' app/src/main/java/com/hrishikesh/jarvis/MainActivity.java
           grep -q 'explicitly male-labelled' app/src/main/java/com/hrishikesh/jarvis/MainActivity.java
                     grep -q 'android:drawable="@drawable/jarvis_reactor"' app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
@@ -48,8 +52,8 @@ jobs:
           unzip -t "$APK"
           unzip -l "$APK" | grep -E 'classes([0-9]+)?[.]dex'
           mkdir -p release
-          cp "$APK" release/JARVIS-11.0-Fresh-Install.apk
-          sha256sum release/JARVIS-11.0-Fresh-Install.apk | tee release/SHA256SUMS.txt
+          cp "$APK" release/JARVIS-12.0-Fresh-Install.apk
+          sha256sum release/JARVIS-12.0-Fresh-Install.apk | tee release/SHA256SUMS.txt
       - uses: actions/upload-artifact@v4
         with:
           name: JARVIS-11.0-Fresh-Install
