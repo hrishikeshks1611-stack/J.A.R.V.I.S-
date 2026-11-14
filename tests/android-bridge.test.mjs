@@ -94,6 +94,15 @@ test("general YouTube video commands search in YouTube without touching YouTube 
   assert.ok(html.includes("function extractYouTubeVideoQuery(message)"));
   assert.ok(html.includes("window.AndroidJarvis.searchYouTubeVideos(youtubeVideoQuery)"));
   assert.ok(html.includes("automatic video selection is not enabled"));
+  const bundledHtml = await readFile(new URL("../app/src/main/assets/index.html", import.meta.url), "utf8");
+  const routeIndex = html.indexOf("function extractYouTubeVideoQuery(message)");
+  const musicIndex = html.indexOf("const musicCommand=message.match(");
+  const bundledRouteIndex = bundledHtml.indexOf("function extractYouTubeVideoQuery(message)");
+  const bundledMusicIndex = bundledHtml.indexOf("const musicCommand=message.match(");
+  assert.ok(routeIndex >= 0 && routeIndex < musicIndex, "YouTube routing must run before generic music routing");
+  assert.ok(bundledRouteIndex >= 0 && bundledRouteIndex < bundledMusicIndex, "APK asset must include YouTube routing before music routing");
+  assert.ok(html.includes("if(/\\byoutube\\s+music\\b/i.test(clean))return null;"), "explicit YouTube Music requests must bypass video routing");
+  assert.ok(html.includes("window.AndroidJarvis.playYoutubeMusic(videoId)"), "existing YouTube Music playback path must remain intact");
   assert.ok(capabilities.includes('id: "youtube_video_search", area: "media", status: "implemented"'));
   assert.ok(capabilities.includes('youtube_video_search: "Search general YouTube videos'));
 });
