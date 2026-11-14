@@ -8,6 +8,7 @@ on:
       - '*.gradle'
       - 'settings.gradle'
       - '.github/workflows/android-apk.yml'
+      - '.github/workflows/android-14.yml'
   pull_request:
     branches: [ main ]
     paths:
@@ -15,6 +16,7 @@ on:
       - '*.gradle'
       - 'settings.gradle'
       - '.github/workflows/android-apk.yml'
+      - '.github/workflows/android-14.yml'
 permissions:
   contents: read
 jobs:
