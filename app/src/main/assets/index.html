@@ -956,18 +956,12 @@ if(musicCommand&&(explicitMusicCommand||directMusicIntent)){
   return;
  }
 }
-const instant=attachment?null:instantReply(message);
-if(instant){
- add(instant,'jarvis');history.push({role:'model',text:instant});history=history.slice(-20);
- pairApi({action:'append-local',message,reply:instant}).catch(()=>{});
- $('hint').textContent='Ready when you are.';status('System ready');speak(instant);return;
-}
 const appCommand=message.match(/^\s*(?:jarvis[, ]+)?(?:please\s+)?(?:open|launch|start)\s+([a-z0-9 +.-]+?)(?:\s+app)?[.!?]*\s*$/i);
 const cameraCommandText=message.replace(/^\s*(?:hey\s+)?jarvis[, ]*/i,'').trim().replace(/[.!?]+$/,'').toLowerCase();
-const cameraAction=/^(?:please\s+)?(?:open|launch|start)(?:\s+the)?\s+camera$/.test(cameraCommandText)?'open':
- /^(?:please\s+)?(?:take|capture)(?:\s+(?:a|the))?\s+selfie$/.test(cameraCommandText)?'selfie':
- /^(?:please\s+)?(?:take|capture)(?:\s+(?:a|the))?\s+photos?$/.test(cameraCommandText)?'photo':
- /^(?:please\s+)?(?:show|open|view)(?:\s+me)?(?:\s+the)?\s+(?:last\s+)?photo$/.test(cameraCommandText)?'show':null;
+const cameraAction=/^(?:(?:please|could you|can you|would you|will you)\\s+)*(?:open|launch|start)(?:\\s+the)?\\s+camera$/.test(cameraCommandText)?'open':
+ /^(?:(?:please|could you|can you|would you|will you)\\s+)*(?:take|capture)(?:\\s+(?:a|the|my))?\\s+selfie(?:\\s+for me)?$/.test(cameraCommandText)?'selfie':
+ /^(?:(?:please|could you|can you|would you|will you)\\s+)*(?:take|capture)(?:\\s+(?:a|the|my))?\\s+photos?(?:\\s+for me)?$/.test(cameraCommandText)?'photo':
+ /^(?:(?:please|could you|can you|would you|will you)\\s+)*(?:show|open|view)(?:\\s+me)?(?:\\s+the)?\\s+(?:last\\s+)?photo$/.test(cameraCommandText)?'show':null;
 if(cameraAction){
  const replies={open:'Certainly, Sir. Opening the camera.',photo:'Certainly, Sir. Taking a photo now.',selfie:'Certainly, Sir. Switching to the front camera for your selfie.',show:'Certainly, Sir. Opening your latest JARVIS photo.'};
  const reply=replies[cameraAction];
@@ -988,6 +982,12 @@ if(cameraAction){
  }catch(error){$('hint').textContent='The camera action could not be started. Please try again, Sir.';status('System ready');}
  speak(reply);
  return;
+}
+const instant=attachment?null:instantReply(message);
+if(instant){
+ add(instant,'jarvis');history.push({role:'model',text:instant});history=history.slice(-20);
+ pairApi({action:'append-local',message,reply:instant}).catch(()=>{});
+ $('hint').textContent='Ready when you are.';status('System ready');speak(instant);return;
 }
 const installedAppsRequest=/^\s*(?:hey\s+)?jarvis[, ]*(?:please\s+)?(?:list|show)(?:\s+me)?(?:\s+all)?\s+(?:my\s+)?(?:installed\s+)?apps\s*[.!?]*\s*$|^\s*(?:hey\s+)?jarvis[, ]*what apps are installed\s*[.!?]*\s*$/i.test(message);
 if(installedAppsRequest&&window.AndroidJarvis&&typeof window.AndroidJarvis.getInstalledApps==='function'){
