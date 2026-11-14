@@ -36,11 +36,13 @@ test("Android update metadata identifies the J.A.R.V.I.S. 16.0 release", async (
   assert.match(gradle, /versionName\s+'16\.0\.0'/);
 });
 
-test("APK workflow keeps debug builds as verification artifacts and never publishes them as updates", async () => {
+test("APK workflow builds only the phone release candidate without publishing it as an update", async () => {
   const workflow = await readFile(new URL("../.github/workflows/android-apk.yml", import.meta.url), "utf8");
   assert.match(workflow, /contents:\s*read/);
-  assert.doesNotMatch(workflow, /gh release create|action-gh-release|Publish phone APK/);
-  assert.match(workflow, /debug-verification/);
+  assert.match(workflow, /assemblePhoneRelease/);
+  assert.match(workflow, /JARVIS-16\.0-phone-release-candidate/);
+  assert.match(workflow, /app-phone-release-unsigned\.apk/);
+  assert.doesNotMatch(workflow, /assembleTv|app-tv-|gh release create|action-gh-release/);
 });
 
 
