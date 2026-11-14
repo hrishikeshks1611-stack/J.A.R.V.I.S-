@@ -7,6 +7,10 @@ public class WakePhraseMatcherTest {
     @Test public void matchesHeyJarvis() {
         assertEquals("", WakePhraseMatcher.extractCommand("Hey JARVIS"));
     }
+    @Test public void matchesStandaloneJarvisWakeWord() {
+        assertEquals("", WakePhraseMatcher.extractCommand("JARVIS"));
+        assertEquals("open whatsapp", WakePhraseMatcher.extractCommand("JARVIS open WhatsApp"));
+    }
     @Test public void matchesWakeUpJarvisAndExtractsCommand() {
         assertEquals("open whatsapp", WakePhraseMatcher.extractCommand("Wake up, JARVIS, open WhatsApp"));
     }
