@@ -435,3 +435,20 @@ test("camera and selfie commands are routed before instant and AI fallbacks", as
   assert.equal(parse("open the camera"), "open");
   assert.equal(parse("what time is it"), null);
 });
+
+test("bare short song titles such as Numb route to native YouTube Music", async () => {
+  const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+  const start = html.indexOf("const bareMusicText=message.trim();");
+  const end = html.indexOf(";\nconst requestedMusic=", start) + 1;
+  assert.ok(start >= 0 && end > start);
+  const declaration = html.slice(start, end);
+  const parse = new Function("message", declaration + "; return bareMusicIntent;");
+  assert.equal(parse("Numb"), true);
+  assert.equal(parse("Bohemian Rhapsody"), true);
+  assert.equal(parse("What time is it?"), false);
+  assert.equal(parse("Hello"), false);
+  const musicAt = html.indexOf("const musicCommand=message.match(");
+  const instantAt = html.indexOf("const instant=attachment?null:instantReply(message);");
+  assert.ok(musicAt >= 0 && instantAt > musicAt,
+    "bare music-title handling must run before generic replies");
+});
