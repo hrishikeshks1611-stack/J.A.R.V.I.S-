@@ -18,6 +18,7 @@ public final class ReminderReceiver extends BroadcastReceiver {
         String title = intent == null ? null : intent.getStringExtra(EXTRA_TITLE);
         int notificationId = intent == null ? 0 : intent.getIntExtra(EXTRA_NOTIFICATION_ID, 0);
         if (title == null || title.trim().isEmpty()) return;
+        ReminderScheduler.remove(context, notificationId);
         NotificationManager manager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
         if (manager == null) return;
         if (Build.VERSION.SDK_INT >= 26) {
