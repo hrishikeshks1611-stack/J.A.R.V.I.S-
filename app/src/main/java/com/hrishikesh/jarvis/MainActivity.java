@@ -54,6 +54,7 @@ public final class MainActivity extends Activity {
             buildInterface();
             initialiseSpeech();
             setStatus("CORE ONLINE • READY FOR COMMAND");
+            processCommandIntent(getIntent());
         } catch (Throwable error) {
             showStartupFailure(error);
         }
@@ -743,16 +744,20 @@ public final class MainActivity extends Activity {
             else if (request == REQ_CAMERA) openCamera();
         } else setStatus("PERMISSION DENIED • FEATURE UNAVAILABLE");
     }
+    private void processCommandIntent(Intent intent) {
+        if (intent == null || !intent.hasExtra("JARVIS_COMMAND")) return;
+        String command = intent.getStringExtra("JARVIS_COMMAND");
+        if (command != null && !command.trim().isEmpty()) {
+            intent.removeExtra("JARVIS_COMMAND");
+            if (chatMessages != null) addChatLine("YOU • VOICE", command, true);
+            handleCommand(command);
+        }
+    }
+
     @Override protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
         setIntent(intent);
-        if (intent != null && intent.hasExtra("JARVIS_COMMAND")) {
-            String command = intent.getStringExtra("JARVIS_COMMAND");
-            if (command != null && !command.trim().isEmpty()) {
-                if (chatMessages != null) addChatLine("YOU • VOICE", command, true);
-                handleCommand(command);
-            }
-        }
+        processCommandIntent(intent);
     }
 
     @Override protected void onResume() { super.onResume(); if (reactorView != null) reactorView.onResume(); }
