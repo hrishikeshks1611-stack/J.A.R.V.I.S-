@@ -180,34 +180,15 @@ public final class WakeListeningService extends Service {
         if (trailing == null) return;
         updateNotification("Wake phrase detected");
         speak("At your service, Sir.");
-        if (!trailing.isEmpty()) handler.postDelayed(() -> executeCommand(trailing), 700);
+        if (!trailing.isEmpty()) handler.postDelayed(() -> forwardCommandToChat(trailing), 700);
     }
 
-    private void executeCommand(String spoken) {
-        if (memory != null) memory.add("user", spoken);
-        CommandParser.Command command = CommandParser.parse(spoken);
-        switch (command.action) {
-            case OPEN_APP: launchApp(command.argument); break;
-            case OPEN_CAMERA:
-                Intent camera = new Intent(this, CameraActivity.class);
-                camera.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                startActivity(camera);
-                break;
-            case PLAY_MUSIC:
-                Intent music = new Intent(Intent.ACTION_VIEW,
-                        android.net.Uri.parse("https://music.youtube.com/search?q="
-                                + android.net.Uri.encode(command.argument.isEmpty() ? "music" : command.argument)));
-                music.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                startActivity(music);
-                break;
-            case PAUSE_MEDIA:
-            case RESUME_MEDIA:
-            case NEXT_TRACK:
-            case PREVIOUS_TRACK:
-                speak("Direct controls of other apps are not available in this security-focused build, Sir.");
-                break;
-            default: speak("I am listening, Sir. Please give me a command."); break;
-        }
+    private void forwardCommandToChat(String spoken) {
+        Intent command = new Intent(this, MainActivity.class);
+        command.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        command.putExtra("JARVIS_COMMAND", spoken);
+        try { startActivity(command); }
+        catch (Exception error) { speak("I could not open the command interface, Sir."); }
     }
 
     private void launchApp(String requested) {
