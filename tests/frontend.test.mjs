@@ -332,12 +332,19 @@ test("installed-app inventory and arbitrary app names use the native Android bri
 });
 
 
-test("always-on microphone is disabled while tap-to-speak remains available", async () => {
+test("wake-word listening is explicit, foreground-notified, and survives Activity backgrounding", async () => {
  const source = await readFile(new URL("../app/src/main/java/com/hrishikesh/jarvis/MainActivity.java", import.meta.url), "utf8");
- const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
- assert.ok(source.includes('putBoolean("enabled", false)'));
- assert.ok(source.includes('stopService(new Intent(this, WakeWordService.class))'));
- assert.ok(html.includes("$('wakeWordButton').hidden=true"));
- assert.ok(html.includes("Tap the microphone button when you want to speak"));
+ const service = await readFile(new URL("../app/src/main/java/com/hrishikesh/jarvis/WakeWordService.java", import.meta.url), "utf8");
+ const activity = await readFile(new URL("../app/src/main/java/com/hrishikesh/jarvis/WakeWordActivity.java", import.meta.url), "utf8");
+ assert.ok(source.includes("restoreWakeWordServiceIfEnabled()"));
+ assert.ok(source.includes('getBoolean("enabled", false)'));
+ assert.ok(source.includes("startForegroundService(service)"));
+ const onStop = source.match(/@Override protected void onStop\\(\\)\\s*\\{([\\s\\S]*?)\\n    \\}/);
+ assert.ok(onStop);
+ assert.doesNotMatch(onStop[1], /stopService|putBoolean/);
+ assert.ok(service.includes('setOngoing(true)'));
+ assert.ok(service.includes('"Turn microphone OFF"'));
+ assert.ok(activity.includes('putBoolean("enabled", true)'));
+ assert.ok(activity.includes('stopService(new Intent(this, WakeWordService.class))'));
  assert.ok(source.includes("startOfflineDictation()"));
 });
