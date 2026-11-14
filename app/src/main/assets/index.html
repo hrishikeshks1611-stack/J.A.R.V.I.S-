@@ -913,6 +913,14 @@ if(musicTransport && window.AndroidJarvis && typeof window.AndroidJarvis.control
 const musicCommand=message.match(/^\s*(?:(?:hey\s+)?jarvis[, ]+)?(?:(?:please|could you|can you|would you|will you)\s+)*(?:play|search(?:\s+for)?|find|put on|listen to|i want to hear|i'd like to hear)\s+(.+?)(?:\s+(?:on|in)\s+youtube\s+music)?[.!?]*\s*$/i);
 const explicitMusicCommand=/\byoutube\s+music\b/i.test(message)&&musicCommand;
 const directMusicIntent=/^\s*(?:(?:hey\s+)?jarvis[, ]+)?(?:(?:please|could you|can you|would you|will you)\s+)*(?:play|put on|listen to|i want to hear|i'd like to hear)\b/i.test(message);
+// A bare short title (for example, "Numb") is a music request too. Exclude
+// ordinary greetings, questions and device-action phrases to avoid hijacking chat.
+const bareMusicText=message.trim();
+const bareMusicWords=bareMusicText.split(/\s+/);
+const bareMusicIntent=bareMusicText.length>0&&bareMusicText.length<=80&&bareMusicWords.length<=4
+ && /^[\p{L}\p{N}][\p{L}\p{N}\p{M}'’& -]*$/u.test(bareMusicText)
+ && !/^(?:hi|hello|hey|thanks|thank you|ok|okay|yes|no|who|what|when|where|why|how|call|phone|ring|make a call|take|capture|selfie|camera|open|launch|start|show|pause|stop|resume|continue|next|previous|skip|play|search|find|set|remind|remember|help)\b/i.test(bareMusicText);
+const requestedMusic=musicCommand||(bareMusicIntent?[bareMusicText,bareMusicText]:null);
 if(openYoutubeMusicOnly){
  const hasNativeMusicBridge=window.AndroidJarvis&&typeof window.AndroidJarvis.playYoutubeMusic==='function';
  const reply=hasNativeMusicBridge
@@ -924,8 +932,8 @@ if(openYoutubeMusicOnly){
  else window.location.href='https://music.youtube.com/';
  return;
 }
-if(musicCommand&&(explicitMusicCommand||directMusicIntent)){
- const songQuery=musicCommand[1].trim().replace(/\s+(?:on|in)\s+youtube\s+music$/i,'').trim();
+if(requestedMusic&&(explicitMusicCommand||directMusicIntent||bareMusicIntent)){
+ const songQuery=requestedMusic[1].trim().replace(/\s+(?:on|in)\s+youtube\s+music$/i,'').trim();
  if(songQuery){
   // A short acknowledgement is spoken immediately. Do not interrupt Algieba
   // with a second, longer utterance just before launching the music app.
