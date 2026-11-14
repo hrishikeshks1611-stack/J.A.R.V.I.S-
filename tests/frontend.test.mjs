@@ -348,3 +348,14 @@ test("wake-word listening is explicit, foreground-notified, and survives Activit
  assert.ok(activity.includes('stopService(new Intent(this, WakeWordService.class))'));
  assert.ok(source.includes("startOfflineDictation()"));
 });
+
+
+test("contact call and SMS commands use the local JARVIS contact list and native confirmation apps", async () => {
+  const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+  assert.match(html, /resolveJarvisContact\(target\)/);
+  assert.match(html, /AndroidJarvis\.dialNumber\(result\.contact\.number\)/);
+  assert.match(html, /AndroidJarvis\.openSmsComposer\(result\.contact\.number,body\)/);
+  assert.match(html, /press Send yourself/);
+  assert.match(html, /window\.location\.href='sms:'/);
+  assert.match(html, /window\.location\.href='tel:'/);
+});
