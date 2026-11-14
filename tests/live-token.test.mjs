@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import handler from "../api/live-token.js";
 
 const originalFetch = globalThis.fetch;
-const keys = ["JARVIS", "GEMINI_API_KEY", "UPSTASH_REDIS_REST_URL", "UPSTASH_REDIS_REST_TOKEN"];
+const keys = ["JARVIS", "GEMINI_API_KEY", "JARVIS_LIVE_VOICE_FREE_TIER_CONFIRMED", "UPSTASH_REDIS_REST_URL", "UPSTASH_REDIS_REST_TOKEN"];
 const prior = Object.fromEntries(keys.map(key => [key, process.env[key]]));
 
 test.afterEach(() => {
@@ -26,6 +26,7 @@ function response() {
 
 function setup(upstream) {
   process.env.JARVIS = "test-gemini-key";
+  process.env.JARVIS_LIVE_VOICE_FREE_TIER_CONFIRMED = "true";
   process.env.UPSTASH_REDIS_REST_URL = "https://redis.test";
   process.env.UPSTASH_REDIS_REST_TOKEN = "test-redis-token";
   globalThis.fetch = async (url, options = {}) => {
@@ -74,6 +75,27 @@ test("Live Voice provisions a single-use, short-lived transcription-only token w
   assert.ok(sent.body.liveConnectConstraints.config.sessionResumption);
   assert.match(sent.body.liveConnectConstraints.config.systemInstruction.parts[0].text, /Transcribe the user's spoken words faithfully/);
   assert.equal(JSON.stringify(res.body).includes("test-gemini-key"), false);
+});
+
+test("Live Voice stays disabled until the free-tier-only project is explicitly confirmed", async () => {
+  process.env.JARVIS = "test-gemini-key";
+  delete process.env.JARVIS_LIVE_VOICE_FREE_TIER_CONFIRMED;
+  process.env.UPSTASH_REDIS_REST_URL = "https://redis.test";
+  process.env.UPSTASH_REDIS_REST_TOKEN = "test-redis-token";
+  globalThis.fetch = async (url, options = {}) => {
+    if (String(url).includes("redis.test")) {
+      const command = JSON.parse(options.body)[0];
+      const result = command[0] === "GET"
+        ? JSON.stringify({ deviceId: "live-test-phone", deviceName: "Test phone", role: "owner" })
+        : command[0] === "EXPIRE" ? 1 : null;
+      return new Response(JSON.stringify([{ result }]), { status: 200 });
+    }
+    throw new Error("Google must not be contacted while Live Voice is disabled.");
+  };
+  const res = response();
+  await handler(request, res);
+  assert.equal(res.statusCode, 503);
+  assert.match(res.body.error, /billing disabled/i);
 });
 
 test("unpaired devices cannot provision Live Voice tokens", async () => {
