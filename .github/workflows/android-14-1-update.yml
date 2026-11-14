@@ -36,7 +36,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          git worktree add /tmp/jarvis-14.0-baseline HEAD^
+          git worktree add /tmp/jarvis-14.0-baseline cfc4171fb31bd7981592c8867fcd51cf51fb75ee
           gradle --no-daemon -p /tmp/jarvis-14.0-baseline assemblePhoneDebug
           BASELINE="/tmp/jarvis-14.0-baseline/app/build/outputs/apk/phone/debug/app-phone-debug.apk"
           test -s "$BASELINE"
