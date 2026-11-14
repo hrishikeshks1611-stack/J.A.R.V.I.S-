@@ -697,7 +697,35 @@ function instantReply(text){
  if(/^(?:please\s+)?(?:introduce yourself|introduce yourself to (?:my )?(?:friend|friends)|tell (?:my )?(?:friend|friends) who you are|say hello to (?:my )?(?:friend|friends))$/.test(q))return 'Good day. I am J.A.R.V.I.S., an intelligent personal assistant designed to help my owner with information, everyday tasks, device controls and music. I aim to be capable, discreet and always at your service. It is a pleasure to meet you.';
  return null;
 }
+const jarvisNativeMusicSearchPending=new Map();
+let jarvisNativeMusicSearchSequence=0;
+window.jarvisNativeMusicSearchResult=function(requestId,payloadText){
+ const pending=jarvisNativeMusicSearchPending.get(requestId);
+ if(!pending)return;
+ jarvisNativeMusicSearchPending.delete(requestId);
+ clearTimeout(pending.timeout);
+ try{pending.resolve(JSON.parse(payloadText));}
+ catch(error){pending.reject(new Error('JARVIS could not read the YouTube Music search result.'));}
+};
+function searchYouTubeMusicOnPhone(query){
+ return new Promise((resolve,reject)=>{
+  const requestId='music_'+(++jarvisNativeMusicSearchSequence)+'_'+Date.now();
+  const timeout=setTimeout(()=>{
+   jarvisNativeMusicSearchPending.delete(requestId);
+   reject(new Error('YouTube Music search timed out on this phone.'));
+  },12000);
+  jarvisNativeMusicSearchPending.set(requestId,{resolve,reject,timeout});
+  try{window.AndroidJarvis.searchYouTubeMusic(query,requestId);}
+  catch(error){clearTimeout(timeout);jarvisNativeMusicSearchPending.delete(requestId);reject(error);}
+ });
+}
 async function lookupYoutubeMusicTrack(query){
+ if(window.AndroidJarvis&&typeof window.AndroidJarvis.searchYouTubeMusic==='function'){
+  const nativeData=await searchYouTubeMusicOnPhone(query);
+  if(nativeData.error)throw new Error(nativeData.error);
+  if(!nativeData.selected||!nativeData.selected.videoId)throw new Error('No matching YouTube Music track was returned.');
+  return nativeData.selected;
+ }
  const response=await fetch(JARVIS_API+'/music-search',{
   method:'POST',
   headers:{'Content-Type':'application/json','Authorization':'Bearer '+sessionToken},
@@ -707,44 +735,76 @@ async function lookupYoutubeMusicTrack(query){
  if(!response.ok||!data.selected||!data.selected.videoId)throw new Error(data.error||'No matching YouTube Music track was returned.');
  return data.selected;
 }
-function openYoutubeMusicTrack(track){
-  const videoId=String(track&&track.videoId||'').trim();
-  if(!/^[A-Za-z0-9_-]{11}$/.test(videoId))throw new Error('The selected YouTube Music result has an invalid track ID.');
-  if(window.AndroidJarvis&&typeof window.AndroidJarvis.playYoutubeMusic==='function'){
-   const result=window.AndroidJarvis.playYoutubeMusic(videoId)||'';
-   if(result.startsWith('ERROR:'))throw new Error(result.replace(/^ERROR:/,''));
-   if(!result.startsWith('TRACK_OPEN_REQUESTED:'))throw new Error('Android did not accept the selected track request.');
-   // Give YouTube Music time to receive the direct track URL and publish its
-   // media session before sending Play. Retry session discovery for up to 15s.
-   let attempts=0;
-   const requestPlayback=()=>{
-    attempts++;
-    try{
-     const control=window.AndroidJarvis.controlMusic('play')||'';
-     if(control.startsWith('MEDIA_KEY_SENT:')){
-      $('hint').textContent='Play command sent to YouTube Music for '+(track.title||'the selected track')+'. Actual playback still depends on YouTube Music accepting the request.';
-      status('Playback command sent');
-      return;
-     }
-     if(/notification access/i.test(control)){
-      $('hint').textContent='Enable JARVIS in Android Notification Access once, then repeat the song request.';
-      status('Permission needed');
-      return;
-     }
-     if(attempts<45){setTimeout(requestPlayback,300);return;}
-     $('hint').textContent='YouTube Music received the exact track link, but Android did not expose its playback session. Playback is not confirmed.';
-     status('Playback not confirmed');
-    }catch(error){
-     $('hint').textContent='The track opened, but Android playback control failed: '+error.message;
-     status('Playback control failed');
-    }
-   };
-   setTimeout(requestPlayback,1200);
-   return result;
-  }
+function readYouTubeMusicState(){
+ if(!window.AndroidJarvis||typeof window.AndroidJarvis.getYouTubeMusicPlaybackStatus!=='function')return {state:'UNAVAILABLE'};
+ try{return JSON.parse(window.AndroidJarvis.getYouTubeMusicPlaybackStatus()||'{}');}
+ catch(error){return {state:'ERROR'};}
+}
+function musicDelay(ms){return new Promise(resolve=>setTimeout(resolve,ms));}
+async function openYoutubeMusicTrack(track){
+ const videoId=String(track&&track.videoId||'').trim();
+ if(!/^[A-Za-z0-9_-]{11}$/.test(videoId))throw new Error('The selected YouTube Music result has an invalid track ID.');
+ if(!window.AndroidJarvis||typeof window.AndroidJarvis.playYoutubeMusic!=='function'){
   window.location.href='https://music.youtube.com/watch?v='+encodeURIComponent(videoId);
-  return 'WEB_TRACK_OPENED:'+videoId;
+  $('hint').textContent='Opened the track link. Playback cannot be verified outside the JARVIS Android app.';
+  status('External music link opened');
+  return false;
  }
+ const launch=window.AndroidJarvis.playYoutubeMusic(videoId)||'';
+ if(launch.startsWith('ERROR:'))throw new Error(launch.replace(/^ERROR:/,''));
+ if(!launch.startsWith('TRACK_OPENED:'))throw new Error('Android did not confirm that YouTube Music opened the selected track.');
+ let playRequested=false,lastState='NO_SESSION';
+ for(let attempt=0;attempt<32;attempt++){
+  const playback=readYouTubeMusicState();
+  lastState=playback.state||'UNKNOWN';
+  if(lastState==='PERMISSION_REQUIRED'){
+   $('hint').textContent='Enable Notification Access for J.A.R.V.I.S. so Android can verify and control playback.';
+   status('Notification access required');
+   if(typeof window.AndroidJarvis.openNotificationAccessSettings==='function')window.AndroidJarvis.openNotificationAccessSettings();
+   throw new Error('Android Notification Access is required to verify YouTube Music playback. Enable J.A.R.V.I.S. and repeat the song request.');
+  }
+  if(lastState==='PLAYING'){
+   $('hint').textContent='Confirmed: '+(playback.title||track.title||'the selected track')+' is playing in YouTube Music.';
+   status('Playback confirmed');
+   return true;
+  }
+  if(lastState==='PAUSED'&&!playRequested){
+   const command=window.AndroidJarvis.controlMusic('play')||'';
+   if(command.startsWith('ERROR:'))throw new Error(command.replace(/^ERROR:/,''));
+   playRequested=true;
+  }
+  await musicDelay(500);
+ }
+ $('hint').textContent='YouTube Music was opened, but Android never confirmed active playback. Last state: '+lastState+'.';
+ status('Playback not confirmed');
+ throw new Error('YouTube Music opened the track, but playback did not reach PLAYING state. Last state: '+lastState+'.');
+}
+async function controlYouTubeMusic(action){
+ const before=readYouTubeMusicState();
+ if(before.state==='PERMISSION_REQUIRED'){
+  if(typeof window.AndroidJarvis.openNotificationAccessSettings==='function')window.AndroidJarvis.openNotificationAccessSettings();
+  throw new Error('Enable J.A.R.V.I.S. in Android Notification Access, then repeat the command.');
+ }
+ if(before.state==='NO_SESSION')throw new Error('YouTube Music has no active session. Ask JARVIS to play a song by title first.');
+ if(before.state==='PLAYING'&&action==='play')return 'YouTube Music is already playing.';
+ if(before.state==='PAUSED'&&action==='pause')return 'YouTube Music is already paused.';
+ const command=window.AndroidJarvis.controlMusic(action)||'';
+ if(command.startsWith('ERROR:'))throw new Error(command.replace(/^ERROR:/,''));
+ for(let attempt=0;attempt<16;attempt++){
+  await musicDelay(400);
+  const after=readYouTubeMusicState();
+  if(after.state==='PERMISSION_REQUIRED')throw new Error('Android Notification Access is required to verify playback controls.');
+  if(action==='play'&&after.state==='PLAYING')return 'Confirmed: YouTube Music is playing.';
+  if(action==='pause'&&after.state==='PAUSED')return 'Confirmed: YouTube Music is paused.';
+  if((action==='next'||action==='previous')&&after.state!=='NO_SESSION'&&
+     ((after.mediaId&&before.mediaId&&after.mediaId!==before.mediaId)||
+      (after.title&&before.title&&after.title!==before.title)||
+      (after.artist&&before.artist&&after.artist!==before.artist))){
+   return 'Confirmed: YouTube Music changed tracks.';
+  }
+ }
+ throw new Error('Android sent the '+action+' command, but YouTube Music did not confirm the expected playback-state change.');
+}
  $('form').onsubmit=async e=>{e.preventDefault();const message=$('prompt').value.trim();if(!message&&!pendingAttachment)return;$('prompt').value='';const attachment=pendingAttachment;pendingAttachment=null;renderAttachment();add(message||'Please examine this attachment, Sir.', 'user',attachment);history.push({role:'user',text:message||'Please examine the attached file.'});const fileRequest=detectFileRequest(message);if(fileRequest){await createOfficeFile(message,fileRequest.format,attachment);return;}
 const contactCommandText=message.replace(/^\s*(?:hey\s+)?jarvis[, ]*/i,'').trim().replace(/[.!?]+$/,'');
  const importContactsCommand=/^(?:please\s+)?(?:import|load)\s+(?:my\s+)?contacts$|^(?:please\s+)?import\s+(?:a\s+)?contacts?\s+file$/i.test(contactCommandText);
@@ -814,7 +874,7 @@ if(multiAppMusic && window.AndroidJarvis && typeof window.AndroidJarvis.openApp=
  let spokenReply;
  try{
   const track=await lookupYoutubeMusicTrack(songQuery);
-  openYoutubeMusicTrack(track);
+  await openYoutubeMusicTrack(track);
   spokenReply='Sending '+track.title+' by '+track.artist+' in YouTube Music, Sir.';
   $('hint').textContent='Exact track sent to YouTube Music; verify actual playback on the phone.';
  }catch(error){
@@ -830,12 +890,19 @@ const musicTransport = message.match(/^\s*(?:hey\s+)?(?:jarvis[, ]+)?(?:please\s
 if(musicTransport && window.AndroidJarvis && typeof window.AndroidJarvis.controlMusic==='function'){
  const raw=message.toLowerCase();
  const action=/\b(pause|stop)\b/.test(raw)?'pause':/\b(play|resume|continue)\b/.test(raw)?'play':/\b(next|skip)\b/.test(raw)?'next':'previous';
- const nativeReply=window.AndroidJarvis.controlMusic(action)||'';
- const reply=nativeReply.startsWith('MEDIA_KEY_SENT:')?'I have sent the '+action+' command to YouTube Music, Sir.':nativeReply.replace(/^ERROR:/,'');
+ let reply;
+ try{
+  reply=await controlYouTubeMusic(action);
+  $('hint').textContent=reply;
+  status('Playback state verified');
+ }catch(error){
+  reply='Sir, '+error.message;
+  $('hint').textContent=error.message;
+  status('Playback not confirmed');
+ }
  add(reply,'jarvis');history.push({role:'model',text:reply});history=history.slice(-20);
  pairApi({action:'append-local',message,reply}).catch(()=>{});
- $('hint').textContent='Media control command sent; the receiving player determines the result.';
- status('Media control requested');speak(reply);return;
+ speak(reply);return;
 }
 
 const musicCommand=message.match(/^\s*(?:(?:hey\s+)?jarvis[, ]+)?(?:(?:please|could you|can you|would you|will you)\s+)*(?:play|search(?:\s+for)?|find|put on|listen to|i want to hear|i'd like to hear)\s+(.+?)(?:\s+(?:on|in)\s+youtube\s+music)?[.!?]*\s*$/i);
