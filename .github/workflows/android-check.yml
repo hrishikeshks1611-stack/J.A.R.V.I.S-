@@ -1,7 +1,7 @@
 name: JARVIS 7.0 Android microphone and wake-word checks
 on:
   push:
-    branches: [ jarvis-7.0-new-app ]
+    branches: [ jarvis-7.0-new-app, jarvis-7.0-recovery ]
     paths:
       - 'app/**'
       - '*.gradle'
