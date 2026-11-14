@@ -859,12 +859,6 @@ const contactCommandText=message.replace(/^\s*(?:hey\s+)?jarvis[, ]*/i,'').trim(
   add(reply,'jarvis');history.push({role:'model',text:reply});history=history.slice(-20);speak(reply);return;
  }
  
-const instant=attachment?null:instantReply(message);
-if(instant){
- add(instant,'jarvis');history.push({role:'model',text:instant});history=history.slice(-20);
- pairApi({action:'append-local',message,reply:instant}).catch(()=>{});
- $('hint').textContent='Ready when you are.';status('System ready');speak(instant);return;
-}
 // Handle a chained native command locally instead of sending it to the AI chat model.
 const multiAppMusic=message.match(/^\s*(?:jarvis[, ]+)?(?:please\s+)?(?:open|launch|start)\s+(whatsapp|chrome|gmail|instagram|facebook|telegram)\s+and\s+(?:then\s+)?(?:play|listen to)\s+(.+?)(?:\s+(?:on|in)\s+youtube\s+music)?[.!?]*\s*$/i);
 if(multiAppMusic && window.AndroidJarvis && typeof window.AndroidJarvis.openApp==='function'){
@@ -950,6 +944,12 @@ if(musicCommand&&(explicitMusicCommand||directMusicIntent)){
   }
   return;
  }
+}
+const instant=attachment?null:instantReply(message);
+if(instant){
+ add(instant,'jarvis');history.push({role:'model',text:instant});history=history.slice(-20);
+ pairApi({action:'append-local',message,reply:instant}).catch(()=>{});
+ $('hint').textContent='Ready when you are.';status('System ready');speak(instant);return;
 }
 const appCommand=message.match(/^\s*(?:jarvis[, ]+)?(?:please\s+)?(?:open|launch|start)\s+([a-z0-9 +.-]+?)(?:\s+app)?[.!?]*\s*$/i);
 const cameraCommandText=message.replace(/^\s*(?:hey\s+)?jarvis[, ]*/i,'').trim().replace(/[.!?]+$/,'').toLowerCase();
