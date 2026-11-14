@@ -382,7 +382,7 @@ public final class MainActivity extends Activity {
         CommandParser.Command command = CommandParser.parse(raw);
         switch (command.action) {
             case OPEN_CAMERA:
-                addChatLine("J.A.R.V.I.S", "Opening the camera, Sir.", false);
+                addChatLine("ALFRED", "Opening the camera, Sir.", false);
                 openCamera();
                 break;
             case OPEN_APP:
