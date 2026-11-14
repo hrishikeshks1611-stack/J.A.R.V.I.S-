@@ -775,13 +775,40 @@ const contactCommandText=message.replace(/^\s*(?:hey\s+)?jarvis[, ]*/i,'').trim(
    add(reply,'jarvis');history.push({role:'model',text:reply});history=history.slice(-20);pairApi({action:'append-local',message,reply}).catch(()=>{});
    $('hint').textContent='Opening Android dialler. No call is placed automatically.';
    speak(reply);
-   setTimeout(()=>{window.location.href='tel:'+result.contact.number;},450);
+   if(window.AndroidJarvis&&typeof window.AndroidJarvis.dialNumber==='function'){
+    const handoff=window.AndroidJarvis.dialNumber(result.contact.number);
+    if(handoff&&/invalid|could not|no compatible/i.test(handoff)){add(handoff,'jarvis');$('hint').textContent=handoff;return;}
+   }else{
+    window.location.href='tel:'+result.contact.number;
+   }
    return;
   }
   add(reply,'jarvis');history.push({role:'model',text:reply});history=history.slice(-20);speak(reply);return;
  }
  
-const instant=attachment?null:instantReply(message);
+const textContact=contactCommandText.match(/^(?:(?:please|could you|can you|would you)\s+)?(?:text|sms|message)\s+(?:my\s+)?(.+?)\s+(?:saying|that|with (?:the )?message)\s+([\s\S]+)$/i);
+ if(textContact){
+  const target=textContact[1].trim(),body=textContact[2].trim();
+  const result=resolveJarvisContact(target);
+  let reply='';
+  if(result.missing)reply='I cannot find '+target+' in my J.A.R.V.I.S. contact list, Sir. Say “import contacts” to load your contacts VCF.';
+  else if(result.ambiguous)reply='I found more than one matching contact: '+result.names.join(', ')+'. Please use the full contact name, Sir.';
+  else{
+   const handoff=window.AndroidJarvis&&typeof window.AndroidJarvis.openSmsComposer==='function'
+    ?window.AndroidJarvis.openSmsComposer(result.contact.number,body)
+    :'';
+   if(handoff&&/invalid|could not|no compatible/i.test(handoff))reply=handoff;
+   else{
+    if(!handoff)window.location.href='sms:'+encodeURIComponent(result.contact.number)+'?body='+encodeURIComponent(body);
+    reply='Opening your messaging app for '+result.contact.name+'. Please review the message and press Send yourself, Sir.';
+   }
+  }
+  add(reply,'jarvis');history.push({role:'model',text:reply});history=history.slice(-20);
+  pairApi({action:'append-local',message,reply}).catch(()=>{});
+  $('hint').textContent='Message composer handoff · you control whether it is sent.';
+  status('System ready');speak(reply);return;
+ }
+ const instant=attachment?null:instantReply(message);
 if(instant){
  add(instant,'jarvis');history.push({role:'model',text:instant});history=history.slice(-20);
  pairApi({action:'append-local',message,reply:instant}).catch(()=>{});
