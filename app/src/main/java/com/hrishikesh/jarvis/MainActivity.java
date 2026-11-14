@@ -91,7 +91,7 @@ public final class MainActivity extends Activity {
         root.addView(status, matchWrap());
 
         TextView chatHeading = new TextView(this);
-        chatHeading.setText("ALFRED  •  J.A.R.V.I.S CORE");
+        chatHeading.setText("J.A.R.V.I.S  •  J.A.R.V.I.S CORE");
         chatHeading.setTextColor(cyan);
         chatHeading.setTextSize(12);
         chatHeading.setLetterSpacing(.12f);
@@ -112,7 +112,7 @@ public final class MainActivity extends Activity {
         transcript.setTextColor(Color.WHITE);
         transcript.setTextSize(15);
         transcript.setGravity(Gravity.START);
-        transcript.setText("ALFRED\nGood day, Sir. I am listening. How may I assist?");
+        transcript.setText("J.A.R.V.I.S\nGood day, Sir. I am listening. How may I assist?");
         transcript.setPadding(dp(12), dp(12), dp(12), dp(12));
         android.graphics.drawable.GradientDrawable bubble = new android.graphics.drawable.GradientDrawable();
         bubble.setColor(Color.rgb(10, 37, 60));
@@ -247,7 +247,7 @@ public final class MainActivity extends Activity {
         tts = new TextToSpeech(this, result -> {
             if (result == TextToSpeech.SUCCESS) {
                 ttsReady = configureVoice();
-                if (ttsReady) { tts.setSpeechRate(0.92f); tts.setPitch(0.84f); speak("J.A.R.V.I.S online. Alfred is at your service, Sir."); }
+                if (ttsReady) { tts.setSpeechRate(0.92f); tts.setPitch(0.84f); speak("J.A.R.V.I.S online. J.A.R.V.I.S is at your service, Sir."); }
                 else { setStatus("NO MALE ENGLISH VOICE FOUND • TAP TO SET UP JARVIS VOICE"); if (status != null) status.setOnClickListener(v -> openVoiceSettings()); }
             }
         });
@@ -258,7 +258,7 @@ public final class MainActivity extends Activity {
     }
 
     /**
-     * Strict Alfred voice gate: never use the engine default or an unclassified voice.
+     * Strict J.A.R.V.I.S voice gate: never use the engine default or an unclassified voice.
      * Only an en-GB Algieba voice or an explicitly male-labelled en-GB voice is allowed.
      */
     /** JARVIS voice policy: use Algieba or an explicitly male-labelled English voice only.
@@ -312,13 +312,13 @@ public final class MainActivity extends Activity {
         chatMessages.removeAllViews();
         java.util.List<ConversationStore.Entry> entries = memory.recent(30);
         if (entries.isEmpty()) {
-            addChatLine("ALFRED", "Good day, Sir. J.A.R.V.I.S is online. How may I assist?", false);
+            addChatLine("J.A.R.V.I.S", "Good day, Sir. J.A.R.V.I.S is online. How may I assist?", false);
             return;
         }
         for (ConversationStore.Entry entry : entries) {
             if (entry == null || entry.text == null) continue;
             boolean user = "user".equals(entry.role);
-            addChatLine(user ? "YOU" : "ALFRED", entry.text, user);
+            addChatLine(user ? "YOU" : "J.A.R.V.I.S", entry.text, user);
         }
     }
 
@@ -357,17 +357,17 @@ public final class MainActivity extends Activity {
         if (memory != null) memory.add("user", raw);
         String normalized = raw.trim().toLowerCase(Locale.ROOT);
         if (normalized.equals("create document") || normalized.equals("create a document") || normalized.equals("open office")) {
-            addChatLine("ALFRED", "Opening the document studio, Sir.", false);
+            addChatLine("J.A.R.V.I.S", "Opening the document studio, Sir.", false);
             showOfficeComposer();
             return;
         }
         if (normalized.equals("import file") || normalized.equals("import attachment") || normalized.equals("open a file")) {
-            addChatLine("ALFRED", "Choose the file you'd like me to import, Sir.", false);
+            addChatLine("J.A.R.V.I.S", "Choose the file you'd like me to import, Sir.", false);
             importAttachment();
             return;
         }
         if (normalized.equals("study revision") || normalized.equals("build revision pack")) {
-            addChatLine("ALFRED", "Let's prepare your revision pack, Sir.", false);
+            addChatLine("J.A.R.V.I.S", "Let's prepare your revision pack, Sir.", false);
             showStudyComposer();
             return;
         }
@@ -383,7 +383,7 @@ public final class MainActivity extends Activity {
         CommandParser.Command command = CommandParser.parse(raw);
         switch (command.action) {
             case OPEN_CAMERA:
-                addChatLine("ALFRED", "Opening the camera, Sir.", false);
+                addChatLine("J.A.R.V.I.S", "Opening the camera, Sir.", false);
                 openCamera();
                 break;
             case OPEN_APP:
@@ -399,14 +399,14 @@ public final class MainActivity extends Activity {
             case NEXT_TRACK:
             case PREVIOUS_TRACK:
                 String mediaReply = "I can open music apps and search for tracks, Sir, but direct controls of other apps are not available in this security-focused build.";
-                addChatLine("ALFRED", mediaReply, false); speak(mediaReply);
+                addChatLine("J.A.R.V.I.S", mediaReply, false); speak(mediaReply);
                 setStatus("DIRECT THIRD-PARTY MEDIA CONTROL NOT INCLUDED");
                 break;
             default:
                 String reply = PersonalityEngine.respond(raw, memory == null ? null : memory.recent(12));
-                addChatLine("ALFRED", reply, false);
+                addChatLine("J.A.R.V.I.S", reply, false);
                 speak(reply);
-                setStatus("ALFRED PERSONA • OFFLINE RESPONSE");
+                setStatus("J.A.R.V.I.S PERSONA • OFFLINE RESPONSE");
                 break;
         }
     }
@@ -523,7 +523,7 @@ public final class MainActivity extends Activity {
     }
 
     private void reply(String message) {
-        addChatLine("ALFRED", message, false);
+        addChatLine("J.A.R.V.I.S", message, false);
         speak(message);
     }
 
