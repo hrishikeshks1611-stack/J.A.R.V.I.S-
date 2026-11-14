@@ -1,9 +1,9 @@
-name: Build J.A.R.V.I.S. 16.0 Android phone release candidate
+name: Build J.A.R.V.I.S. 17.0 Android phone release candidate
 # Build artifacts are not equivalent to a release installed and tested on a physical device.
 on:
   workflow_dispatch:
   push:
-    branches: [ jarvis-16.0-foundation ]
+    branches: [ jarvis-16.0-foundation, jarvis-17.0-foundation ]
     paths:
       - 'app/**'
       - 'index.html'
@@ -59,16 +59,16 @@ jobs:
           APKSIGNER="$ANDROID_HOME/build-tools/35.0.0/apksigner"
           test -s "$APK"
           BADGING="$("$AAPT" dump badging "$APK")"
-          echo "$BADGING" | grep -Fq "package: name='com.hrishikesh.jarvis16' versionCode='1600' versionName='16.0.0'"
+          echo "$BADGING" | grep -Fq "package: name='com.hrishikesh.jarvis16' versionCode='1700' versionName='17.0.0'"
           "$APKSIGNER" verify --verbose "$APK"
           sha256sum "$APK"
           echo "Verified package: com.hrishikesh.jarvis16"
-          echo "Verified version: 16.0.0 (1600)"
+          echo "Verified version: 17.0.0 (1700)"
           echo "Verified APK signature for owner testing"
       - name: Upload phone release candidate APK
         uses: actions/upload-artifact@v4
         with:
-          name: JARVIS-16.0-phone-release-candidate
+          name: JARVIS-17.0-phone-release-candidate
           path: app/build/outputs/apk/phone/release/app-phone-release.apk
           if-no-files-found: error
           retention-days: 30

@@ -29,18 +29,18 @@ test("native bridge exposes confirmation-based Clock and Calendar actions", asyn
   assert.ok(manifest.includes('com.android.alarm.permission.SET_ALARM'));
 });
 
-test("J.A.R.V.I.S. 16.0 has its own standalone Android package identity", async () => {
+test("J.A.R.V.I.S. 17.0 has its own standalone Android package identity", async () => {
   const gradle = await readFile(new URL("../app/build.gradle", import.meta.url), "utf8");
   assert.match(gradle, /applicationId\s+'com\.hrishikesh\.jarvis16'/);
-  assert.match(gradle, /versionCode\s+1600/);
-  assert.match(gradle, /versionName\s+'16\.0\.0'/);
+  assert.match(gradle, /versionCode\s+1700/);
+  assert.match(gradle, /versionName\s+'17\.0\.0'/);
 });
 
 test("APK workflow builds only the phone release candidate without publishing it as an update", async () => {
   const workflow = await readFile(new URL("../.github/workflows/android-apk.yml", import.meta.url), "utf8");
   assert.match(workflow, /contents:\s*read/);
   assert.match(workflow, /assemblePhoneRelease/);
-  assert.match(workflow, /JARVIS-16\.0-phone-release-candidate/);
+  assert.match(workflow, /JARVIS-17\.0-phone-release-candidate/);
   assert.match(workflow, /app-phone-release\.apk/);
   assert.doesNotMatch(workflow, /assembleTv|app-tv-|gh release create|action-gh-release/);
 });

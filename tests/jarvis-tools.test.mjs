@@ -19,9 +19,9 @@ test("calculator enforces input and result bounds", () => {
   assert.throws(() => calculateExpression("9999999999999999 * 9999999999999999"));
 });
 
-test("tool registry exposes only the approved six tools", () => {
+test("tool registry exposes only the approved ten tools", () => {
   const names = JARVIS_TOOL_DECLARATIONS[0].function_declarations.map(item => item.name);
-  assert.deepEqual(names, ["calculate", "get_device_status", "request_alarm", "request_calendar_event", "search_saved_memories", "search_conversation"]);
+  assert.deepEqual(names, ["calculate", "get_device_status", "request_open_app", "request_dial_number", "request_sms_draft", "request_share_text", "request_alarm", "request_calendar_event", "search_saved_memories", "search_conversation"]);
 });
 
 test("device status reports only fields explicitly supplied by the app", async () => {
@@ -81,4 +81,36 @@ test("calendar tool requires future timezone-aware dates and caps event duration
   await assert.rejects(() => executeJarvisTool("request_calendar_event", {
     title: "Meeting", startIso: "2099-04-10T10:00:00Z", endIso: "2099-04-10T11:00:00Z"
   }, { userMessage: "How do I create a calendar event?" }));
+});
+
+test("app launch tool only prepares explicit non-financial app requests", async () => {
+  const result = await executeJarvisTool("request_open_app", { appName: "YouTube" }, { userMessage: "Please open YouTube." });
+  assert.equal(result.requiresConfirmation, true);
+  assert.deepEqual(result.pendingAction, { type: "open_app", appName: "YouTube" });
+  await assert.rejects(() => executeJarvisTool("request_open_app", { appName: "YouTube" }, { userMessage: "How do I open YouTube?" }));
+  await assert.rejects(() => executeJarvisTool("request_open_app", { appName: "PhonePe" }, { userMessage: "Open PhonePe." }));
+});
+
+test("dialler action requires explicit user intent and a valid supplied number", async () => {
+  const result = await executeJarvisTool("request_dial_number", { phoneNumber: "+91 98765 43210" }, { userMessage: "Call +91 98765 43210." });
+  assert.equal(result.requiresConfirmation, true);
+  assert.deepEqual(result.pendingAction, { type: "dial", phoneNumber: "+91 98765 43210" });
+  await assert.rejects(() => executeJarvisTool("request_dial_number", { phoneNumber: "9876543210" }, { userMessage: "What is a dialler?" }));
+  await assert.rejects(() => executeJarvisTool("request_dial_number", { phoneNumber: "not-a-number" }, { userMessage: "Call this number." }));
+});
+
+test("SMS action opens only a user-confirmed draft and never sends it", async () => {
+  const result = await executeJarvisTool("request_sms_draft", { phoneNumber: "9876543210", message: "I will be there at six." }, { userMessage: "Text 9876543210: I will be there at six." });
+  assert.equal(result.requiresConfirmation, true);
+  assert.deepEqual(result.pendingAction, { type: "sms_draft", phoneNumber: "9876543210", message: "I will be there at six." });
+  await assert.rejects(() => executeJarvisTool("request_sms_draft", { phoneNumber: "9876543210", message: "Hello" }, { userMessage: "Explain SMS." }));
+  await assert.rejects(() => executeJarvisTool("request_sms_draft", { phoneNumber: "9876543210", message: "" }, { userMessage: "Send an SMS." }));
+});
+
+test("cross-app share requires explicit user intent and returns a user-confirmed action", async () => {
+  const result = await executeJarvisTool("request_share_text", { text: "Hello from JARVIS", title: "Share with" }, { userMessage: "Share this through WhatsApp." });
+  assert.equal(result.requiresConfirmation, true);
+  assert.deepEqual(result.pendingAction, { type: "share_text", text: "Hello from JARVIS", title: "Share with" });
+  await assert.rejects(() => executeJarvisTool("request_share_text", { text: "Hello", title: "Share" }, { userMessage: "What is WhatsApp?" }));
+  await assert.rejects(() => executeJarvisTool("request_share_text", { text: "", title: "Share" }, { userMessage: "Share this." }));
 });
