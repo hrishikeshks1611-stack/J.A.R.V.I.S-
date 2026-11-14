@@ -66,8 +66,6 @@ public class MainActivity extends Activity {
 
     @Override public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        getSharedPreferences("jarvis_wake_word", MODE_PRIVATE).edit().putBoolean("enabled", false).apply();
-        stopService(new Intent(this, WakeWordService.class));
         getWindow().setStatusBarColor(android.graphics.Color.rgb(5, 11, 24));
         getWindow().setNavigationBarColor(android.graphics.Color.rgb(5, 11, 24));
         registerApps();
@@ -146,6 +144,7 @@ public class MainActivity extends Activity {
         webView.requestFocus();
         if (BuildConfig.JARVIS_TV) applyTvImmersiveMode();
         webView.loadUrl("https://hrishikeshks1611-stack.github.io/J.A.R.V.I.S-/");
+        restoreWakeWordServiceIfEnabled();
     }
 
 
@@ -922,9 +921,27 @@ public class MainActivity extends Activity {
     }
 
     @Override protected void onStop() {
-        stopService(new Intent(this, WakeWordService.class));
-        getSharedPreferences("jarvis_wake_word", MODE_PRIVATE).edit().putBoolean("enabled", false).apply();
+        // A foreground microphone service must outlive this Activity so wake-word
+        // listening continues when the user presses Home or switches apps.
+        // The persistent notification and WakeWordActivity provide explicit OFF controls.
         super.onStop();
+    }
+
+    private void restoreWakeWordServiceIfEnabled() {
+        boolean enabled = getSharedPreferences("jarvis_wake_word", MODE_PRIVATE)
+                .getBoolean("enabled", false);
+        if (!enabled || checkSelfPermission(Manifest.permission.RECORD_AUDIO)
+                != PackageManager.PERMISSION_GRANTED || WakeWordService.isActive()) return;
+        try {
+            Intent service = new Intent(this, WakeWordService.class);
+            if (Build.VERSION.SDK_INT >= 26) startForegroundService(service);
+            else startService(service);
+        } catch (RuntimeException error) {
+            android.util.Log.e("JARVIS", "Could not restore the opted-in wake-word service", error);
+            Toast.makeText(this,
+                    "Wake-word listening could not be restored. Open Wake-word microphone settings to retry, Sir.",
+                    Toast.LENGTH_LONG).show();
+        }
     }
 
     @Override protected void onDestroy() {
