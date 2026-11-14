@@ -31,11 +31,11 @@ jobs:
           test -s "$APK"
           AAPT="$ANDROID_HOME/build-tools/35.0.0/aapt"
           "$AAPT" dump badging "$APK" | tee /tmp/jarvis-badging.txt
-          grep -q "package: name='com.hrishikesh.jarvis.ten.release' versionCode='1000' versionName='10.0'" /tmp/jarvis-badging.txt
+          grep -q "package: name='com.hrishikesh.jarvis.ten.release' versionCode='1001' versionName='10.0'" /tmp/jarvis-badging.txt
           grep -q "application-label:'J.A.R.V.I.S'" /tmp/jarvis-badging.txt
           "$AAPT" dump resources "$APK" > /tmp/jarvis-resources.txt
           grep -q 'jarvis_reactor' /tmp/jarvis-resources.txt
-          grep -q 'M54,74 L36,42 L72,42 Z' app/src/main/res/drawable/jarvis_reactor.xml
+          grep -q 'M54,87 L24,31 L84,31 Z' app/src/main/res/drawable/jarvis_reactor.xml
           grep -q 'android:drawable="@drawable/jarvis_reactor"' app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
           grep -q 'android:drawable="@drawable/jarvis_reactor"' app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml
           grep -q 'android:drawable="@drawable/jarvis_reactor"' app/src/main/res/drawable/jarvis_splash.xml
