@@ -6,7 +6,7 @@ android {
         applicationId 'com.hrishikesh.jarvis.ten.release'
         minSdk 26
         targetSdk 35
-        versionCode 1000
+        versionCode 1001
         versionName '10.0'
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
     }
