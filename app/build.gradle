@@ -48,3 +48,21 @@ android {
         }
     }
 }
+
+// Bundle the exact web interface into the APK. The UI can open without relying on
+// GitHub Pages being reachable; authenticated AI services still use the network.
+tasks.register('prepareJarvisWebAssets') {
+    def sourceHtml = rootProject.file('index.html')
+    def targetHtml = file('src/main/assets/index.html')
+    inputs.file(sourceHtml)
+    outputs.file(targetHtml)
+    doLast {
+        targetHtml.parentFile.mkdirs()
+        def html = sourceHtml.getText('UTF-8')
+        html = html.replaceAll(/<link rel="manifest"[^>]*>/, '')
+        html = html.replaceAll(/<link rel="icon"[^>]*>/, '')
+        html = html.replaceAll(/<link rel="apple-touch-icon"[^>]*>/, '')
+        targetHtml.setText(html, 'UTF-8')
+    }
+}
+tasks.named('preBuild').configure { dependsOn tasks.named('prepareJarvisWebAssets') }

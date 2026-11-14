@@ -37,7 +37,7 @@ footer{text-align:center;color:#577c99;font-size:10px;letter-spacing:.12em;paddi
 <header><div class="brand">J.A.R.V.I.S.<small>PERSONAL INTELLIGENCE SYSTEM</small></div><div class="status" id="status">● SYSTEM READY</div></header>
 <main><div class="core-wrap"><div class="core" id="core"><div class="ring"></div><div class="ring two"></div><div class="reactor"><div class="reactor-cross"></div><div class="reactor-core"></div></div></div></div>
 <div class="greeting"><h1>AT YOUR SERVICE, SIR.</h1><p id="hint">Your personal assistant is standing by. Tap the microphone button when you want to speak.</p></div>
-<div class="controls"><select id="mode" aria-label="Personality mode"><option value="professional">Professional</option><option value="witty" selected>Witty</option><option value="philosophical">Philosophical</option></select><button class="control" id="testVoice">Test Alfred voice</button><button class="control" id="voiceToggle">Voice: On</button><button class="control" id="liveVoiceButton" type="button" aria-pressed="false">Live Voice: Off</button><button class="control" id="wakeWordButton" type="button">Wake-word microphone</button><button class="control" id="locationEnable">Enable precise location</button><button class="control" id="syncButton">Devices &amp; Sync</button><button class="control" id="memoryButton" type="button">Saved Memory</button><button class="control" id="missionButton" type="button">Mission Control</button><button class="control" id="updateButton" type="button">Check for updates</button><button class="control" id="castButton" type="button" aria-label="Open Android Cast settings">📺 Cast</button><button class="control" id="clear">Clear conversation</button></div>
+<div class="controls"><select id="mode" aria-label="Personality mode"><option value="professional">Professional</option><option value="witty" selected>Witty</option><option value="philosophical">Philosophical</option></select><button class="control" id="testVoice">Test Alfred voice</button><button class="control" id="voiceToggle">Voice: On</button><button class="control" id="liveVoiceButton" type="button" aria-pressed="false">Live Voice: Off</button><button class="control" id="wakeWordButton" type="button">Wake-word microphone</button><button class="control" id="locationEnable">Enable precise location</button><button class="control" id="syncButton">Devices &amp; Sync</button><button class="control" id="memoryButton" type="button">Saved Memory</button><button class="control" id="missionButton" type="button">Mission Control</button><button class="control" id="castButton" type="button" aria-label="Open Android Cast settings">📺 Cast</button><button class="control" id="clear">Clear conversation</button></div>
 <section class="chat"><div class="messages" id="messages" aria-live="polite"><div class="msg jarvis">Good evening, Sir. J.A.R.V.I.S. is online. How may I assist?</div></div><div id="attachmentChip" class="attachment-chip" hidden></div><form class="composer" id="form"><button class="mic" type="button" id="mic" aria-label="Speak">🎙</button><button class="attach-btn" type="button" id="attach" aria-label="Attach a file" title="Attach a file">＋</button><button class="attach-btn" type="button" id="camera" aria-label="Take a photo" title="Take a photo">▣</button><input id="prompt" autocomplete="off" placeholder="Ask me anything, Sir…" maxlength="12000"><button class="send" type="submit">SEND</button></form><input id="fileInput" type="file" accept="image/*,application/pdf,text/plain,text/csv,application/json,text/markdown" hidden><input id="cameraInput" type="file" accept="image/*" capture="environment" hidden></section>
 </main><footer>J.A.R.V.I.S. · PERSONAL AI · VOICE-FIRST INTERFACE</footer></div>
 <section class="sync-panel" id="syncPanel" hidden aria-modal="true" role="dialog" aria-labelledby="syncTitle">
@@ -458,7 +458,7 @@ function detectFileRequest(text){
  else if(/\b(csv)\b/.test(q))format='csv';
  else if(/\b(markdown|\.md)\b/.test(q))format='md';
  else if(/\b(text file|plain text|\.txt)\b/.test(q))format='txt';
- else if(/\b(budget|expense tracker|income tracker|marksheet|attendance sheet|inventory|sales tracker|financial tracker|data analysis|spreadsheet|workbook)\b/.test(q))format='xlsx';
+ else if(/\b(marksheet|attendance sheet|inventory|sales tracker|data analysis|spreadsheet|workbook)\b/.test(q))format='xlsx';
  else if(/\b(assignment|essay|report|letter|resume|résumé|proposal|meeting minutes|notes|document)\b/.test(q))format='docx';
  else if(/\b(presentation|seminar|pitch deck|slide deck)\b/.test(q))format='pptx';
  else if(/\b(timetable|schedule|planner|checklist|meal plan|shopping list|grocery list|itinerary|packing list|household plan|weekly plan)\b/.test(q))format='pdf';
@@ -769,22 +769,42 @@ function openYoutubeMusicTrack(track){
  }
  $('form').onsubmit=async e=>{e.preventDefault();const message=$('prompt').value.trim();if(!message&&!pendingAttachment)return;$('prompt').value='';const attachment=pendingAttachment;pendingAttachment=null;renderAttachment();add(message||'Please examine this attachment, Sir.', 'user',attachment);history.push({role:'user',text:message||'Please examine the attached file.'});const fileRequest=detectFileRequest(message);if(fileRequest){await createOfficeFile(message,fileRequest.format,attachment);return;}
 const contactCommandText=message.replace(/^\s*(?:hey\s+)?jarvis[, ]*/i,'').trim().replace(/[.!?]+$/,'');
- const importContactsCommand=/^(?:please\s+)?(?:import|load)\s+(?:my\s+)?contacts$|^(?:please\s+)?import\s+(?:a\s+)?contacts?\s+file$/i.test(contactCommandText);
+ const importContactsFromFile=/^(?:please\s+)?(?:import|load)\s+(?:my\s+)?contacts?\s+from\s+(?:a\s+)?file$|^(?:please\s+)?import\s+(?:a\s+)?contacts?\s+file$/i.test(contactCommandText);
+ const importContactsCommand=/^(?:please\s+)?(?:import|load)\s+(?:my\s+)?contacts$/i.test(contactCommandText)||importContactsFromFile;
+ if(importContactsCommand&&!importContactsFromFile&&window.AndroidJarvis&&typeof window.AndroidJarvis.getPhoneContacts==='function'){
+  const raw=window.AndroidJarvis.getPhoneContacts();
+  if(raw==='PERMISSION_REQUIRED'){
+   const reply='Android is asking for Contacts permission, Sir. Allow it if you want me to read your phone contacts locally, then say “import contacts” again. Your contact details are not uploaded for this import.';
+   add(reply,'jarvis');speak('Please approve the Android Contacts permission, Sir.');$('hint').textContent='Waiting for Android Contacts permission';return;
+  }
+  if(String(raw).startsWith('ERROR:')){
+   const reply='I could not read the phone contacts: '+String(raw).slice(6)+'. You can say “import contacts from file” to choose a VCF export.';
+   add(reply,'jarvis');speak(reply);return;
+  }
+  try{
+   const count=mergeJarvisContacts(JSON.parse(raw));
+   const reply='Imported '+count+' phone contacts into this device’s private JARVIS contact list, Sir. Nicknames and duplicate entries have been reconciled locally.';
+   add(reply,'jarvis');history.push({role:'model',text:reply});history=history.slice(-20);
+   pairApi({action:'append-local',message:'Import phone contacts',reply}).catch(()=>{});
+   $('hint').textContent='Phone contacts imported locally; contact details were not sent to the JARVIS server.';speak(reply);return;
+  }catch(error){
+   const reply='The phone contacts could not be processed: '+error.message;
+   add(reply,'jarvis');speak(reply);return;
+  }
+ }
  if(importContactsCommand){
-  const reply='Certainly, Sir. Please choose your exported contacts file. If Android hides the .vcf file, rename its extension to .txt first. I will import the names and numbers locally on this device.';
+  const reply='Certainly, Sir. Please choose your exported contacts file. I will read the vCard contents locally on this device.';
   add(reply,'jarvis');history.push({role:'model',text:reply});history=history.slice(-20);
   if(window.AndroidJarvis&&typeof window.AndroidJarvis.chooseFile==='function')window.AndroidJarvis.chooseFile();
   else $('attach').click();
-  $('hint').textContent='Choose the contacts export (.vcf, or .txt if renamed). JARVIS reads the vCard contents locally.';
+  $('hint').textContent='Choose a VCF contacts export. JARVIS reads it locally.';
   status('Waiting for contacts file');speak(reply);return;
  }
  const rememberContact=contactCommandText.match(/^remember\s+contact\s+(.+?)\s+(?:as|number)\s+([+\d() .-]+)$/i);
  if(rememberContact){
   const name=rememberContact[1].trim(),number=cleanContactNumber(rememberContact[2]);
   if(!number){const reply='That phone number does not look valid, Sir. Please include the country code if needed.';add(reply,'jarvis');history.push({role:'model',text:reply});history=history.slice(-20);speak(reply);return;}
-  const items=readJarvisContacts(),index=items.findIndex(x=>String(x.name||'').toLowerCase()===name.toLowerCase());
-  if(index>=0)items[index]={name,number};else items.push({name,number});
-  writeJarvisContacts(items);
+  mergeJarvisContacts([{name,number,nicknames:[]}]);
   const reply='Saved '+name+' in this device’s JARVIS contact list, Sir.';
   add(reply,'jarvis');history.push({role:'model',text:reply});history=history.slice(-20);pairApi({action:'append-local',message,reply}).catch(()=>{});speak(reply);return;
  }
@@ -832,6 +852,48 @@ const textContact=contactCommandText.match(/^(?:(?:please|could you|can you|woul
   pairApi({action:'append-local',message,reply}).catch(()=>{});
   $('hint').textContent='Message composer handoff · you control whether it is sent.';
   status('System ready');speak(reply);return;
+ }
+ const notificationCommand=/^(?:show|read|list|check)\s+(?:(?:me|my)\s+)?(?:recent\s+)?notifications?$|^(?:what\s+notifications\s+do\s+i\s+have|show\s+my\s+notifications)$/i.test(contactCommandText);
+ if(notificationCommand){
+  if(!window.AndroidJarvis||typeof window.AndroidJarvis.getRecentNotifications!=='function'){add('Notification access is available only inside the J.A.R.V.I.S. Android app, Sir.','jarvis');return;}
+  const raw=window.AndroidJarvis.getRecentNotifications();
+  if(raw==='PERMISSION_REQUIRED'){add('Android has opened Notification Access settings, Sir. Enable J.A.R.V.I.S. there, then repeat “show my notifications”. Financial app notifications are excluded, and the rest stay on this phone.','jarvis');$('hint').textContent='Waiting for Android Notification Access';return;}
+  try{
+   const items=JSON.parse(raw);
+   if(!Array.isArray(items)||!items.length){add('There are no recent non-financial notifications available yet, Sir.','jarvis');return;}
+   const lines=items.slice(0,20).map((item,index)=>{
+    const when=new Date(Number(item.postedAt)).toLocaleString('en-IN',{dateStyle:'medium',timeStyle:'short'});
+    return (index+1)+'. '+String(item.app||'App')+' · '+String(item.title||'Notification')+' · '+String(item.text||'')+' · '+when;
+   });
+   add('Your recent notifications, Sir:\n'+lines.join('\n'),'jarvis');
+   $('hint').textContent='Notifications displayed locally; they were not synced or sent to the AI service.';speak('I have displayed your recent notifications locally, Sir.');return;
+  }catch(error){add('I could not read the recent notifications, Sir. '+error.message,'jarvis');return;}
+ }
+ const callLogCommand=/^(?:show|read|list|check)\s+(?:(?:me|my)\s+)?(?:recent\s+)?call(?:s|\s+logs?|\s+history)(?:\s+please)?$|^(?:who\s+called\s+me\s+last|last\s+call\s+details)$/i.test(contactCommandText);
+ if(callLogCommand){
+  if(!window.AndroidJarvis||typeof window.AndroidJarvis.getRecentCallLogs!=='function'){
+   add('Recent call history is available only inside the J.A.R.V.I.S. Android app, Sir.','jarvis');return;
+  }
+  const raw=window.AndroidJarvis.getRecentCallLogs(20);
+  if(raw==='PERMISSION_REQUIRED'){
+   add('Android is asking for Call History permission, Sir. Allow it if you want me to display your recent calls locally, then repeat the command. I will not send the call log to the JARVIS server.','jarvis');
+   $('hint').textContent='Waiting for Android Call History permission';return;
+  }
+  if(String(raw).startsWith('ERROR:')){add('I could not read call history: '+String(raw).slice(6),'jarvis');return;}
+  try{
+   const calls=JSON.parse(raw);
+   if(!Array.isArray(calls)||!calls.length){add('There are no recent call records available on this phone, Sir.','jarvis');return;}
+   const labels={incoming:'Incoming',outgoing:'Outgoing',missed:'Missed',rejected:'Rejected',blocked:'Blocked',other:'Other'};
+   const lines=calls.map((item,index)=>{
+    const when=new Date(Number(item.date)).toLocaleString('en-IN',{dateStyle:'medium',timeStyle:'short'});
+    const who=String(item.name||item.number||'Unknown number');
+    const duration=Math.max(0,Number(item.durationSeconds)||0);
+    return (index+1)+'. '+who+' · '+(labels[item.type]||'Call')+' · '+when+' · '+Math.floor(duration/60)+'m '+(duration%60)+'s';
+   });
+   add('Your recent calls, Sir:\n'+lines.join('\n'),'jarvis');
+   $('hint').textContent='Call history displayed locally on this phone; it was not synced or sent to the AI service.';
+   speak('I have displayed your recent call history locally, Sir.');return;
+  }catch(error){add('The call history response could not be read, Sir. '+error.message,'jarvis');return;}
  }
  const instant=attachment?null:instantReply(message);
 if(instant){
@@ -1124,6 +1186,32 @@ function cleanContactNumber(value){
  const digits=number.replace(/\D/g,'');
  return digits.length>=7&&digits.length<=15&&(!number.slice(1).includes('+'))?number:'';
 }
+function mergeJarvisContacts(items){
+ const existing=readJarvisContacts();let added=0;
+ for(const raw of (Array.isArray(items)?items:[])){
+  const name=String(raw.name||raw.displayName||'').trim();
+  const number=cleanContactNumber(raw.number||raw.phoneNumber);
+  if(!name||!number)continue;
+  const aliases=Array.isArray(raw.nicknames)?raw.nicknames.map(x=>String(x||'').trim()).filter(Boolean):[];
+  const normalizedNumber=number.replace(/\D/g,'');
+  const sourceId=String(raw.sourceId||raw.contactId||'');
+  let target=sourceId?existing.find(x=>String(x.sourceId||'')===sourceId):null;
+  if(!target)target=existing.find(x=>cleanContactNumber(x.number).replace(/\D/g,'')===normalizedNumber);
+  if(!target)target=existing.find(x=>String(x.name||'').trim().toLocaleLowerCase()===name.toLocaleLowerCase()&&cleanContactNumber(x.number).replace(/\D/g,'')===normalizedNumber);
+  if(target){
+   const known=[target.name,...(Array.isArray(target.nicknames)?target.nicknames:[])].map(x=>String(x||'').toLocaleLowerCase());
+   if(!known.includes(name.toLocaleLowerCase()))aliases.push(name);
+   target.nicknames=Array.from(new Set([...(target.nicknames||[]),...aliases].filter(Boolean)));
+   target.numbers=Array.from(new Set([...(Array.isArray(target.numbers)?target.numbers:[]),target.number,number].filter(Boolean)));
+   if(!target.number)target.number=number;
+   if(sourceId)target.sourceId=sourceId;
+  }else{
+   existing.push({name,number,numbers:[number],sourceId,nicknames:Array.from(new Set(aliases))});
+  }
+  added++;
+ }
+ writeJarvisContacts(existing);return added;
+}
 function importJarvisVcards(file){
  try{
   const bytes=Uint8Array.from(atob(file.data||''),c=>c.charCodeAt(0));
@@ -1133,37 +1221,32 @@ function importJarvisVcards(file){
   for(const card of cards){
    const block=card.split(/END:VCARD/i)[0]||'';
    const lines=block.split(/\r?\n/);
-   let name='',fallback='',numbers=[];
+   let name='',fallback='',numbers=[],nicknames=[];
    for(const line of lines){
-    const m=line.match(/^(?:item\d+\.)?(FN|N|TEL)(?:;([^:]*))?:(.*)$/i);
+    const m=line.match(/^(?:item\d+\.)?(FN|N|TEL|NICKNAME)(?:;([^:]*))?:(.*)$/i);
     if(!m)continue;
     const key=m[1].toUpperCase(),meta=(m[2]||'').toUpperCase(),value=m[3].replace(/\\n/gi,' ').replace(/\\([,;\\])/g,'$1').trim();
     if(key==='FN')name=value;
     else if(key==='N')fallback=value.split(';').filter(Boolean).reverse().join(' ').trim();
+    else if(key==='NICKNAME')nicknames.push(...value.split(',').map(x=>x.trim()).filter(Boolean));
     else {const number=cleanContactNumber(value);if(number)numbers.push({number,priority:/CELL|MOBILE/.test(meta)?0:/WORK/.test(meta)?2:1});}
    }
    const number=numbers.sort((a,b)=>a.priority-b.priority)[0]?.number;
    name=(name||fallback).trim();
-   if(name&&number)imported.push({name,number});
+   if(name&&number)imported.push({name,number,nicknames});
   }
   if(!imported.length)throw new Error('No usable names and phone numbers were found in that VCF file.');
-  const existing=readJarvisContacts();
-  for(const item of imported){
-   const key=item.name.toLocaleLowerCase();
-   const index=existing.findIndex(x=>String(x.name||'').toLocaleLowerCase()===key);
-   if(index>=0)existing[index]=item;else existing.push(item);
-  }
-  writeJarvisContacts(existing);
-  return imported.length;
+  mergeJarvisContacts(imported);return imported.length;
  }catch(error){throw new Error(error.message||'Could not import that contacts file.');}
 }
 function resolveJarvisContact(query){
  const q=String(query||'').trim().toLocaleLowerCase();
  const all=readJarvisContacts();
- const exact=all.filter(x=>String(x.name||'').trim().toLocaleLowerCase()===q);
+ const aliases=x=>[x.name,...(Array.isArray(x.nicknames)?x.nicknames:[])].map(v=>String(v||'').trim().toLocaleLowerCase()).filter(Boolean);
+ const exact=all.filter(x=>aliases(x).includes(q));
  if(exact.length===1)return {contact:exact[0]};
  if(exact.length>1)return {ambiguous:true,names:exact.map(x=>x.name)};
- const partial=all.filter(x=>String(x.name||'').toLocaleLowerCase().includes(q)||q.includes(String(x.name||'').toLocaleLowerCase()));
+ const partial=all.filter(x=>aliases(x).some(v=>v.includes(q)||q.includes(v)));
  if(partial.length===1)return {contact:partial[0]};
  if(partial.length>1)return {ambiguous:true,names:partial.map(x=>x.name)};
  return {missing:true};
@@ -1185,9 +1268,9 @@ $('wakeWordButton').onclick=()=>{
   window.AndroidJarvis.openWakeWordSettings();return;
  }
  if(window.AndroidJarvis){
-  $('wakeWordButton').textContent='Wake phrases need app update';
-  $('hint').textContent='Build 39 does not include the Android microphone permission and native wake-word service. Use the separate microphone button for tap-to-speak; continuous wake phrases need a compatible app update, Sir.';
-  status('Native wake-word support needs app update');
+  $('wakeWordButton').textContent='Wake phrases unavailable';
+  $('hint').textContent='This screen is not running inside the J.A.R.V.I.S. Android app. Use the microphone button for tap-to-speak, Sir.';
+  status('Native wake-word support unavailable');
   return;
  }
  if(browserWakeEnabled){stopBrowserWake();return;}
@@ -1361,54 +1444,6 @@ $('saveCustomRoutine').onclick=()=>{
 };
 
 
-async function checkJarvisUpdates(){
- const button=$('updateButton');
- if(!window.AndroidJarvis||typeof window.AndroidJarvis.getInstalledVersionCode!=='function'||typeof window.AndroidJarvis.installJarvisUpdate!=='function'){
-  $('hint').textContent='The in-app updater requires the JARVIS Android app. Open this screen inside JARVIS, Sir.';
-  return;
- }
- button.disabled=true;button.textContent='Checking…';
- try{
-  const installedCode=Number(window.AndroidJarvis.getInstalledVersionCode());
-  const response=await fetch('https://api.github.com/repos/hrishikeshks1611-stack/J.A.R.V.I.S-/releases/tags/jarvis-latest',{cache:'no-store',headers:{'Accept':'application/vnd.github+json'}});
-  if(response.status===404){$('hint').textContent='No JARVIS update has been published yet. Your installed app has not been changed, Sir.';return;}
-  if(!response.ok)throw new Error('GitHub update service returned HTTP '+response.status+'.');
-  const release=await response.json();
-  const body=String(release.body||'');
-  const readMeta=key=>{const match=body.match(new RegExp('(?:^|\\n)'+key+'=([^\\r\\n]+)','i'));return match?match[1].trim():'';};
-  const packageName=readMeta('JARVIS_PACKAGE');
-  const versionCode=Number(readMeta('JARVIS_VERSION_CODE'));
-  const versionName=readMeta('JARVIS_VERSION_NAME');
-  const asset=(release.assets||[]).find(item=>item.name==='app-phone-debug.apk'||item.name==='JARVIS-phone.apk');
-  if(packageName!=='com.hrishikesh.jarvis.next'||!Number.isSafeInteger(versionCode)||!asset||!/^https:\/\/github\.com\//i.test(asset.browser_download_url||'')){
-   throw new Error('The published update information is incomplete or does not identify the official JARVIS phone app.');
-  }
-  if(versionCode<=installedCode){
-   $('hint').textContent='J.A.R.V.I.S. is up to date (installed build '+installedCode+').';
-   return;
-  }
-  // Never offer a native package until its in-place update compatibility has
-  // been explicitly verified for existing installations. A higher version
-  // number and matching package name are not sufficient on Android.
-  if(readMeta('JARVIS_UPDATE_COMPATIBLE')!=='true'){
-   $('hint').textContent='A newer JARVIS build exists, but its in-place update compatibility has not been verified. Your current installation and data have been left untouched, Sir.';
-   return;
-  }
-  const accepted=confirm('J.A.R.V.I.S. '+versionName+' is available. Android will verify that it can update this installation. Your existing data is not cleared by this updater. Continue?');
-  if(!accepted){$('hint').textContent='Update postponed. Your current JARVIS installation is unchanged, Sir.';return;}
-  const result=window.AndroidJarvis.installJarvisUpdate(asset.browser_download_url,versionCode);
-  if(result==='ALLOW_INSTALL')$('hint').textContent='Allow JARVIS to request app installs in Android Settings, then return and tap Check for updates again, Sir.';
-  else if(result==='DOWNLOAD_STARTED')$('hint').textContent='Downloading the update. Android will verify compatibility and ask for confirmation before installing, Sir.';
-  else $('hint').textContent=String(result||'The update could not be started.');
- }catch(error){
-  $('hint').textContent='Update check failed: '+(error.message||'Please try again later.')+' Your installed JARVIS app is unchanged.';
- }finally{
-  button.disabled=false;button.textContent='Check for updates';
- }
-}
-$('updateButton').onclick=checkJarvisUpdates;
 
-if(window.AndroidJarvis&&typeof window.AndroidJarvis.getInstalledVersionCode==='function')setTimeout(checkJarvisUpdates,2500);
-
-if('serviceWorker'in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('./sw.js').catch(()=>{});
+if(!window.AndroidJarvis&&'serviceWorker'in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('./sw.js').catch(()=>{});
 </script></body></html>

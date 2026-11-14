@@ -1,22 +1,18 @@
 package com.hrishikesh.jarvis;
 
 import android.app.Activity;
-import android.app.PendingIntent;
-import android.content.pm.PackageInfo;
-import android.content.pm.PackageInstaller;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.net.HttpURLConnection;
-import java.net.URL;
 import android.content.BroadcastReceiver;
 import android.content.IntentFilter;
 import android.Manifest;
 import android.content.pm.PackageManager;
+import android.content.pm.ApplicationInfo;
 import android.content.ContentValues;
 import android.content.ClipData;
 import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.provider.MediaStore;
+import android.provider.ContactsContract;
+import android.provider.CallLog;
 import android.provider.AlarmClock;
 import android.provider.CalendarContract;
 import android.util.Base64;
@@ -45,14 +41,22 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.Locale;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
+import java.util.List;
+import java.util.Collections;
+import java.util.Comparator;
 
 public class MainActivity extends Activity {
     private static final int REQUEST_AUDIO_INPUT = 4102;
     private static final int REQUEST_FILE = 4103;
     private static final int REQUEST_CAMERA = 4104;
     private static final int REQUEST_LOCATION = 4105;
+    private static final int REQUEST_CONTACTS = 4107;
+    private static final int REQUEST_CALL_LOG = 4108;
     private static final int REQUEST_WEB_AUDIO = 4106;
     private PermissionRequest pendingWebAudioRequest;
     private GeolocationPermissions.Callback pendingGeoCallback;
@@ -168,10 +172,46 @@ public class MainActivity extends Activity {
         setContentView(webView);
         webView.requestFocus();
         if (BuildConfig.JARVIS_TV) applyTvImmersiveMode();
-        webView.loadUrl("https://hrishikeshks1611-stack.github.io/J.A.R.V.I.S-/");
+        loadJarvisInterface();
         restoreWakeWordServiceIfEnabled();
     }
 
+
+    public static boolean isFinancialApp(String packageName, String label) {
+        String pkg = packageName == null ? "" : packageName.toLowerCase(Locale.ROOT);
+        String name = label == null ? "" : label.toLowerCase(Locale.ROOT);
+        String[] packageMarkers = {
+                "com.google.android.apps.nbu.paisa", "com.phonepe", "net.one97.paytm", "com.paytm",
+                "in.org.npci.upiapp", "com.sbi", "com.hdfc", "com.icicibank", "com.axis.mobile",
+                "com.kotak", "com.idfcfirstbank", "com.bankofbaroda", "com.federalbank", "com.canarabank",
+                "com.pnb", "com.indusind", "com.rbl", "com.yesbank", "com.cred", "com.mobikwik",
+                "com.freecharge", "com.razorpay", "com.slice", "com.jupiter", "com.supermoney"
+        };
+        for (String marker : packageMarkers) if (pkg.contains(marker)) return true;
+        String[] labelMarkers = {"bank", "upi", "wallet", "finance", "payment", "paytm", "phonepe", "gpay", "google pay", "bhim", "cred", "mobikwik", "freecharge"};
+        for (String marker : labelMarkers) if (name.contains(marker)) return true;
+        return false;
+    }
+
+    private String normalizeAppLabel(String value) {
+        return value == null ? "" : value.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]", "");
+    }
+
+    private void loadJarvisInterface() {
+        try (InputStream input = getAssets().open("index.html");
+             ByteArrayOutputStream output = new ByteArrayOutputStream()) {
+            byte[] buffer = new byte[16384];
+            int count;
+            while ((count = input.read(buffer)) != -1) output.write(buffer, 0, count);
+            String html = new String(output.toByteArray(), StandardCharsets.UTF_8);
+            webView.loadDataWithBaseURL(
+                    "https://hrishikeshks1611-stack.github.io/J.A.R.V.I.S-/",
+                    html, "text/html", "UTF-8", null);
+        } catch (Exception error) {
+            android.util.Log.e("JARVIS", "Could not load the bundled JARVIS interface", error);
+            Toast.makeText(this, "J.A.R.V.I.S. could not load its built-in interface. Please reopen the app, Sir.", Toast.LENGTH_LONG).show();
+        }
+    }
 
     // Local British-English speech is a quota/network fallback only.
     // Gemini Algieba remains the primary voice and is never replaced while available.
@@ -298,52 +338,73 @@ public class MainActivity extends Activity {
     }
 
     private class JarvisBridge {
-        @JavascriptInterface public int getInstalledVersionCode() {
-            return BuildConfig.VERSION_CODE;
-        }
-
-        @JavascriptInterface public String installJarvisUpdate(String apkUrl, int expectedVersionCode) {
-            if (expectedVersionCode <= BuildConfig.VERSION_CODE) return "ERROR:This update is not newer than the installed JARVIS version.";
-            Uri uri;
-            try { uri = Uri.parse(apkUrl); }
-            catch (Exception error) { return "ERROR:The update address is invalid."; }
-            String host = uri.getHost() == null ? "" : uri.getHost().toLowerCase(Locale.ROOT);
-            if (!"https".equalsIgnoreCase(uri.getScheme()) || !("github.com".equals(host))) {
-                return "ERROR:Updates must come from the official JARVIS GitHub release.";
-            }
-            if (Build.VERSION.SDK_INT >= 26 && !getPackageManager().canRequestPackageInstalls()) {
-                runOnUiThread(() -> {
-                    try {
-                        Intent settings = new Intent(android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
-                                Uri.parse("package:" + getPackageName()));
-                        startActivity(settings);
-                        Toast.makeText(MainActivity.this, "Allow J.A.R.V.I.S. to request updates, then return and check again, Sir.", Toast.LENGTH_LONG).show();
-                    } catch (Exception error) {
-                        Toast.makeText(MainActivity.this, "Please allow app installs for J.A.R.V.I.S. in Android Settings, Sir.", Toast.LENGTH_LONG).show();
-                    }
-                });
-                return "ALLOW_INSTALL";
-            }
-            new Thread(() -> downloadAndInstallJarvisUpdate(uri.toString(), expectedVersionCode)).start();
-            return "DOWNLOAD_STARTED";
-        }
         @JavascriptInterface public String openApp(String requested) {
             String name = requested == null ? "" : requested.toLowerCase(Locale.ROOT).trim();
             if (name.equals("settings") || name.equals("phone settings")) {
                 try { startActivity(new Intent(android.provider.Settings.ACTION_SETTINGS)); return "Opening Settings, Sir."; }
                 catch (Exception e) { return "Android could not open Settings, Sir."; }
             }
+            if (isFinancialApp("", name)) return "Financial apps and money-related actions are outside my J.A.R.V.I.S. permissions, Sir.";
             String[] packages = appPackages.get(name);
-            if (packages == null) return "I do not have a launch command for " + name + ", Sir.";
-            for (String packageName : packages) {
-                Intent launch = getPackageManager().getLaunchIntentForPackage(packageName);
+            if (packages != null) {
+                for (String packageName : packages) {
+                    if (isFinancialApp(packageName, name)) return "Financial apps are outside my J.A.R.V.I.S. permissions, Sir.";
+                    Intent launch = getPackageManager().getLaunchIntentForPackage(packageName);
+                    if (launch != null) {
+                        launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                        try { startActivity(launch); return "Opening " + title(name) + ", Sir."; }
+                        catch (Exception ignored) { }
+                    }
+                }
+            }
+            List<ApplicationInfo> installed = getPackageManager().getInstalledApplications(PackageManager.GET_META_DATA);
+            List<ApplicationInfo> matches = new ArrayList<>();
+            String query = normalizeAppLabel(name);
+            for (ApplicationInfo info : installed) {
+                String label;
+                try { label = String.valueOf(getPackageManager().getApplicationLabel(info)); }
+                catch (Exception ignored) { continue; }
+                if (isFinancialApp(info.packageName, label)) continue;
+                if (!query.isEmpty() && normalizeAppLabel(label).equals(query)
+                        && getPackageManager().getLaunchIntentForPackage(info.packageName) != null) matches.add(info);
+            }
+            if (matches.size() == 1) {
+                Intent launch = getPackageManager().getLaunchIntentForPackage(matches.get(0).packageName);
                 if (launch != null) {
                     launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                    try { startActivity(launch); return "Opening " + title(name) + ", Sir."; }
+                    try { startActivity(launch); return "Opening " + String.valueOf(getPackageManager().getApplicationLabel(matches.get(0))) + ", Sir."; }
                     catch (Exception ignored) { }
                 }
             }
-            return title(name) + " does not appear to be installed, Sir.";
+            if (matches.size() > 1) return "I found more than one app named " + name + ". Please give me its full app name, Sir.";
+            return title(name) + " is not installed or is outside my supported non-financial app access, Sir.";
+        }
+
+        @JavascriptInterface public String getInstalledApps() {
+            JSONArray apps = new JSONArray();
+            try {
+                List<ApplicationInfo> installed = getPackageManager().getInstalledApplications(PackageManager.GET_META_DATA);
+                Collections.sort(installed, Comparator.comparing((ApplicationInfo info) -> {
+                    try { return String.valueOf(getPackageManager().getApplicationLabel(info)).toLowerCase(Locale.ROOT); }
+                    catch (Exception ignored) { return info.packageName.toLowerCase(Locale.ROOT); }
+                }));
+                for (ApplicationInfo info : installed) {
+                    Intent launch = getPackageManager().getLaunchIntentForPackage(info.packageName);
+                    if (launch == null) continue;
+                    String label;
+                    try { label = String.valueOf(getPackageManager().getApplicationLabel(info)); }
+                    catch (Exception ignored) { label = info.packageName; }
+                    if (isFinancialApp(info.packageName, label)) continue;
+                    JSONObject item = new JSONObject();
+                    item.put("name", label);
+                    item.put("packageName", info.packageName);
+                    apps.put(item);
+                    if (apps.length() >= 300) break;
+                }
+                return apps.toString();
+            } catch (Exception error) {
+                return "[]";
+            }
         }
 
 
@@ -433,6 +494,126 @@ public class MainActivity extends Activity {
                 }
             });
             return "Opening Android's Cast settings, Sir. Select a compatible TV or wireless display.";
+        }
+
+        @JavascriptInterface public String getPhoneContacts() {
+            if (Build.VERSION.SDK_INT >= 23 && checkSelfPermission(Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED) {
+                runOnUiThread(() -> requestPermissions(new String[]{Manifest.permission.READ_CONTACTS}, REQUEST_CONTACTS));
+                return "PERMISSION_REQUIRED";
+            }
+            try {
+                Map<Long, JSONArray> nicknamesByContact = new HashMap<>();
+                try (Cursor cursor = getContentResolver().query(
+                        ContactsContract.Data.CONTENT_URI,
+                        new String[]{ContactsContract.Data.CONTACT_ID, ContactsContract.CommonDataKinds.Nickname.NAME},
+                        ContactsContract.Data.MIMETYPE + "=?",
+                        new String[]{ContactsContract.CommonDataKinds.Nickname.CONTENT_ITEM_TYPE},
+                        null)) {
+                    if (cursor != null) {
+                        while (cursor.moveToNext()) {
+                            long contactId = cursor.getLong(0);
+                            String nickname = cursor.getString(1);
+                            if (nickname == null || nickname.trim().isEmpty()) continue;
+                            JSONArray names = nicknamesByContact.get(contactId);
+                            if (names == null) { names = new JSONArray(); nicknamesByContact.put(contactId, names); }
+                            if (!containsIgnoreCase(names, nickname.trim())) names.put(nickname.trim());
+                        }
+                    }
+                }
+                JSONArray contacts = new JSONArray();
+                Set<String> seen = new HashSet<>();
+                try (Cursor cursor = getContentResolver().query(
+                        ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
+                        new String[]{
+                                ContactsContract.CommonDataKinds.Phone.CONTACT_ID,
+                                ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
+                                ContactsContract.CommonDataKinds.Phone.NUMBER
+                        },
+                        null, null,
+                        ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME + " COLLATE NOCASE ASC")) {
+                    if (cursor != null) {
+                        while (cursor.moveToNext() && contacts.length() < 1500) {
+                            long contactId = cursor.getLong(0);
+                            String name = cursor.getString(1);
+                            String number = cursor.getString(2);
+                            if (name == null || name.trim().isEmpty() || number == null || number.trim().isEmpty()) continue;
+                            String key = contactId + "|" + number.replaceAll("[^0-9+]", "");
+                            if (!seen.add(key)) continue;
+                            JSONObject item = new JSONObject();
+                            item.put("name", name.trim());
+                            item.put("number", number.trim());
+                            item.put("sourceId", String.valueOf(contactId));
+                            item.put("nicknames", nicknamesByContact.get(contactId) == null
+                                    ? new JSONArray() : nicknamesByContact.get(contactId));
+                            contacts.put(item);
+                        }
+                    }
+                }
+                return contacts.toString();
+            } catch (Exception error) {
+                return "ERROR:" + (error.getMessage() == null ? "Contacts could not be read." : error.getMessage());
+            }
+        }
+
+        private boolean containsIgnoreCase(JSONArray values, String candidate) {
+            for (int i = 0; i < values.length(); i++) {
+                if (candidate.equalsIgnoreCase(values.optString(i))) return true;
+            }
+            return false;
+        }
+
+        @JavascriptInterface public String getRecentNotifications() {
+            String enabled = android.provider.Settings.Secure.getString(getContentResolver(), "enabled_notification_listeners");
+            String component = new android.content.ComponentName(MainActivity.this, JarvisMediaNotificationListener.class).flattenToString();
+            if (enabled == null || !enabled.contains(component)) {
+                runOnUiThread(() -> {
+                    try { startActivity(new Intent(android.provider.Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)); }
+                    catch (ActivityNotFoundException error) { Toast.makeText(MainActivity.this, "Open Android Notification Access settings and enable J.A.R.V.I.S., Sir.", Toast.LENGTH_LONG).show(); }
+                });
+                return "PERMISSION_REQUIRED";
+            }
+            return JarvisMediaNotificationListener.getRecentNotifications().toString();
+        }
+
+        @JavascriptInterface public String getRecentCallLogs(int requestedLimit) {
+            if (Build.VERSION.SDK_INT >= 23 && checkSelfPermission(Manifest.permission.READ_CALL_LOG) != PackageManager.PERMISSION_GRANTED) {
+                runOnUiThread(() -> requestPermissions(new String[]{Manifest.permission.READ_CALL_LOG}, REQUEST_CALL_LOG));
+                return "PERMISSION_REQUIRED";
+            }
+            int limit = Math.max(1, Math.min(50, requestedLimit));
+            JSONArray calls = new JSONArray();
+            try (Cursor cursor = getContentResolver().query(
+                    CallLog.Calls.CONTENT_URI,
+                    new String[]{
+                            CallLog.Calls.CACHED_NAME,
+                            CallLog.Calls.NUMBER,
+                            CallLog.Calls.TYPE,
+                            CallLog.Calls.DATE,
+                            CallLog.Calls.DURATION
+                    },
+                    null, null, CallLog.Calls.DATE + " DESC")) {
+                if (cursor != null) {
+                    while (cursor.moveToNext() && calls.length() < limit) {
+                        JSONObject item = new JSONObject();
+                        String name = cursor.getString(0);
+                        String number = cursor.getString(1);
+                        int type = cursor.getInt(2);
+                        item.put("name", name == null ? "" : name);
+                        item.put("number", number == null ? "" : number);
+                        item.put("type", type == CallLog.Calls.INCOMING_TYPE ? "incoming"
+                                : type == CallLog.Calls.OUTGOING_TYPE ? "outgoing"
+                                : type == CallLog.Calls.MISSED_TYPE ? "missed"
+                                : type == CallLog.Calls.REJECTED_TYPE ? "rejected"
+                                : type == CallLog.Calls.BLOCKED_TYPE ? "blocked" : "other");
+                        item.put("date", cursor.getLong(3));
+                        item.put("durationSeconds", cursor.getLong(4));
+                        calls.put(item);
+                    }
+                }
+                return calls.toString();
+            } catch (Exception error) {
+                return "ERROR:" + (error.getMessage() == null ? "Call history could not be read." : error.getMessage());
+            }
         }
 
         @JavascriptInterface public String dialNumber(String requestedNumber) {
@@ -785,78 +966,6 @@ public class MainActivity extends Activity {
         }
     }
 
-    private void downloadAndInstallJarvisUpdate(String address, int expectedVersionCode) {
-        File apk = null;
-        HttpURLConnection connection = null;
-        try {
-            URL url = new URL(address);
-            connection = (HttpURLConnection) url.openConnection();
-            connection.setInstanceFollowRedirects(true);
-            connection.setConnectTimeout(20000);
-            connection.setReadTimeout(45000);
-            connection.setRequestProperty("User-Agent", "JARVIS-Android-Updater");
-            connection.connect();
-            String finalHost = connection.getURL().getHost() == null ? "" : connection.getURL().getHost().toLowerCase(Locale.ROOT);
-            if (!"github.com".equals(finalHost) && !"release-assets.githubusercontent.com".equals(finalHost)) {
-                throw new Exception("The update download did not come from GitHub.");
-            }
-            if (connection.getResponseCode() != HttpURLConnection.HTTP_OK) {
-                throw new Exception("GitHub could not provide the update (HTTP " + connection.getResponseCode() + ").");
-            }
-            long length = connection.getContentLengthLong();
-            if (length > 150L * 1024L * 1024L) throw new Exception("The update file is larger than the allowed size.");
-            apk = new File(getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "jarvis-update-" + expectedVersionCode + ".apk");
-            File parent = apk.getParentFile();
-            if (parent != null && !parent.exists() && !parent.mkdirs()) throw new Exception("Could not prepare secure update storage.");
-            try (InputStream input = connection.getInputStream(); FileOutputStream output = new FileOutputStream(apk, false)) {
-                byte[] buffer = new byte[16384];
-                int count;
-                long total = 0;
-                while ((count = input.read(buffer)) != -1) {
-                    total += count;
-                    if (total > 150L * 1024L * 1024L) throw new Exception("The update file is larger than the allowed size.");
-                    output.write(buffer, 0, count);
-                }
-                output.getFD().sync();
-            }
-            if (!apk.isFile() || apk.length() == 0) throw new Exception("The downloaded update is empty.");
-            PackageInfo candidate = getPackageManager().getPackageArchiveInfo(apk.getAbsolutePath(), 0);
-            if (candidate == null || !getPackageName().equals(candidate.packageName)) {
-                throw new Exception("This APK is not the JARVIS phone app. Your installed app has not been changed.");
-            }
-            long candidateVersion = Build.VERSION.SDK_INT >= 28 ? candidate.getLongVersionCode() : candidate.versionCode;
-            if (candidateVersion != expectedVersionCode || candidateVersion <= BuildConfig.VERSION_CODE) {
-                throw new Exception("The APK version does not match the update listing or is not newer. Your installed app has not been changed.");
-            }
-            PackageInstaller installer = getPackageManager().getPackageInstaller();
-            PackageInstaller.SessionParams params = new PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL);
-            params.setAppPackageName(getPackageName());
-            params.setSize(apk.length());
-            int sessionId = installer.createSession(params);
-            PackageInstaller.Session session = installer.openSession(sessionId);
-            try (InputStream input = new java.io.FileInputStream(apk);
-                 java.io.OutputStream output = session.openWrite("jarvis-update.apk", 0, apk.length())) {
-                byte[] buffer = new byte[16384];
-                int count;
-                while ((count = input.read(buffer)) != -1) output.write(buffer, 0, count);
-                session.fsync(output);
-            }
-            Intent statusIntent = new Intent(this, UpdateInstallReceiver.class);
-            int pendingFlags = PendingIntent.FLAG_UPDATE_CURRENT;
-            if (Build.VERSION.SDK_INT >= 31) pendingFlags |= PendingIntent.FLAG_MUTABLE;
-            PendingIntent statusPending = PendingIntent.getBroadcast(this, expectedVersionCode, statusIntent, pendingFlags);
-            session.commit(statusPending.getIntentSender());
-            runOnUiThread(() -> Toast.makeText(this, "JARVIS update checked. Android will ask you to confirm installation if it is compatible, Sir.", Toast.LENGTH_LONG).show());
-        } catch (Exception error) {
-            final String message = error.getMessage() == null ? "The update could not be prepared." : error.getMessage();
-            runOnUiThread(() -> Toast.makeText(this, message + " Your existing JARVIS installation and data have not been deliberately removed.", Toast.LENGTH_LONG).show());
-        } finally {
-            if (connection != null) connection.disconnect();
-            // PackageInstaller has copied the session contents by the time commit is called.
-            if (apk != null && apk.exists()) apk.delete();
-        }
-    }
-
     private void startOfflineDictation() {
         try {
             Intent intent = new Intent(this, WakeWordService.class).setAction(WakeWordService.ACTION_DICTATION);
@@ -894,6 +1003,22 @@ public class MainActivity extends Activity {
                     Toast.makeText(this, "Allow microphone access to use Live Voice, Sir.", Toast.LENGTH_LONG).show();
                 }
             }
+            return;
+        }
+        if (requestCode == REQUEST_CONTACTS) {
+            boolean granted = grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED;
+            Toast.makeText(this, granted
+                    ? "Contacts access enabled. Say “import contacts” again, Sir."
+                    : "Contacts access was not granted. You can still import a VCF contacts file, Sir.",
+                    Toast.LENGTH_LONG).show();
+            return;
+        }
+        if (requestCode == REQUEST_CALL_LOG) {
+            boolean granted = grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED;
+            Toast.makeText(this, granted
+                    ? "Call history access enabled. Repeat your recent-calls command, Sir."
+                    : "Call history access was not granted, Sir.",
+                    Toast.LENGTH_LONG).show();
             return;
         }
         if (requestCode == REQUEST_LOCATION && pendingGeoCallback != null) {
