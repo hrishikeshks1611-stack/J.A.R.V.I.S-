@@ -12,7 +12,7 @@
     </queries>
     <application
         android:allowBackup="false"
-        android:label="J.A.R.V.I.S."
+        android:label="J.A.R.V.I.S"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:theme="@style/SplashTheme"
