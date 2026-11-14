@@ -39,7 +39,7 @@ test("JARVIS 15.0 installs separately from the protected 14.0 package", async ()
   const migration = await readFile(new URL("../docs/JARVIS-15-DEVICE-SYNC-AND-CUTOVER.md", import.meta.url), "utf8");
   assert.ok(migration.includes("Transfer owner here"));
   assert.ok(migration.includes("revoke the old 14.0 device session"));
-  assert.ok(migration.includes("must not uninstall the app or wipe its private local storage"));
+  assert.ok(migration.includes("does not uninstall the app or wipe its private local storage"));
 });
 
 test("APK workflow builds 14.0.1 and the update workflow verifies in-place data preservation", async () => {
