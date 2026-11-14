@@ -23,7 +23,7 @@ android {
         minSdk 23
         targetSdk 35
         versionCode 1400
-        versionName '7.0'
+        versionName '14.0'
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
         buildConfigField 'boolean', 'JARVIS_TV', 'false'
         buildConfigField 'String', 'ASSISTANT_NAME', '"J.A.R.V.I.S. 7.0"'
