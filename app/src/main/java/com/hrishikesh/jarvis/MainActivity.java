@@ -91,7 +91,7 @@ public final class MainActivity extends Activity {
         root.addView(status, matchWrap());
 
         TextView chatHeading = new TextView(this);
-        chatHeading.setText("J.A.R.V.I.S  •  J.A.R.V.I.S CORE");
+        chatHeading.setText("J.A.R.V.I.S  •  CORE ONLINE");
         chatHeading.setTextColor(cyan);
         chatHeading.setTextSize(12);
         chatHeading.setLetterSpacing(.12f);
@@ -247,7 +247,7 @@ public final class MainActivity extends Activity {
         tts = new TextToSpeech(this, result -> {
             if (result == TextToSpeech.SUCCESS) {
                 ttsReady = configureVoice();
-                if (ttsReady) { tts.setSpeechRate(0.92f); tts.setPitch(0.84f); speak("J.A.R.V.I.S online. J.A.R.V.I.S is at your service, Sir."); }
+                if (ttsReady) { tts.setSpeechRate(0.92f); tts.setPitch(0.84f); speak("J.A.R.V.I.S online. Ready when you are, Sir."); }
                 else { setStatus("NO MALE ENGLISH VOICE FOUND • TAP TO SET UP JARVIS VOICE"); if (status != null) status.setOnClickListener(v -> openVoiceSettings()); }
             }
         });
@@ -406,7 +406,7 @@ public final class MainActivity extends Activity {
                 String reply = PersonalityEngine.respond(raw, memory == null ? null : memory.recent(12));
                 addChatLine("J.A.R.V.I.S", reply, false);
                 speak(reply);
-                setStatus("J.A.R.V.I.S PERSONA • OFFLINE RESPONSE");
+                setStatus("J.A.R.V.I.S CORE • OFFLINE MODE");
                 break;
         }
     }
