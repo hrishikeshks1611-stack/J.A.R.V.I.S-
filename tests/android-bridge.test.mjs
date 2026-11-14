@@ -88,14 +88,14 @@ test("general YouTube video commands search in YouTube without touching YouTube 
   const source = await readFile(new URL("../app/src/main/java/com/hrishikesh/jarvis/MainActivity.java", import.meta.url), "utf8");
   const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
   const capabilities = await readFile(new URL("../lib/jarvis-capabilities.js", import.meta.url), "utf8");
-  assert.match(source, /public String searchYouTubeVideos\\(String query\\)/);
-  assert.match(source, /https:\\/\\/www\\.youtube\\.com\\/results\\?search_query=/);
-  assert.match(source, /intent\\.setPackage\\("com\\.google\\.android\\.youtube"\\)/);
-  assert.match(html, /function extractYouTubeVideoQuery\\(message\\)/);
-  assert.match(html, /window\\.AndroidJarvis\\.searchYouTubeVideos\\(youtubeVideoQuery\\)/);
-  assert.match(html, /automatic video selection is not enabled/);
-  assert.match(capabilities, /id: "youtube_video_search", area: "media", status: "implemented"/);
-  assert.match(capabilities, /youtube_video_search: "Search general YouTube videos/);
+  assert.ok(source.includes("public String searchYouTubeVideos(String query)"));
+  assert.ok(source.includes('https://www.youtube.com/results?search_query='));
+  assert.ok(source.includes('intent.setPackage("com.google.android.youtube")'));
+  assert.ok(html.includes("function extractYouTubeVideoQuery(message)"));
+  assert.ok(html.includes("window.AndroidJarvis.searchYouTubeVideos(youtubeVideoQuery)"));
+  assert.ok(html.includes("automatic video selection is not enabled"));
+  assert.ok(capabilities.includes('id: "youtube_video_search", area: "media", status: "implemented"'));
+  assert.ok(capabilities.includes('youtube_video_search: "Search general YouTube videos'));
 });
 
 test("live Android bridge opens the exact selected YouTube Music track", async () => {
