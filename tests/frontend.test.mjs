@@ -339,7 +339,7 @@ test("wake-word listening is explicit, foreground-notified, and survives Activit
  assert.ok(source.includes("restoreWakeWordServiceIfEnabled()"));
  assert.ok(source.includes('getBoolean("enabled", false)'));
  assert.ok(source.includes("startForegroundService(service)"));
- const onStop = source.match(/@Override protected void onStop\(\)\s*\{([\s\S]*?)\n    \}/);
+ const onStop = source.match(/protected void onStop\(\)\s*\{([\s\S]*?)super\.onStop\(\);/);
  assert.ok(onStop);
  assert.doesNotMatch(onStop[1], /stopService|putBoolean/);
  assert.ok(service.includes('setOngoing(true)'));
