@@ -43,14 +43,17 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          APK="app/build/outputs/apk/phone/release/app-phone-release-unsigned.apk"
+          APK="app/build/outputs/apk/phone/release/app-phone-release.apk"
           AAPT="$ANDROID_HOME/build-tools/35.0.0/aapt"
+          APKSIGNER="$ANDROID_HOME/build-tools/35.0.0/apksigner"
           test -s "$APK"
           BADGING="$("$AAPT" dump badging "$APK")"
           echo "$BADGING" | grep -Fq "package: name='com.hrishikesh.jarvis16' versionCode='1600' versionName='16.0.0'"
+          "$APKSIGNER" verify --verbose "$APK"
           sha256sum "$APK"
           echo "Verified package: com.hrishikesh.jarvis16"
           echo "Verified version: 16.0.0 (1600)"
+          echo "Verified APK signature for owner testing"
       - name: Upload phone release candidate APK
         uses: actions/upload-artifact@v4
         with:
