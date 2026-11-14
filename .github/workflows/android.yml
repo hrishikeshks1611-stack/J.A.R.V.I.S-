@@ -1,7 +1,7 @@
 name: Fresh Android Build
 on:
   push:
-    branches: [jarvis-fresh-1.0]
+    branches: [jarvis-9.0]
   workflow_dispatch:
 jobs:
   build:
@@ -31,7 +31,7 @@ jobs:
           test -s "$APK"
           AAPT="$ANDROID_HOME/build-tools/35.0.0/aapt"
           "$AAPT" dump badging "$APK" | tee /tmp/jarvis-badging.txt
-          grep -q "package: name='com.hrishikesh.jarvis.fresh' versionCode='115' versionName='1.0.15'" /tmp/jarvis-badging.txt
+          grep -q "package: name='com.hrishikesh.jarvis.fresh' versionCode='900' versionName='9.0'" /tmp/jarvis-badging.txt
           grep -q "application-icon-.*:.*res/" /tmp/jarvis-badging.txt
           "$AAPT" dump resources "$APK" > /tmp/jarvis-resources.txt
           grep -q 'jarvis_reactor' /tmp/jarvis-resources.txt
@@ -50,13 +50,13 @@ jobs:
           unzip -t "$APK"
           unzip -l "$APK" | grep -E 'classes([0-9]+)?[.]dex'
           mkdir -p release
-          cp "$APK" release/JARVIS-1.0.15-SECURITY-REVIEW.apk
-          sha256sum release/JARVIS-1.0.15-SECURITY-REVIEW.apk | tee release/SHA256SUMS.txt
+          cp "$APK" release/JARVIS-9.0.apk
+          sha256sum release/JARVIS-9.0.apk | tee release/SHA256SUMS.txt
       - uses: actions/upload-artifact@v4
         with:
-          name: JARVIS-1.0.15-SECURITY-REVIEW-APK
+          name: JARVIS-9.0-APK
           path: |
-            release/JARVIS-1.0.15-SECURITY-REVIEW.apk
+            release/JARVIS-9.0.apk
             release/SHA256SUMS.txt
           if-no-files-found: error
           retention-days: 30
