@@ -34,7 +34,7 @@ public final class ArcReactorView extends GLSurfaceView {
                 "vec3 edge=uColor.rgb*(0.12+0.34*vRim); " +
                 "gl_FragColor=vec4(metal+edge,uColor.a); }";
         private int program, mvpLocation, modelLocation, colorLocation, positionLocation, normalLocation;
-        private Mesh outer, middle, inner, core;
+        private Mesh outer, middle, inner, core, triangle;
         private final float[] projection = new float[16];
         private final float[] view = new float[16];
         private final float[] model = new float[16];
@@ -56,6 +56,7 @@ public final class ArcReactorView extends GLSurfaceView {
             middle = Mesh.torus(.67f, .035f, 112, 10);
             inner = Mesh.torus(.46f, .026f, 96, 10);
             core = Mesh.sphere(.19f, 40, 32);
+            triangle = Mesh.invertedTriangle(.40f);
             started = System.nanoTime();
         }
 
@@ -87,8 +88,29 @@ public final class ArcReactorView extends GLSurfaceView {
             draw(inner, model, .42f, .67f, .72f, 1f);
 
             Matrix.setIdentityM(model, 0);
+            Matrix.rotateM(model, 0, seconds * 15f, 0f, 1f, 0f);
+            drawLines(triangle, model, .12f, .66f, .98f, 1f);
+
+            Matrix.setIdentityM(model, 0);
+            float pulse = 0.94f + 0.07f * (float)Math.sin(seconds * 2.0f);
+            Matrix.scaleM(model, 0, pulse, pulse, pulse);
             Matrix.rotateM(model, 0, seconds * 12f, 0f, 1f, 0f);
             draw(core, model, .12f, .34f, .43f, 1f);
+        }
+
+        private void drawLines(Mesh mesh, float[] transform, float r, float g, float b, float a) {
+            Matrix.multiplyMM(mvp, 0, pv, 0, transform, 0);
+            GLES20.glUniformMatrix4fv(mvpLocation, 1, false, mvp, 0);
+            GLES20.glUniformMatrix4fv(modelLocation, 1, false, transform, 0);
+            GLES20.glUniform4f(colorLocation, r, g, b, a);
+            GLES20.glLineWidth(2.0f);
+            GLES20.glEnableVertexAttribArray(positionLocation);
+            GLES20.glEnableVertexAttribArray(normalLocation);
+            GLES20.glVertexAttribPointer(positionLocation, 3, GLES20.GL_FLOAT, false, 0, mesh.positions);
+            GLES20.glVertexAttribPointer(normalLocation, 3, GLES20.GL_FLOAT, false, 0, mesh.normals);
+            GLES20.glDrawElements(GLES20.GL_LINES, mesh.indexCount, GLES20.GL_UNSIGNED_SHORT, mesh.indices);
+            GLES20.glDisableVertexAttribArray(positionLocation);
+            GLES20.glDisableVertexAttribArray(normalLocation);
         }
 
         private void draw(Mesh mesh, float[] transform, float r, float g, float b, float a) {
@@ -167,6 +189,15 @@ public final class ArcReactorView extends GLSurfaceView {
                 ix[k++]=(short)(a+1); ix[k++]=(short)b; ix[k++]=(short)(b+1);
             }
             return new Mesh(p,n,ix);
+        }
+        static Mesh invertedTriangle(float radius) {
+            float top = radius * 0.72f;
+            float bottom = -radius * 0.92f;
+            float half = radius * 0.88f;
+            float[] p = {0f, bottom, 0f, -half, top, 0f, half, top, 0f};
+            float[] n = {0f, 0f, 1f, 0f, 0f, 1f, 0f, 0f, 1f};
+            short[] ix = {0, 1, 1, 2, 2, 0};
+            return new Mesh(p, n, ix);
         }
         static Mesh sphere(float radius, int stacks, int slices) {
             int rows=stacks+1, cols=slices+1;
