@@ -2,7 +2,7 @@ name: JARVIS Android phone build and microphone checks
 
 on:
   push:
-    branches: [ jarvis-16.0-foundation ]
+    branches: [ jarvis-16.0-foundation, jarvis-17.0-foundation ]
     paths:
       - 'app/**'
       - '*.gradle'
