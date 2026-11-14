@@ -1,0 +1,80 @@
+name: Verify J.A.R.V.I.S 14.0 to 14.0.1 in-place update
+on:
+  workflow_dispatch:
+  push:
+    branches: [ jarvis-14.0 ]
+    paths:
+      - 'app/**'
+      - '.github/workflows/android-14-1-update.yml'
+permissions:
+  contents: read
+jobs:
+  in-place-update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out full history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          accept-android-sdk-licenses: true
+          packages: platform-tools
+      - name: Install Android platform and build tools
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+      - name: Build 14.0 baseline and 14.0.1 candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          git worktree add /tmp/jarvis-14.0-baseline HEAD^
+          gradle --no-daemon -p /tmp/jarvis-14.0-baseline assemblePhoneDebug
+          BASELINE="/tmp/jarvis-14.0-baseline/app/build/outputs/apk/phone/debug/app-phone-debug.apk"
+          test -s "$BASELINE"
+          mkdir -p update-test-inputs
+          cp "$BASELINE" update-test-inputs/jarvis-14.0-baseline.apk
+          gradle --no-daemon assemblePhoneDebug
+          CANDIDATE="app/build/outputs/apk/phone/debug/app-phone-debug.apk"
+          test -s "$CANDIDATE"
+          AAPT="$ANDROID_HOME/build-tools/35.0.0/aapt"
+          "$AAPT" dump badging update-test-inputs/jarvis-14.0-baseline.apk | grep -Fq "package: name='com.hrishikesh.jarvis.fourteen.release' versionCode='1400' versionName='14.0'"
+          "$AAPT" dump badging "$CANDIDATE" | grep -Fq "package: name='com.hrishikesh.jarvis.fourteen.release' versionCode='1401' versionName='14.0.1'"
+          cp "$CANDIDATE" update-test-inputs/jarvis-14.0.1-candidate.apk
+          sha256sum update-test-inputs/*.apk
+      - name: Install 14.0 then update in place on Android 10 emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 29
+          arch: x86_64
+          profile: pixel_2
+          script: |
+            set -euo pipefail
+            PACKAGE="com.hrishikesh.jarvis.fourteen.release"
+            adb install update-test-inputs/jarvis-14.0-baseline.apk
+            adb shell pm path "$PACKAGE"
+            adb shell "run-as $PACKAGE sh -c 'mkdir -p files shared_prefs && printf jarvis-14.0-data-preservation-check > files/update-compatibility-sentinel.txt && printf "<map><string name=\"sentinel\">jarvis-14.0-preferences-preserved</string></map>" > shared_prefs/update-compatibility.xml'"
+            adb install -r update-test-inputs/jarvis-14.0.1-candidate.apk
+            adb shell dumpsys package "$PACKAGE" | grep -F "versionCode=1401"
+            adb shell dumpsys package "$PACKAGE" | grep -F "versionName=14.0.1"
+            adb shell pm list packages | grep -Fx "package:$PACKAGE"
+            test "$(adb shell pm list packages | grep -cF "package:$PACKAGE")" -eq 1
+            adb shell "run-as $PACKAGE grep -qx jarvis-14.0-data-preservation-check files/update-compatibility-sentinel.txt"
+            adb shell "run-as $PACKAGE grep -q jarvis-14.0-preferences-preserved shared_prefs/update-compatibility.xml"
+            adb shell monkey -p "$PACKAGE" -c android.intent.category.LAUNCHER 1
+            echo "PASS: 14.0.1 replaced 14.0 in place, retained app-private files and preferences, and did not create a second package."
+      - name: Upload verified 14.0.1 phone candidate
+        uses: actions/upload-artifact@v4
+        with:
+          name: JARVIS-14.0.1-in-place-update-verified-candidate
+          path: update-test-inputs/jarvis-14.0.1-candidate.apk
+          if-no-files-found: error
+          retention-days: 30

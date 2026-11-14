@@ -1,4 +1,4 @@
-name: Build J.A.R.V.I.S 14.0 Android phone and TV packages
+name: Build J.A.R.V.I.S 14.0.1 Android phone and TV packages
 on:
   workflow_dispatch:
   push:
@@ -92,8 +92,8 @@ jobs:
           test -s "$TV_APK"
           PHONE_BADGING="$("$AAPT" dump badging "$PHONE_APK")"
           TV_BADGING="$("$AAPT" dump badging "$TV_APK")"
-          echo "$PHONE_BADGING" | grep -Fq "package: name='com.hrishikesh.jarvis.fourteen.release' versionCode='1400' versionName='14.0'"
-          echo "$TV_BADGING" | grep -Fq "package: name='com.hrishikesh.jarvis.fourteen.release.tv' versionCode='1400' versionName='14.0-tv'"
+          echo "$PHONE_BADGING" | grep -Fq "package: name='com.hrishikesh.jarvis.fourteen.release' versionCode='1401' versionName='14.0.1'"
+          echo "$TV_BADGING" | grep -Fq "package: name='com.hrishikesh.jarvis.fourteen.release.tv' versionCode='1401' versionName='14.0.1-tv'"
           if echo "$PHONE_BADGING" | grep -Eq "package: name='com.hrishikesh.jarvis(\.next)?'"; then
             echo "ERROR: JARVIS 7.0 package collides with an earlier JARVIS app"
             exit 1
@@ -104,14 +104,14 @@ jobs:
       - name: Upload phone build artifact for QA
         uses: actions/upload-artifact@v4
         with:
-          name: JARVIS-14.0-Android-phone-QA
+          name: JARVIS-14.0.1-Android-phone-QA
           path: app/build/outputs/apk/phone/debug/app-phone-debug.apk
           if-no-files-found: error
           retention-days: 30
       - name: Upload Android TV build artifact for QA
         uses: actions/upload-artifact@v4
         with:
-          name: JARVIS-14.0-Android-TV-QA
+          name: JARVIS-14.0.1-Android-TV-QA
           path: app/build/outputs/apk/tv/debug/app-tv-debug.apk
           if-no-files-found: error
           retention-days: 30
