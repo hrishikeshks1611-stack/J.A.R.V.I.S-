@@ -26,9 +26,9 @@ test("native bridge exposes confirmation-based Clock and Calendar actions", asyn
 
 test("JARVIS 14.0 uses an independent package identity and version", async () => {
   const gradle = await readFile(new URL("../app/build.gradle", import.meta.url), "utf8");
-  assert.match(gradle, /applicationId\\s+'com\\.hrishikesh\\.jarvis\\.fourteen\\.release'/);
-  assert.match(gradle, /versionCode\s+701/);
-  assert.match(gradle, /versionName\s+'7\.0'/);
+  assert.match(gradle, /applicationId\s+'com\.hrishikesh\.jarvis\.fourteen\.release'/);
+  assert.match(gradle, /versionCode\s+1400/);
+  assert.match(gradle, /versionName\s+'14\.0'/);
 });
 
 test("APK workflow verifies separate-install builds and never publishes debug APKs as releases", async () => {
@@ -37,9 +37,8 @@ test("APK workflow verifies separate-install builds and never publishes debug AP
   assert.doesNotMatch(workflow, /gh release create|action-gh-release|Publish.*APK/);
   assert.match(workflow, /Build J.A.R.V.I.S 14.0 Android phone and TV packages/);
   assert.ok(workflow.includes("com.hrishikesh.jarvis.fourteen.release"));
-  assert.ok(workflow.includes("com.hrishikesh.jarvis.seven.release.tv"));
+  assert.ok(workflow.includes("com.hrishikesh.jarvis.fourteen.release.tv"));
 });
-
 
 
 
