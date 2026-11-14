@@ -434,7 +434,10 @@ public class WakeWordService extends Service implements RecognitionListener {
 
     private void broadcast(String action, String command) {
         Intent intent = new Intent(action).setPackage(getPackageName());
-        if (command != null) intent.putExtra(EXTRA_COMMAND, command);
+        if (command != null) {
+            if (ACTION_ERROR.equals(action)) intent.putExtra(EXTRA_ERROR, command);
+            else intent.putExtra(EXTRA_COMMAND, command);
+        }
         sendBroadcast(intent);
     }
 
