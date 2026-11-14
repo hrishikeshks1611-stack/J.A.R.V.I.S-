@@ -190,7 +190,12 @@ test("15.0 device-sync lifecycle preserves shared history through pairing, owner
 
   const revoked = await request({ action: "revoke", deviceId: oldDeviceId }, newToken);
   assert.equal(revoked.statusCode, 200);
-  assert.equal(revoked.body.revoked, true);\n  assert.equal(revoked.body.serverSessionOnly, true);\n  assert.equal(revoked.body.localAppDataChanged, false);\n  assert.equal(revoked.body.sharedHistoryPreserved, true);\n  assert.equal(revoked.body.sharedMemoriesPreserved, true);\n  assert.ok(redis.calls.some(command => command[0] === "EVAL" && String(command[1]).includes("device.sessionHash ~= ARGV[1]")), "revocation must be an atomic Redis operation");
+  assert.equal(revoked.body.revoked, true);
+  assert.equal(revoked.body.serverSessionOnly, true);
+  assert.equal(revoked.body.localAppDataChanged, false);
+  assert.equal(revoked.body.sharedHistoryPreserved, true);
+  assert.equal(revoked.body.sharedMemoriesPreserved, true);
+  assert.ok(redis.calls.some(command => command[0] === "EVAL" && String(command[1]).includes("device.sessionHash ~= ARGV[1]")), "revocation must be an atomic Redis operation");
 
   const oldAccess = await request({ action: "verify" }, oldToken);
   assert.equal(oldAccess.statusCode, 401);
