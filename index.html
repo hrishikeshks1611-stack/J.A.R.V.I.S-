@@ -404,7 +404,7 @@ function add(text,who,attachment,downloadFile,toolCalls,pendingActions){const d=
   const report=document.createElement('div');report.style.cssText='margin-top:9px;padding:8px 10px;border:1px solid #24506e;border-radius:9px;background:#071426;color:#9bcce5;font-size:11px';report.setAttribute('aria-live','polite');
   const heading=document.createElement('strong');heading.textContent='TOOL REPORT';heading.style.cssText='display:block;color:#75dfff;letter-spacing:.1em;margin-bottom:4px';report.appendChild(heading);
   const detail=document.createElement('span');
-  const labels={calculate:'Calculator',get_device_status:'Device status',request_open_app:'App launch',request_alarm:'Alarm request',request_calendar_event:'Calendar request',search_saved_memories:'Saved memory search',search_conversation:'Conversation search'};
+  const labels={calculate:'Calculator',get_device_status:'Device status',request_open_app:'App launch',request_dial_number:'Phone dialler',request_sms_draft:'SMS draft',request_alarm:'Alarm request',request_calendar_event:'Calendar request',search_saved_memories:'Saved memory search',search_conversation:'Conversation search'};
   detail.textContent=toolCalls.map(item=>(labels[item.tool]||'Approved tool')+' · '+(item.status==='success'?'completed':item.status==='confirmation_required'?'awaiting your approval':item.status==='blocked'?'blocked':'failed')).join('  |  ');
   report.appendChild(detail);d.appendChild(report);
  }
@@ -433,6 +433,28 @@ function add(text,who,attachment,downloadFile,toolCalls,pendingActions){const d=
      const result=window.AndroidJarvis.openApp(appName);
      button.textContent=String(result||'App launch requested');
      button.disabled=true;
+    };
+   }else if(action.type==='dial'){
+    const phoneNumber=String(action.phoneNumber||'').trim();
+    button.textContent='Review call in Phone · '+(phoneNumber||'');
+    button.setAttribute('aria-label','Review call in Phone');
+    if(!/^\\+?[0-9][0-9 .()\\-]{5,24}$/.test(phoneNumber)){button.textContent='Invalid phone number';button.disabled=true;}
+    else button.onclick=()=>{
+     if(!window.AndroidJarvis||typeof window.AndroidJarvis.dialNumber!=='function'){button.textContent='Available in the Android J.A.R.V.I.S. app only';button.disabled=true;return;}
+     const result=window.AndroidJarvis.dialNumber(phoneNumber);
+     button.textContent='Phone dialler opened · review before calling';
+     const note=document.createElement('div');note.style.cssText='color:#9bcce5;font-size:11px';note.textContent=String(result||'No call was placed. Review and tap Call in the Phone app.');actionPanel.appendChild(note);button.disabled=true;
+    };
+   }else if(action.type==='sms_draft'){
+    const phoneNumber=String(action.phoneNumber||'').trim(),message=String(action.message||'');
+    button.textContent='Review SMS draft · '+(phoneNumber||'');
+    button.setAttribute('aria-label','Review SMS draft');
+    if(!/^\\+?[0-9][0-9 .()\\-]{5,24}$/.test(phoneNumber)||!message.trim()||message.length>2000){button.textContent='Invalid SMS draft';button.disabled=true;}
+    else button.onclick=()=>{
+     if(!window.AndroidJarvis||typeof window.AndroidJarvis.openSmsComposer!=='function'){button.textContent='Available in the Android J.A.R.V.I.S. app only';button.disabled=true;return;}
+     const result=window.AndroidJarvis.openSmsComposer(phoneNumber,message);
+     button.textContent='Messages composer opened · send manually';
+     const note=document.createElement('div');note.style.cssText='color:#9bcce5;font-size:11px';note.textContent=String(result||'The SMS was not sent. Review and send it yourself in Messages.');actionPanel.appendChild(note);button.disabled=true;
     };
    }else if(action.type==='calendar'){
     button.textContent='Review calendar event · '+String(action.title||'Event');
