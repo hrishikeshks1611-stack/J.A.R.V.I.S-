@@ -52,6 +52,7 @@ public final class MainActivity extends Activity {
         try {
             memory = new ConversationStore(this);
             buildInterface();
+            restoreConversation();
             initialiseSpeech();
             setStatus("CORE ONLINE • READY FOR COMMAND");
             processCommandIntent(getIntent());
@@ -76,7 +77,7 @@ public final class MainActivity extends Activity {
         root.addView(title, matchWrap());
 
         reactorView = new ArcReactorView(this);
-        LinearLayout.LayoutParams rp = new LinearLayout.LayoutParams(dp(184), dp(184));
+        LinearLayout.LayoutParams rp = new LinearLayout.LayoutParams(dp(132), dp(132));
         rp.gravity = Gravity.CENTER_HORIZONTAL;
         rp.setMargins(0, dp(2), 0, dp(3));
         root.addView(reactorView, rp);
@@ -90,7 +91,7 @@ public final class MainActivity extends Activity {
         root.addView(status, matchWrap());
 
         TextView chatHeading = new TextView(this);
-        chatHeading.setText("ALFRED  •  AT YOUR SERVICE");
+        chatHeading.setText("ALFRED  •  J.A.R.V.I.S CORE");
         chatHeading.setTextColor(cyan);
         chatHeading.setTextSize(12);
         chatHeading.setLetterSpacing(.12f);
@@ -246,8 +247,8 @@ public final class MainActivity extends Activity {
         tts = new TextToSpeech(this, result -> {
             if (result == TextToSpeech.SUCCESS) {
                 ttsReady = configureVoice();
-                if (ttsReady) { tts.setSpeechRate(0.94f); tts.setPitch(0.92f); speak("Good day, Sir. Alfred is at your service."); }
-                else setStatus("TEXT MODE • ANDROID SPEECH ENGINE UNAVAILABLE");
+                if (ttsReady) { tts.setSpeechRate(0.92f); tts.setPitch(0.84f); speak("J.A.R.V.I.S online. Alfred is at your service, Sir."); }
+                else { setStatus("NO MALE ENGLISH VOICE FOUND • TAP TO SET UP JARVIS VOICE"); if (status != null) status.setOnClickListener(v -> openVoiceSettings()); }
             }
         });
         } catch (Throwable ttsError) {
@@ -260,7 +261,9 @@ public final class MainActivity extends Activity {
      * Strict Alfred voice gate: never use the engine default or an unclassified voice.
      * Only an en-GB Algieba voice or an explicitly male-labelled en-GB voice is allowed.
      */
-    /** Prefer Algieba/en-GB, then fall back to another installed English voice. */
+    /** JARVIS voice policy: use Algieba or an explicitly male-labelled English voice only.
+     * Never silently fall back to a female or unclassified engine default.
+     */
     private boolean configureVoice() {
         if (tts == null) return false;
         try {
@@ -269,26 +272,55 @@ public final class MainActivity extends Activity {
             if (voices != null) {
                 for (Voice voice : voices) {
                     Locale locale = voice.getLocale();
+                    String name = voice.getName().toLowerCase(Locale.ROOT);
                     if ("en".equals(locale.getLanguage()) && "GB".equalsIgnoreCase(locale.getCountry())
-                            && voice.getName().toLowerCase(Locale.ROOT).contains("algieba")) { chosen = voice; break; }
+                            && name.contains("algieba")) { chosen = voice; break; }
                 }
-                if (chosen == null) for (Voice voice : voices) {
-                    Locale locale = voice.getLocale();
-                    if ("en".equals(locale.getLanguage()) && "GB".equalsIgnoreCase(locale.getCountry())
-                            && !voice.getName().toLowerCase(Locale.ROOT).contains("female")) { chosen = voice; break; }
-                }
-                if (chosen == null) for (Voice voice : voices) {
-                    if ("en".equals(voice.getLocale().getLanguage())) { chosen = voice; break; }
+                if (chosen == null && voices != null) {
+                    for (Voice voice : voices) {
+                        Locale locale = voice.getLocale();
+                        String name = voice.getName().toLowerCase(Locale.ROOT);
+                        boolean explicitlyMale = name.contains("male") || name.contains("masculine");
+                        boolean explicitlyFemale = name.contains("female") || name.contains("feminine");
+                        if ("en".equals(locale.getLanguage()) && explicitlyMale && !explicitlyFemale) {
+                            chosen = voice; break;
+                        }
+                    }
                 }
             }
-            int language = tts.setLanguage(Locale.UK);
-            if (language == TextToSpeech.LANG_MISSING_DATA || language == TextToSpeech.LANG_NOT_SUPPORTED) language = tts.setLanguage(Locale.US);
-            if (language == TextToSpeech.LANG_MISSING_DATA || language == TextToSpeech.LANG_NOT_SUPPORTED) language = tts.setLanguage(Locale.getDefault());
+            if (chosen == null) return false;
+            int language = tts.setLanguage(chosen.getLocale());
             if (language == TextToSpeech.LANG_MISSING_DATA || language == TextToSpeech.LANG_NOT_SUPPORTED) return false;
-            if (chosen != null) try { tts.setVoice(chosen); } catch (Exception ignored) { }
-            return true;
+            int selected = tts.setVoice(chosen);
+            return selected == TextToSpeech.SUCCESS;
         } catch (Exception ignored) { return false; }
     }
+
+    private void openVoiceSettings() {
+        try {
+            Intent settings = new Intent("com.android.settings.TTS_SETTINGS");
+            if (settings.resolveActivity(getPackageManager()) == null)
+                settings = new Intent(android.provider.Settings.ACTION_SETTINGS);
+            startActivity(settings);
+        } catch (Exception error) {
+            Toast.makeText(this, "Open Android Settings > Text-to-speech output and install/select an English male voice.", Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private void restoreConversation() {
+        if (memory == null || chatMessages == null) return;
+        java.util.List<ConversationStore.Entry> entries = memory.recent(30);
+        if (entries.isEmpty()) {
+            addChatLine("ALFRED", "Good day, Sir. J.A.R.V.I.S is online. How may I assist?", false);
+            return;
+        }
+        for (ConversationStore.Entry entry : entries) {
+            if (entry == null || entry.text == null) continue;
+            boolean user = "user".equals(entry.role);
+            addChatLine(user ? "YOU" : "ALFRED", entry.text, user);
+        }
+    }
+
 
     private void startWakeListening() {
         if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
