@@ -91,13 +91,14 @@ public final class WakeListeningService extends Service {
             tts = new TextToSpeech(this, status -> {
                 if (status == TextToSpeech.SUCCESS) {
                     ready = configureAlfredVoice();
-                    if (ready) { tts.setSpeechRate(0.94f); tts.setPitch(0.92f); }
-                    else updateNotification("Speech output unavailable • check Android text-to-speech settings");
+                    if (ready) { tts.setSpeechRate(0.92f); tts.setPitch(0.84f); }
+                    else updateNotification("No male English voice installed • select one in Android TTS settings");
                 }
             });
         } catch (Throwable ignored) { ready = false; }
     }
 
+    /** Wake replies use the same male-only JARVIS voice policy as the main app. */
     private boolean configureAlfredVoice() {
         try {
             Set<Voice> voices = tts.getVoices();
@@ -106,23 +107,22 @@ public final class WakeListeningService extends Service {
                 for (Voice voice : voices) {
                     Locale locale = voice.getLocale();
                     if ("en".equals(locale.getLanguage()) && "GB".equalsIgnoreCase(locale.getCountry())
-                            && voice.getName().toLowerCase(Locale.ROOT).contains("algieba")) { chosen = voice; break; }
+                            && voice.getName().toLowerCase(Locale.ROOT).contains("algieba")) {
+                        chosen = voice; break;
+                    }
                 }
                 if (chosen == null) for (Voice voice : voices) {
                     Locale locale = voice.getLocale();
-                    if ("en".equals(locale.getLanguage()) && "GB".equalsIgnoreCase(locale.getCountry())
-                            && !voice.getName().toLowerCase(Locale.ROOT).contains("female")) { chosen = voice; break; }
-                }
-                if (chosen == null) for (Voice voice : voices) {
-                    if ("en".equals(voice.getLocale().getLanguage())) { chosen = voice; break; }
+                    String name = voice.getName().toLowerCase(Locale.ROOT);
+                    boolean male = name.contains("male") || name.contains("masculine");
+                    boolean female = name.contains("female") || name.contains("feminine");
+                    if ("en".equals(locale.getLanguage()) && male && !female) { chosen = voice; break; }
                 }
             }
-            int language = tts.setLanguage(Locale.UK);
-            if (language == TextToSpeech.LANG_MISSING_DATA || language == TextToSpeech.LANG_NOT_SUPPORTED) language = tts.setLanguage(Locale.US);
-            if (language == TextToSpeech.LANG_MISSING_DATA || language == TextToSpeech.LANG_NOT_SUPPORTED) language = tts.setLanguage(Locale.getDefault());
+            if (chosen == null) return false;
+            int language = tts.setLanguage(chosen.getLocale());
             if (language == TextToSpeech.LANG_MISSING_DATA || language == TextToSpeech.LANG_NOT_SUPPORTED) return false;
-            if (chosen != null) try { tts.setVoice(chosen); } catch (Exception ignored) { }
-            return true;
+            return tts.setVoice(chosen) == TextToSpeech.SUCCESS;
         } catch (Exception ignored) { return false; }
     }
 
@@ -186,7 +186,7 @@ public final class WakeListeningService extends Service {
         String trailing = WakePhraseMatcher.extractCommand(phrase);
         if (trailing == null) return;
         updateNotification("Wake phrase detected");
-        speak("At your service, Sir.");
+        speak("J.A.R.V.I.S online. At your service, Sir.");
         if (!trailing.isEmpty()) handler.postDelayed(() -> forwardCommandToChat(trailing), 700);
     }
 
