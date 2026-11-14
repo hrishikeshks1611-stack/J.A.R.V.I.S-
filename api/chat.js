@@ -11,6 +11,14 @@ import { selectRelevantContext } from "../lib/jarvis-context.js";
 import { buildChatPerformancePolicy, createModelRequestBudget } from "../lib/jarvis-performance.js";
 import { streamGeminiText } from "../lib/gemini-stream.js";
 
+function logRequestMetrics({ tier, streamed, startedAt, firstTokenAt = null, model = "", toolCallCount = 0, status = "ok" }) {
+  const totalLatencyMs = Math.max(0, Date.now() - startedAt);
+  const timeToFirstTokenMs = Number.isFinite(firstTokenAt) ? Math.max(0, firstTokenAt - startedAt) : null;
+  const metrics = { tier, streamed, totalLatencyMs, timeToFirstTokenMs, model: model || null, toolCallCount, status };
+  console.info("JARVIS_REQUEST_METRICS " + JSON.stringify(metrics));
+  return metrics;
+}
+
 export default async function handler(req, res) {
   const requestStartedAt = Date.now();
   let streamTransportActive = false;
@@ -172,8 +180,9 @@ export default async function handler(req, res) {
       res.flushHeaders?.();
       const streamBudget = createModelRequestBudget({ totalBudgetMs: 38000, perCallTimeoutMs: 12000 });
       const streamModels = ["gemini-3.5-flash-lite", "gemini-3.8-flash", "gemini-3.5-flash"];
-      let streamedReply = "", streamError = "";
+      let streamedReply = "", streamError = "", firstTokenAt = null, selectedStreamModel = "";
       for (const model of streamModels) {
+        selectedStreamModel = model;
         const timeoutMs = streamBudget.timeoutForNextCall();
         if (!timeoutMs) break;
         let emittedThisAttempt = false;
@@ -184,6 +193,7 @@ export default async function handler(req, res) {
             signal: AbortSignal.timeout(timeoutMs),
             onDelta: delta => {
               emittedThisAttempt = true;
+              if (firstTokenAt === null) firstTokenAt = Date.now();
               sendEvent("delta", { text: delta });
             }
           });
@@ -197,11 +207,13 @@ export default async function handler(req, res) {
       if (!streamedReply && !streamError) streamError = "JARVIS exhausted its response-time budget before receiving a streamed answer.";
       if (streamedReply) {
         await appendConversationTurn(message, streamedReply);
+        const metrics = logRequestMetrics({ tier: "quick", streamed: true, startedAt: requestStartedAt, firstTokenAt, model: selectedStreamModel });
         sendEvent("done", {
           reply: streamedReply, deviceId: session.deviceId, toolCalls: [], pendingActions: [],
-          responseTier: "quick", latencyMs: Date.now() - requestStartedAt, streamed: true
+          responseTier: "quick", latencyMs: metrics.totalLatencyMs, firstTokenMs: metrics.timeToFirstTokenMs, streamed: true
         });
       } else {
+        logRequestMetrics({ tier: "quick", streamed: true, startedAt: requestStartedAt, firstTokenAt, model: selectedStreamModel, status: "error" });
         sendEvent("error", { error: "Sir, the live response could not be completed. " + streamError });
       }
       res.end();
@@ -231,11 +243,12 @@ export default async function handler(req, res) {
     const MAX_TOOL_CALLS = performancePolicy.maxToolCalls;
     const MAX_MODEL_STEPS = performancePolicy.maxModelSteps;
     const modelBudget = createModelRequestBudget();
-    let response, data = {}, reply = "", lastUnavailable = "", lastFailureStatus = 503;
+    let response, data = {}, reply = "", lastUnavailable = "", lastFailureStatus = 503, selectedModel = "";
     let completed = false;
 
     for (let modelIndex = 0; modelIndex < models.length && !completed; modelIndex++) {
       const model = models[modelIndex];
+      selectedModel = model;
       // Do not add artificial backoff between fallback models: the failed
       // upstream response has already consumed the wait. Preserve the same
       // ordered fallbacks and generation settings to protect answer quality.
@@ -415,7 +428,8 @@ export default async function handler(req, res) {
     }
 
     await appendConversationTurn(message, reply);
-    const resultPayload = { reply, deviceId: session.deviceId, toolCalls: toolTrace, pendingActions, engine: medicalMode ? "medical" : tutorMode ? "tutor" : mentalistMode ? "mentalist" : "general", emotionalAvailability: true, responseTier: performancePolicy.tier, latencyMs: Date.now() - requestStartedAt, taskPlan: toolContext.taskPlan || null };
+    const metrics = logRequestMetrics({ tier: performancePolicy.tier, streamed: progressStreaming, startedAt: requestStartedAt, model: selectedModel, toolCallCount: toolTrace.length });
+    const resultPayload = { reply, deviceId: session.deviceId, toolCalls: toolTrace, pendingActions, engine: medicalMode ? "medical" : tutorMode ? "tutor" : mentalistMode ? "mentalist" : "general", emotionalAvailability: true, responseTier: performancePolicy.tier, latencyMs: metrics.totalLatencyMs, taskPlan: toolContext.taskPlan || null };
     if (streamTransportActive) {
       streamEvent("done", resultPayload);
       res.end();
