@@ -3,6 +3,9 @@ package com.hrishikesh.jarvis;
 import android.Manifest;
 import android.app.Activity;
 import android.content.Intent;
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.os.Build;
@@ -19,6 +22,25 @@ public class WakeWordActivity extends Activity {
     private TextView status;
     private SharedPreferences prefs;
     private boolean updating;
+    private boolean receiverRegistered;
+    private final BroadcastReceiver serviceUpdates = new BroadcastReceiver() {
+        @Override public void onReceive(Context context, Intent intent) {
+            if (intent == null) return;
+            String action = intent.getAction();
+            if (WakeWordService.ACTION_STATUS.equals(action)) {
+                String message = intent.getStringExtra(WakeWordService.EXTRA_STATUS);
+                if (message != null && status != null) status.setText(message);
+            } else if (WakeWordService.ACTION_ERROR.equals(action)) {
+                String message = intent.getStringExtra(WakeWordService.EXTRA_ERROR);
+                if (status != null) status.setText("Wake-word setup failed: " + (message == null ? "Unknown error" : message));
+                updating = true;
+                if (microphoneSwitch != null) microphoneSwitch.setChecked(false);
+                updating = false;
+            } else if (WakeWordService.ACTION_READY.equals(action)) {
+                if (status != null) status.setText("READY · Offline wake-word detection is listening for Hey JARVIS. Audio stays on this phone.");
+            }
+        }
+    };
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
@@ -72,6 +94,28 @@ public class WakeWordActivity extends Activity {
         });
     }
 
+    @Override protected void onResume() {
+        super.onResume();
+        IntentFilter filter = new IntentFilter();
+        filter.addAction(WakeWordService.ACTION_STATUS);
+        filter.addAction(WakeWordService.ACTION_READY);
+        filter.addAction(WakeWordService.ACTION_ERROR);
+        if (Build.VERSION.SDK_INT >= 33) registerReceiver(serviceUpdates, filter, Context.RECEIVER_NOT_EXPORTED);
+        else registerReceiver(serviceUpdates, filter);
+        receiverRegistered = true;
+        String saved = prefs.getString("status", null);
+        if (saved != null && prefs.getBoolean("enabled", false)) status.setText(saved);
+        else if (!prefs.getBoolean("enabled", false)) status.setText("Microphone is OFF.");
+    }
+
+    @Override protected void onPause() {
+        if (receiverRegistered) {
+            try { unregisterReceiver(serviceUpdates); } catch (IllegalArgumentException ignored) { }
+            receiverRegistered = false;
+        }
+        super.onPause();
+    }
+
     private void enableWakeWord() {
         if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
             requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, REQUEST_AUDIO);
@@ -81,12 +125,13 @@ public class WakeWordActivity extends Activity {
         Intent service = new Intent(this, WakeWordService.class);
         if (Build.VERSION.SDK_INT >= 26) startForegroundService(service);
         else startService(service);
-        status.setText("Starting private offline recognition. The first setup downloads the speech model once.");
+        status.setText("STARTING · Preparing the offline speech model. Download progress will appear here.");
     }
 
     private void disableWakeWord() {
         prefs.edit().putBoolean("enabled", false).apply();
         stopService(new Intent(this, WakeWordService.class));
+        prefs.edit().putString("status", "Microphone is OFF. JARVIS is not listening.").apply();
         status.setText("Microphone is OFF. JARVIS is not listening.");
     }
 
