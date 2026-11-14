@@ -79,7 +79,7 @@ export default async function handler(req, res) {
       console.error("Gemini streaming TTS error:", upstream.status, detail);
       if (upstream.status === 429) {
         const retryAfter = upstream.headers.get("retry-after");
-        if (retryAfter && /^\\d+$/.test(retryAfter)) res.setHeader("Retry-After", retryAfter);
+        if (retryAfter && /^\d+$/.test(retryAfter)) res.setHeader("Retry-After", retryAfter);
       }
       return res.status(upstream.status === 429 ? 429 : 502).json({
         error: "The speech service returned HTTP " + upstream.status + ": " + detail
