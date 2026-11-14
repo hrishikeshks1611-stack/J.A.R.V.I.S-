@@ -190,16 +190,12 @@ public class MainActivity extends Activity {
                 if (saved != null && !saved.isNetworkConnectionRequired()) chosen = saved;
             }
             if (chosen == null && textToSpeech.getVoices() != null) {
-                // Prefer voices explicitly marked male. Some Android engines omit gender
-                // metadata, so accept an unlabelled UK voice rather than disabling fallback.
+                // Strict male-only fallback: never select an unlabelled or female voice.
+                // If Android cannot identify a male British voice, speech stays unavailable.
                 for (Voice candidate : textToSpeech.getVoices()) {
-                    if (!isBritish(candidate) || candidate.isNetworkConnectionRequired()) continue;
-                    if (isExplicitlyMale(candidate)) {
-                        if (chosen == null || !isExplicitlyMale(chosen)
-                                || candidate.getQuality() > chosen.getQuality()) chosen = candidate;
-                    } else if (!isExplicitlyFemale(candidate)
-                            && (chosen == null || (!isExplicitlyMale(chosen)
-                            && candidate.getQuality() > chosen.getQuality()))) {
+                    if (!isBritish(candidate) || candidate.isNetworkConnectionRequired()
+                            || !isExplicitlyMale(candidate)) continue;
+                    if (chosen == null || candidate.getQuality() > chosen.getQuality()) {
                         chosen = candidate;
                     }
                 }
