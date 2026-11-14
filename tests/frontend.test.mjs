@@ -58,7 +58,7 @@ test("owner recovery is available when the original owner device is gone", async
   assert.ok(html.includes("Verify first. The check does not consume your code or change device ownership."));
 });
 
-test("Alfred voice fails silent and never falls back to Android default TTS", async () => {
+test("J.A.R.V.I.S voice fails silent and never falls back to Android default TTS", async () => {
   const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
   const start = html.indexOf("function startOfflineFallback(spoken,error){");
   const end = html.indexOf("\nasync function speak(text){", start);
@@ -66,7 +66,7 @@ test("Alfred voice fails silent and never falls back to Android default TTS", as
   const fallback = html.slice(start, end);
   assert.ok(fallback.includes("I will remain silent rather than use another voice"));
   assert.ok(!fallback.includes("speakOfflineFallback"));
-  assert.ok(html.includes("jarvis-alfred-male-british-v3"));
+  assert.ok(html.includes("jarvis-male-british-v4"));
 });
 
 
@@ -105,6 +105,10 @@ test("YouTube Music voice commands use the native playback bridge or search fall
   const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
   assert.ok(html.includes("const openYoutubeMusicOnly="));
   assert.ok(html.includes("window.AndroidJarvis.playYoutubeMusic(videoId)"));
+  assert.ok(html.includes("window.AndroidJarvis.searchYouTubeMusic(query,requestId)"));
+  assert.ok(html.includes("getYouTubeMusicPlaybackStatus"));
+  assert.ok(html.includes("Playback state verified"));
+  assert.ok(html.includes("YouTube Music did not reach PLAYING state"));
   assert.ok(html.includes("window.AndroidJarvis.playYoutubeMusic(videoId)"));
   assert.ok(html.includes("const hasNativeMusicBridge=window.AndroidJarvis&&typeof window.AndroidJarvis.playYoutubeMusic==='function'"));
   assert.ok(html.includes("else window.location.href='https://music.youtube.com/'"));
@@ -343,16 +347,16 @@ test("wake-word microphone is explicitly user-controlled and tap-to-speak remain
 });
 
 
-test("Alfred mode is selectable and the Android voice test exercises British pronunciation", async () => {
+test("J.A.R.V.I.S male voice mode is selectable and the Android voice test exercises British pronunciation", async () => {
   const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
-  assert.ok(html.includes('<option value="alfred" selected>Alfred · British butler</option>'));
+  assert.ok(html.includes('<option value="jarvis" selected>J.A.R.V.I.S · Male British voice</option>'));
   assert.ok(html.includes("The car is parked near the garden. The water is rather warm"));
   assert.ok(html.includes("jarvis-alfred-male-british-v3|gemini-3.1-flash-tts-preview"));
   assert.ok(html.includes("jarvisPersonalityModeV1"));
   assert.ok(html.includes("localStorage.setItem(PERSONALITY_MODE_KEY,$('mode').value)"));
 });
 
-test("Alfred speech endpoint pins Algieba and en-GB and requests non-rhotic British pronunciation", async () => {
+test("J.A.R.V.I.S speech endpoint pins Algieba and en-GB and requests non-rhotic British pronunciation", async () => {
   const speech = await readFile(new URL("../api/speech.js", import.meta.url), "utf8");
   assert.ok(speech.includes('voiceName: "Algieba"'));
   assert.ok(speech.includes('languageCode: "en-GB"'));
