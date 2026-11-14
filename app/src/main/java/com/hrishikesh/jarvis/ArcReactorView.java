@@ -24,15 +24,17 @@ public final class ArcReactorView extends GLSurfaceView {
     private static final class ReactorRenderer implements Renderer {
         private static final String VERTEX =
                 "uniform mat4 uMvp; uniform mat4 uModel; attribute vec3 aPosition; attribute vec3 aNormal; " +
-                "varying float vLight; varying float vRim; void main(){ gl_Position=uMvp*vec4(aPosition,1.0); " +
+                "varying float vLight; varying float vRim; varying float vSpec; void main(){ gl_Position=uMvp*vec4(aPosition,1.0); " +
                 "vec3 n=normalize(mat3(uModel)*aNormal); vec3 l=normalize(vec3(-0.35,0.55,0.9)); " +
                 "vLight=max(dot(n,l),0.0); vec3 v=normalize(vec3(0.0,0.0,1.0)); " +
-                "vRim=pow(1.0-max(dot(n,v),0.0),2.2); }";
+                "vRim=pow(1.0-max(dot(n,v),0.0),2.2); vec3 h=normalize(l+v); " +
+                "vSpec=pow(max(dot(n,h),0.0),36.0); }";
         private static final String FRAGMENT =
-                "precision mediump float; uniform vec4 uColor; varying float vLight; varying float vRim; " +
-                "void main(){ vec3 metal=uColor.rgb*(0.24+0.72*vLight); " +
-                "vec3 edge=uColor.rgb*(0.12+0.34*vRim); " +
-                "gl_FragColor=vec4(metal+edge,uColor.a); }";
+                "precision mediump float; uniform vec4 uColor; varying float vLight; varying float vRim; varying float vSpec; " +
+                "void main(){ vec3 metal=uColor.rgb*(0.20+0.70*vLight); " +
+                "vec3 edge=uColor.rgb*(0.10+0.52*vRim); " +
+                "vec3 highlight=vec3(0.72,0.91,1.0)*vSpec*0.85; " +
+                "gl_FragColor=vec4(metal+edge+highlight,uColor.a); }";
         private int program, mvpLocation, modelLocation, colorLocation, positionLocation, normalLocation;
         private Mesh outer, middle, inner, core, triangle;
         private final float[] projection = new float[16];
@@ -56,7 +58,7 @@ public final class ArcReactorView extends GLSurfaceView {
             middle = Mesh.torus(.67f, .035f, 112, 10);
             inner = Mesh.torus(.46f, .026f, 96, 10);
             core = Mesh.sphere(.19f, 40, 32);
-            triangle = Mesh.invertedTriangle(.40f);
+            triangle = Mesh.invertedTriangle(.54f);
             started = System.nanoTime();
         }
 
@@ -89,7 +91,7 @@ public final class ArcReactorView extends GLSurfaceView {
 
             Matrix.setIdentityM(model, 0);
             Matrix.rotateM(model, 0, seconds * 15f, 0f, 1f, 0f);
-            drawLines(triangle, model, .12f, .66f, .98f, 1f);
+            drawLines(triangle, model, .08f, .48f, .82f, 1f);\n            drawLines(triangle, model, .30f, .78f, 1.0f, 1f);
 
             Matrix.setIdentityM(model, 0);
             float pulse = 0.94f + 0.07f * (float)Math.sin(seconds * 2.0f);
@@ -103,7 +105,7 @@ public final class ArcReactorView extends GLSurfaceView {
             GLES20.glUniformMatrix4fv(mvpLocation, 1, false, mvp, 0);
             GLES20.glUniformMatrix4fv(modelLocation, 1, false, transform, 0);
             GLES20.glUniform4f(colorLocation, r, g, b, a);
-            GLES20.glLineWidth(2.0f);
+            GLES20.glLineWidth(3.2f);
             GLES20.glEnableVertexAttribArray(positionLocation);
             GLES20.glEnableVertexAttribArray(normalLocation);
             GLES20.glVertexAttribPointer(positionLocation, 3, GLES20.GL_FLOAT, false, 0, mesh.positions);
