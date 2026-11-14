@@ -14,6 +14,11 @@ test("native bridge exposes confirmation-based Clock and Calendar actions", asyn
   assert.ok(source.includes("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"));
   assert.ok(source.includes("public String openCastSettings()"));
   assert.ok(source.includes("Settings.ACTION_CAST_SETTINGS"));
+  assert.ok(source.includes("public String dialNumber(String requestedNumber)"));
+  assert.ok(source.includes("new Intent(Intent.ACTION_DIAL"));
+  assert.ok(source.includes("public String openSmsComposer(String requestedNumber, String requestedBody)"));
+  assert.ok(source.includes("new Intent(Intent.ACTION_SENDTO"));
+  assert.ok(source.includes('intent.putExtra("sms_body", body)'));
   assert.ok(source.includes("public String setAlarm(int hour, int minute, String label)"));
   assert.ok(source.includes("AlarmClock.ACTION_SET_ALARM"));
   assert.ok(source.includes("AlarmClock.EXTRA_SKIP_UI, false"));
