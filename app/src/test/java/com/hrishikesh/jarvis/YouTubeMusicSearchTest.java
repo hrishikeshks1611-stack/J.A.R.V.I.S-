@@ -7,13 +7,29 @@ import org.junit.Test;
 import static org.junit.Assert.*;
 
 public class YouTubeMusicSearchTest {
+    private JSONObject column(String text, boolean useRuns) throws Exception {
+        JSONObject value;
+        if (useRuns) {
+            value = new JSONObject().put("runs", new JSONArray()
+                    .put(new JSONObject().put("text", text)));
+        } else {
+            value = new JSONObject().put("simpleText", text);
+        }
+        return new JSONObject().put("musicResponsiveListItemFlexColumnRenderer",
+                new JSONObject().put("text", value));
+    }
+
     @Test public void extractsSongTitleArtistAndVideoId() throws Exception {
-        JSONObject payload = new JSONObject(
-            "{\"contents\":{\"musicResponsiveListItemRenderer\":{\"flexColumns\":[" +
-            "{\"musicResponsiveListItemFlexColumnRenderer\":{\"text\":{\"runs\":[{\"text\":\"Numb\"}]}}}," +
-            "{\"musicResponsiveListItemFlexColumnRenderer\":{\"text\":{\"simpleText\":\"Linkin Park • Meteora • 2003\"}}}," +
-            "{\"musicResponsiveListItemFlexColumnRenderer\":{\"text\":{\"simpleText\":\"3:07\"}}}" +
-            "],\"navigationEndpoint\":{\"watchEndpoint\":{\"videoId\":\"kXYiU_JCYtU\"}}}}}}");
+        JSONObject renderer = new JSONObject()
+                .put("flexColumns", new JSONArray()
+                        .put(column("Numb", true))
+                        .put(column("Linkin Park • Meteora • 2003", false))
+                        .put(column("3:07", false)))
+                .put("navigationEndpoint", new JSONObject()
+                        .put("watchEndpoint", new JSONObject().put("videoId", "kXYiU_JCYtU")));
+        JSONObject payload = new JSONObject().put("contents",
+                new JSONObject().put("musicResponsiveListItemRenderer", renderer));
+
         JSONArray items = YouTubeMusicSearch.parseItems(payload);
         assertEquals(1, items.length());
         JSONObject song = items.getJSONObject(0);
@@ -25,10 +41,18 @@ public class YouTubeMusicSearchTest {
     }
 
     @Test public void ignoresInvalidAndDuplicateVideoIds() throws Exception {
-        JSONObject payload = new JSONObject(
-            "{\"a\":{\"musicResponsiveListItemRenderer\":{\"flexColumns\":[{\"musicResponsiveListItemFlexColumnRenderer\":{\"text\":{\"simpleText\":\"One\"}}}],\"videoId\":\"kXYiU_JCYtU\"}}," +
-            "\"b\":{\"musicResponsiveListItemRenderer\":{\"flexColumns\":[{\"musicResponsiveListItemFlexColumnRenderer\":{\"text\":{\"simpleText\":\"Duplicate\"}}}],\"videoId\":\"kXYiU_JCYtU\"}}," +
-            "\"c\":{\"musicResponsiveListItemRenderer\":{\"videoId\":\"bad\"}}}");
+        JSONObject first = new JSONObject()
+                .put("flexColumns", new JSONArray().put(column("One", false)))
+                .put("videoId", "kXYiU_JCYtU");
+        JSONObject duplicate = new JSONObject()
+                .put("flexColumns", new JSONArray().put(column("Duplicate", false)))
+                .put("videoId", "kXYiU_JCYtU");
+        JSONObject invalid = new JSONObject().put("videoId", "bad");
+        JSONObject payload = new JSONObject()
+                .put("a", new JSONObject().put("musicResponsiveListItemRenderer", first))
+                .put("b", new JSONObject().put("musicResponsiveListItemRenderer", duplicate))
+                .put("c", new JSONObject().put("musicResponsiveListItemRenderer", invalid));
+
         JSONArray items = YouTubeMusicSearch.parseItems(payload);
         assertEquals(1, items.length());
         assertEquals("One", items.getJSONObject(0).getString("title"));
