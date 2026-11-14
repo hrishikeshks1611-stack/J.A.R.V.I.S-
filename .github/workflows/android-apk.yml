@@ -68,7 +68,7 @@ jobs:
       - name: Upload phone release candidate APK
         uses: actions/upload-artifact@v4
         with:
-          name: JARVIS-17-clean-phone-release-candidate
+          name: JARVIS-16.0-phone-release-candidate
           path: app/build/outputs/apk/phone/release/app-phone-release.apk
           if-no-files-found: error
           retention-days: 30
