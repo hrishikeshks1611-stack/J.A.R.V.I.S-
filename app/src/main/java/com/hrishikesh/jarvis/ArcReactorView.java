@@ -91,19 +91,20 @@ public final class ArcReactorView extends GLSurfaceView {
             Matrix.rotateM(model, 0, seconds * 47f, 0f, 0f, 1f);
             draw(inner, model, .42f, .76f, .92f, 1f);
 
-            // A compact inverted triangle sits within the reactor's central energy chamber.
-            Matrix.setIdentityM(model, 0);
-            Matrix.rotateM(model, 0, seconds * 11f, 0f, 0f, 1f);
-            Matrix.scaleM(model, 0, .34f, .34f, .34f);
-            GLES20.glDisable(GLES20.GL_DEPTH_TEST);
-            drawLines(triangle, model, .10f, .62f, 1.0f, 1f);
-            GLES20.glEnable(GLES20.GL_DEPTH_TEST);
-
+            // Central core is drawn before the luminous triangle so the triangle remains visible.
             Matrix.setIdentityM(model, 0);
             Matrix.rotateM(model, 0, tilt, 1f, 0f, 0f);
             float pulse = 0.86f + 0.14f * (float)Math.sin(seconds * 2.2f);
             Matrix.scaleM(model, 0, pulse, pulse, pulse);
             draw(core, model, .18f, .62f, .82f, 1f);
+
+            // Small inverted triangle sits visibly inside the energy chamber, above the core.
+            Matrix.setIdentityM(model, 0);
+            Matrix.rotateM(model, 0, seconds * 11f, 0f, 0f, 1f);
+            Matrix.scaleM(model, 0, .34f, .34f, .34f);
+            GLES20.glDisable(GLES20.GL_DEPTH_TEST);
+            drawLines(triangle, model, .18f, .78f, 1.0f, 1f);
+            GLES20.glEnable(GLES20.GL_DEPTH_TEST);
         }
 
         private void drawLines(Mesh mesh, float[] transform, float r, float g, float b, float a) {
