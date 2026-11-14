@@ -404,7 +404,7 @@ function add(text,who,attachment,downloadFile,toolCalls,pendingActions){const d=
   const report=document.createElement('div');report.style.cssText='margin-top:9px;padding:8px 10px;border:1px solid #24506e;border-radius:9px;background:#071426;color:#9bcce5;font-size:11px';report.setAttribute('aria-live','polite');
   const heading=document.createElement('strong');heading.textContent='TOOL REPORT';heading.style.cssText='display:block;color:#75dfff;letter-spacing:.1em;margin-bottom:4px';report.appendChild(heading);
   const detail=document.createElement('span');
-  const labels={calculate:'Calculator',get_device_status:'Device status',request_alarm:'Alarm request',request_calendar_event:'Calendar request',search_saved_memories:'Saved memory search',search_conversation:'Conversation search'};
+  const labels={calculate:'Calculator',get_device_status:'Device status',request_open_app:'App launch',request_alarm:'Alarm request',request_calendar_event:'Calendar request',search_saved_memories:'Saved memory search',search_conversation:'Conversation search'};
   detail.textContent=toolCalls.map(item=>(labels[item.tool]||'Approved tool')+' · '+(item.status==='success'?'completed':item.status==='confirmation_required'?'awaiting your approval':item.status==='blocked'?'blocked':'failed')).join('  |  ');
   report.appendChild(detail);d.appendChild(report);
  }
@@ -422,6 +422,17 @@ function add(text,who,attachment,downloadFile,toolCalls,pendingActions){const d=
      const result=window.AndroidJarvis.setAlarm(hour,minute,String(action.label||'JARVIS alarm'));
      button.textContent='Clock opened · confirm the alarm there';
      const note=document.createElement('div');note.style.cssText='color:#9bcce5;font-size:11px';note.textContent=String(result||'Please review and confirm in Clock.');actionPanel.appendChild(note);button.disabled=true;
+    };
+   }else if(action.type==='open_app'){
+    const appName=String(action.appName||'').trim();
+    button.textContent='Open '+(appName||'app');
+    button.setAttribute('aria-label','Open '+(appName||'app'));
+    if(!appName||/\\b(bank|banking|upi|wallet|payment|paytm|phonepe|gpay|google pay|cred)\\b/i.test(appName)){button.textContent='Blocked app request';button.disabled=true;}
+    else button.onclick=()=>{
+     if(!window.AndroidJarvis||typeof window.AndroidJarvis.openApp!=='function'){button.textContent='Available in the Android J.A.R.V.I.S. app only';button.disabled=true;return;}
+     const result=window.AndroidJarvis.openApp(appName);
+     button.textContent=String(result||'App launch requested');
+     button.disabled=true;
     };
    }else if(action.type==='calendar'){
     button.textContent='Review calendar event · '+String(action.title||'Event');
