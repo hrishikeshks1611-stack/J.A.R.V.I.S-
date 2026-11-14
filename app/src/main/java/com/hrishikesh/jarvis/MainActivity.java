@@ -141,17 +141,10 @@ public final class MainActivity extends Activity {
         composer.addView(mic, mp);
         mic.setOnClickListener(v -> startListening());
 
-        Button send = makeButton("SEND");
-        send.setTextSize(11);
-        composer.addView(send, new LinearLayout.LayoutParams(dp(72), dp(48)));
-        send.setOnClickListener(v -> sendChatMessage());
+        chatInput.setImeOptions(android.view.inputmethod.EditorInfo.IME_ACTION_SEND);
         chatInput.setOnEditorActionListener((v, actionId, event) -> { sendChatMessage(); return true; });
         root.addView(composer, matchWrap());
 
-        Button tools = makeButton("TOOLS & DEVICE CONTROLS  ▾");
-        tools.setTextSize(12);
-        tools.setOnClickListener(v -> showTools());
-        root.addView(tools, matchWrap());
         setContentView(root);
     }
 
@@ -326,6 +319,35 @@ public final class MainActivity extends Activity {
 
     private void handleCommand(String raw) {
         if (memory != null) memory.add("user", raw);
+        String normalized = raw.trim().toLowerCase(Locale.ROOT);
+        if (normalized.equals("tools") || normalized.equals("open tools") || normalized.equals("show controls")) {
+            addChatLine("ALFRED", "Certainly, Sir. Opening the available controls.", false);
+            showTools();
+            return;
+        }
+        if (normalized.equals("create document") || normalized.equals("create a document") || normalized.equals("open office")) {
+            addChatLine("ALFRED", "Opening the document studio, Sir.", false);
+            showOfficeComposer();
+            return;
+        }
+        if (normalized.equals("import file") || normalized.equals("import attachment") || normalized.equals("open a file")) {
+            addChatLine("ALFRED", "Choose the file you'd like me to import, Sir.", false);
+            importAttachment();
+            return;
+        }
+        if (normalized.equals("study revision") || normalized.equals("build revision pack")) {
+            addChatLine("ALFRED", "Let's prepare your revision pack, Sir.", false);
+            showStudyComposer();
+            return;
+        }
+        if (normalized.equals("show memory") || normalized.equals("recent memory")) {
+            showMemory();
+            return;
+        }
+        if (normalized.equals("clear memory")) {
+            confirmClearMemory();
+            return;
+        }
         CommandParser.Command command = CommandParser.parse(raw);
         switch (command.action) {
             case OPEN_CAMERA:
