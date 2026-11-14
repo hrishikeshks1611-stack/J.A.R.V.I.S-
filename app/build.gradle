@@ -18,13 +18,14 @@ android {
     compileSdk 35
     buildFeatures { buildConfig true }
     defaultConfig {
-        // Keep this application ID stable so 14.0.1 updates the 14.0 installation in place.
-        // Increment versionCode for each compatible phone update.
-        applicationId 'com.hrishikesh.jarvis.fourteen.release'
+        // 15.0 is intentionally a separate install from the protected 14.0 app.
+        // Its distinct application ID prevents Android package/data collisions.
+        // Shared conversations and approved memories are accessed through device pairing.
+        applicationId 'com.hrishikesh.jarvis.fifteen.release'
         minSdk 23
         targetSdk 35
-        versionCode 1401
-        versionName '14.0.1'
+        versionCode 1500
+        versionName '15.0.0'
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
         buildConfigField 'boolean', 'JARVIS_TV', 'false'
         buildConfigField 'String', 'ASSISTANT_NAME', '"J.A.R.V.I.S"'
