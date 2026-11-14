@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createTaskPlan, updateTaskStep, taskProgress } from "../lib/jarvis-task-engine.js";
+import { createTaskPlan, updateTaskStep, taskProgress, attachTaskEvidence } from "../lib/jarvis-task-engine.js";
 
 test("task plans validate bounded steps, unique IDs, and dependency graphs", () => {
   const plan = createTaskPlan({ goal: "Prepare a verified research brief", steps: [
@@ -24,10 +24,13 @@ test("task steps cannot bypass dependencies or claim completion without evidence
     { id: "collect", title: "Collect data" },
     { id: "write", title: "Write report", dependsOn: ["collect"] }
   ] });
-  assert.throws(() => updateTaskStep(plan, { stepId: "write", status: "completed", evidence: "The report was written and checked." }), /prerequisite/i);
-  assert.throws(() => updateTaskStep(plan, { stepId: "collect", status: "completed", evidence: "done" }), /evidence/i);
-  plan = updateTaskStep(plan, { stepId: "collect", status: "completed", evidence: "Collected 12 verified entries from the source dataset." });
-  plan = updateTaskStep(plan, { stepId: "write", status: "completed", evidence: "Report generated and checked against all 12 source entries." });
+  const attached = attachTaskEvidence(plan, { tool: "search_conversation", summary: "Retrieved the previous research notes for this report." });
+  plan = attached.plan;
+  assert.throws(() => updateTaskStep(plan, { stepId: "write", status: "completed", evidence: "The report was written and checked.", evidenceRef: attached.evidence.id }), /prerequisite/i);
+  assert.throws(() => updateTaskStep(plan, { stepId: "collect", status: "completed", evidence: "Collected 12 verified entries from the source dataset.", evidenceRef: "invented-reference" }), /evidence reference/i);
+  assert.throws(() => updateTaskStep(plan, { stepId: "collect", status: "completed", evidence: "done", evidenceRef: attached.evidence.id }), /evidence/i);
+  plan = updateTaskStep(plan, { stepId: "collect", status: "completed", evidence: "Collected 12 verified entries from the source dataset.", evidenceRef: attached.evidence.id });
+  plan = updateTaskStep(plan, { stepId: "write", status: "completed", evidence: "Report generated and checked against all 12 source entries.", evidenceRef: attached.evidence.id });
   assert.equal(plan.status, "completed");
   assert.deepEqual(taskProgress(plan), { completed: 2, total: 2, percent: 100 });
 });
