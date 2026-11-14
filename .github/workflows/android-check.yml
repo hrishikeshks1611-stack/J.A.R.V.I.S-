@@ -2,7 +2,7 @@ name: JARVIS Android microphone and wake-word checks
 
 on:
   push:
-    branches: [ jarvis-mic-wakeword-clean, jarvis-5.0-development, jarvis-5-to-10-continuation ]
+    branches: [ jarvis-mic-wakeword-clean, jarvis-5.0-development, jarvis-5-to-10-continuation, jarvis-16.0-foundation ]
     paths:
       - 'app/**'
       - '*.gradle'
