@@ -76,7 +76,7 @@ public final class MainActivity extends Activity {
         root.addView(title, matchWrap());
 
         reactorView = new ArcReactorView(this);
-        LinearLayout.LayoutParams rp = new LinearLayout.LayoutParams(dp(224), dp(224));
+        LinearLayout.LayoutParams rp = new LinearLayout.LayoutParams(dp(184), dp(184));
         rp.gravity = Gravity.CENTER_HORIZONTAL;
         rp.setMargins(0, dp(2), 0, dp(3));
         root.addView(reactorView, rp);
@@ -247,7 +247,7 @@ public final class MainActivity extends Activity {
             if (result == TextToSpeech.SUCCESS) {
                 ttsReady = configureVoice();
                 if (ttsReady) { tts.setSpeechRate(0.94f); tts.setPitch(0.92f); speak("Good day, Sir. Alfred is at your service."); }
-                else setStatus("TEXT MODE • INSTALL AN ENGLISH UK VOICE FOR SPOKEN REPLIES");
+                else setStatus("TEXT MODE • ANDROID SPEECH ENGINE UNAVAILABLE");
             }
         });
         } catch (Throwable ttsError) {
@@ -260,26 +260,33 @@ public final class MainActivity extends Activity {
      * Strict Alfred voice gate: never use the engine default or an unclassified voice.
      * Only an en-GB Algieba voice or an explicitly male-labelled en-GB voice is allowed.
      */
+    /** Prefer Algieba/en-GB, then fall back to another installed English voice. */
     private boolean configureVoice() {
         if (tts == null) return false;
         try {
             Set<Voice> voices = tts.getVoices();
-            if (voices == null) return false;
-            Voice preferred = null;
-            Voice britishFallback = null;
-            for (Voice voice : voices) {
-                Locale locale = voice.getLocale();
-                if (!"en".equals(locale.getLanguage()) || !"GB".equalsIgnoreCase(locale.getCountry())) continue;
-                String name = voice.getName().toLowerCase(Locale.ROOT);
-                if (britishFallback == null) britishFallback = voice;
-                if (name.contains("female")) continue;
-                if (name.contains("algieba")) { preferred = voice; break; }
-                if (name.contains("male") || name.contains("masculine")) preferred = voice;
+            Voice chosen = null;
+            if (voices != null) {
+                for (Voice voice : voices) {
+                    Locale locale = voice.getLocale();
+                    if ("en".equals(locale.getLanguage()) && "GB".equalsIgnoreCase(locale.getCountry())
+                            && voice.getName().toLowerCase(Locale.ROOT).contains("algieba")) { chosen = voice; break; }
+                }
+                if (chosen == null) for (Voice voice : voices) {
+                    Locale locale = voice.getLocale();
+                    if ("en".equals(locale.getLanguage()) && "GB".equalsIgnoreCase(locale.getCountry())
+                            && !voice.getName().toLowerCase(Locale.ROOT).contains("female")) { chosen = voice; break; }
+                }
+                if (chosen == null) for (Voice voice : voices) {
+                    if ("en".equals(voice.getLocale().getLanguage())) { chosen = voice; break; }
+                }
             }
             int language = tts.setLanguage(Locale.UK);
+            if (language == TextToSpeech.LANG_MISSING_DATA || language == TextToSpeech.LANG_NOT_SUPPORTED) language = tts.setLanguage(Locale.US);
+            if (language == TextToSpeech.LANG_MISSING_DATA || language == TextToSpeech.LANG_NOT_SUPPORTED) language = tts.setLanguage(Locale.getDefault());
             if (language == TextToSpeech.LANG_MISSING_DATA || language == TextToSpeech.LANG_NOT_SUPPORTED) return false;
-            Voice chosen = preferred != null ? preferred : britishFallback;
-            return chosen == null || tts.setVoice(chosen) == TextToSpeech.SUCCESS;
+            if (chosen != null) try { tts.setVoice(chosen); } catch (Exception ignored) { }
+            return true;
         } catch (Exception ignored) { return false; }
     }
 
