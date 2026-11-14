@@ -15,7 +15,6 @@ public final class WakePhraseMatcher {
         if (raw == null) return null;
         String text = raw.toLowerCase(Locale.ROOT).trim().replaceAll("[^a-z0-9 ]", " ").replaceAll("\\s+", " ");
         if (text.equals("jarvis")) return "";
-        if (text.startsWith("jarvis ")) return text.substring("jarvis".length()).trim();
         String[] phrases = {
             "hey jarvis", "wake up jarvis", "hello jarvis",
             "jarvis are you there", "jarvis you there"
@@ -23,6 +22,12 @@ public final class WakePhraseMatcher {
         for (String phrase : phrases) {
             int at = text.indexOf(phrase);
             if (at >= 0) return text.substring(at + phrase.length()).trim();
+        }
+        if (text.startsWith("jarvis ")) {
+            String command = text.substring("jarvis".length()).trim();
+            if (command.matches("^(open|launch|call|play|pause|resume|next|previous|set|start|stop|show|create|remind|schedule|turn|enable|disable|take|send|message|search|increase|decrease|what|who|tell|help|how)\\b.*")) {
+                return command;
+            }
         }
         return null;
     }
