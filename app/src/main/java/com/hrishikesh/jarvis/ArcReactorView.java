@@ -24,12 +24,15 @@ public final class ArcReactorView extends GLSurfaceView {
     private static final class ReactorRenderer implements Renderer {
         private static final String VERTEX =
                 "uniform mat4 uMvp; uniform mat4 uModel; attribute vec3 aPosition; attribute vec3 aNormal; " +
-                "varying float vLight; void main(){ gl_Position=uMvp*vec4(aPosition,1.0); " +
-                "vec3 n=normalize(mat3(uModel)*aNormal); vec3 l=normalize(vec3(0.25,0.45,1.0)); " +
-                "vLight=max(dot(n,l),0.18); }";
+                "varying float vLight; varying float vRim; void main(){ gl_Position=uMvp*vec4(aPosition,1.0); " +
+                "vec3 n=normalize(mat3(uModel)*aNormal); vec3 l=normalize(vec3(-0.35,0.55,0.9)); " +
+                "vLight=max(dot(n,l),0.0); vec3 v=normalize(vec3(0.0,0.0,1.0)); " +
+                "vRim=pow(1.0-max(dot(n,v),0.0),2.2); }";
         private static final String FRAGMENT =
-                "precision mediump float; uniform vec4 uColor; varying float vLight; " +
-                "void main(){ gl_FragColor=vec4(uColor.rgb*(0.38+0.78*vLight),uColor.a); }";
+                "precision mediump float; uniform vec4 uColor; varying float vLight; varying float vRim; " +
+                "void main(){ vec3 metal=uColor.rgb*(0.24+0.72*vLight); " +
+                "vec3 edge=uColor.rgb*(0.12+0.34*vRim); " +
+                "gl_FragColor=vec4(metal+edge,uColor.a); }";
         private int program, mvpLocation, modelLocation, colorLocation, positionLocation, normalLocation;
         private Mesh outer, middle, inner, core;
         private final float[] projection = new float[16];
@@ -49,10 +52,10 @@ public final class ArcReactorView extends GLSurfaceView {
             colorLocation = GLES20.glGetUniformLocation(program, "uColor");
             positionLocation = GLES20.glGetAttribLocation(program, "aPosition");
             normalLocation = GLES20.glGetAttribLocation(program, "aNormal");
-            outer = Mesh.torus(.82f, .095f, 96, 20);
-            middle = Mesh.torus(.62f, .075f, 80, 18);
-            inner = Mesh.torus(.43f, .052f, 72, 16);
-            core = Mesh.sphere(.25f, 32, 24);
+            outer = Mesh.torus(.88f, .045f, 128, 12);
+            middle = Mesh.torus(.67f, .035f, 112, 10);
+            inner = Mesh.torus(.46f, .026f, 96, 10);
+            core = Mesh.sphere(.19f, 40, 32);
             started = System.nanoTime();
         }
 
@@ -71,21 +74,21 @@ public final class ArcReactorView extends GLSurfaceView {
             Matrix.setIdentityM(model, 0);
             Matrix.rotateM(model, 0, seconds * 22f, 0f, 1f, 0f);
             Matrix.rotateM(model, 0, 22f, 1f, 0f, 0f);
-            draw(outer, model, .12f, .72f, 1f, 1f);
+            draw(outer, model, .22f, .43f, .53f, 1f);
 
             Matrix.setIdentityM(model, 0);
             Matrix.rotateM(model, 0, -seconds * 34f, 1f, .3f, .2f);
             Matrix.rotateM(model, 0, 67f, 0f, 1f, 0f);
-            draw(middle, model, .08f, .95f, .9f, 1f);
+            draw(middle, model, .29f, .48f, .51f, 1f);
 
             Matrix.setIdentityM(model, 0);
             Matrix.rotateM(model, 0, seconds * 48f, .2f, 1f, .4f);
             Matrix.rotateM(model, 0, -48f, 1f, 0f, 0f);
-            draw(inner, model, .35f, .82f, 1f, 1f);
+            draw(inner, model, .42f, .67f, .72f, 1f);
 
             Matrix.setIdentityM(model, 0);
             Matrix.rotateM(model, 0, seconds * 12f, 0f, 1f, 0f);
-            draw(core, model, .55f, .92f, 1f, 1f);
+            draw(core, model, .12f, .34f, .43f, 1f);
         }
 
         private void draw(Mesh mesh, float[] transform, float r, float g, float b, float a) {
