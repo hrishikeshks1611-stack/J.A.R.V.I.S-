@@ -40,7 +40,10 @@ jobs:
           grep -q 'Response copied' app/src/main/java/com/hrishikesh/jarvis/MainActivity.java
           grep -q 'setFillViewport(false)' app/src/main/java/com/hrishikesh/jarvis/MainActivity.java
           ! grep -q 'ALFRED' app/src/main/java/com/hrishikesh/jarvis/MainActivity.java
-          grep -q 'trianglePulse' app/src/main/java/com/hrishikesh/jarvis/ArcReactorView.java
+          grep -q 'float tilt' app/src/main/java/com/hrishikesh/jarvis/ArcReactorView.java
+          grep -q 'seconds \* 47f' app/src/main/java/com/hrishikesh/jarvis/ArcReactorView.java
+          grep -q 'drawLines(triangle' app/src/main/java/com/hrishikesh/jarvis/ArcReactorView.java
+          grep -q 'android:windowSoftInputMode="adjustResize"' app/src/main/AndroidManifest.xml
           grep -q 'restoreConversation' app/src/main/java/com/hrishikesh/jarvis/MainActivity.java
           grep -q 'explicitly male-labelled' app/src/main/java/com/hrishikesh/jarvis/MainActivity.java
                     grep -q 'android:drawable="@drawable/jarvis_reactor"' app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
