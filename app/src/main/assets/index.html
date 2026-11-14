@@ -859,6 +859,17 @@ const contactCommandText=message.replace(/^\s*(?:hey\s+)?jarvis[, ]*/i,'').trim(
   add(reply,'jarvis');history.push({role:'model',text:reply});history=history.slice(-20);speak(reply);return;
  }
  
+
+ // Catch generic calling requests locally so they never fall through to the AI refusal.
+ const genericCallIntent=/^(?:(?:hey\\s+)?jarvis[, ]+)?(?:(?:please|could you|can you|would you|will you)\\s+)*(?:make|place|start)\\s+(?:a\\s+)?call(?:\\s+for me)?$/i.test(contactCommandText)
+  || /^(?:(?:hey\\s+)?jarvis[, ]+)?(?:please\\s+)?(?:call|phone|ring)(?:\\s+someone)?$/i.test(contactCommandText);
+ if(genericCallIntent){
+  const reply='Certainly, Sir. Whom would you like me to call? You can say a contact name or provide a phone number.';
+  add(reply,'jarvis');history.push({role:'model',text:reply});history=history.slice(-20);
+  pairApi({action:'append-local',message,reply}).catch(()=>{});
+  $('hint').textContent='Waiting for a contact name or phone number.';status('Ready for call details');speak(reply);return;
+ }
+
 // Handle a chained native command locally instead of sending it to the AI chat model.
 const multiAppMusic=message.match(/^\s*(?:jarvis[, ]+)?(?:please\s+)?(?:open|launch|start)\s+(whatsapp|chrome|gmail|instagram|facebook|telegram)\s+and\s+(?:then\s+)?(?:play|listen to)\s+(.+?)(?:\s+(?:on|in)\s+youtube\s+music)?[.!?]*\s*$/i);
 if(multiAppMusic && window.AndroidJarvis && typeof window.AndroidJarvis.openApp==='function'){
