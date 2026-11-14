@@ -47,6 +47,9 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class MainActivity extends Activity {
     private static final int REQUEST_AUDIO_INPUT = 4102;
@@ -413,29 +416,126 @@ public class MainActivity extends Activity {
         }
 
 
+        @JavascriptInterface public void searchYouTubeMusic(String query, String requestId) {
+            final String callbackId = requestId == null ? "" : requestId.trim();
+            final String cleanQuery = query == null ? "" : query.trim();
+            if (!callbackId.matches("[A-Za-z0-9_-]{1,80}")) return;
+            new Thread(() -> {
+                JSONObject result;
+                try {
+                    result = YouTubeMusicSearch.search(cleanQuery);
+                } catch (Exception error) {
+                    result = new JSONObject();
+                    try {
+                        result.put("error", error.getMessage() == null
+                                ? "YouTube Music search is unavailable." : error.getMessage());
+                    } catch (Exception ignored) { }
+                }
+                final String payload = result.toString();
+                runOnUiThread(() -> {
+                    if (webView != null) {
+                        String script = "window.jarvisNativeMusicSearchResult && window.jarvisNativeMusicSearchResult("
+                                + JSONObject.quote(callbackId) + "," + JSONObject.quote(payload) + ")";
+                        webView.evaluateJavascript(script, null);
+                    }
+                });
+            }, "JarvisYouTubeMusicSearch").start();
+        }
+
         @JavascriptInterface public String playYoutubeMusic(String videoId) {
             String id = videoId == null ? "" : videoId.trim();
             if (!id.matches("[A-Za-z0-9_-]{11}")) return "ERROR: The selected YouTube Music track ID is invalid.";
+            Uri trackUri = Uri.parse("https://music.youtube.com/watch?v=" + Uri.encode(id));
+            Intent playTrack = new Intent(Intent.ACTION_VIEW, trackUri);
+            playTrack.setPackage("com.google.android.apps.youtube.music");
+            playTrack.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+            if (playTrack.resolveActivity(getPackageManager()) == null) {
+                return "ERROR: YouTube Music is not installed or cannot open this track link.";
+            }
+            AtomicReference<String> result = new AtomicReference<>(
+                    "ERROR: Android did not confirm that YouTube Music opened the track.");
+            CountDownLatch completed = new CountDownLatch(1);
             runOnUiThread(() -> {
-                // Hand YouTube Music the canonical HTTPS watch URL for this exact
-                // catalogue video ID. The nonstandard vnd.youtube.music scheme is
-                // not consistently registered across YouTube Music versions.
-                Uri trackUri = Uri.parse("https://music.youtube.com/watch?v=" + Uri.encode(id));
-                Intent playTrack = new Intent(Intent.ACTION_VIEW, trackUri);
-                playTrack.setPackage("com.google.android.apps.youtube.music");
-                playTrack.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK
-                        | Intent.FLAG_ACTIVITY_CLEAR_TOP
-                        | Intent.FLAG_ACTIVITY_SINGLE_TOP);
                 try {
-                    if (playTrack.resolveActivity(getPackageManager()) == null) {
-                        throw new ActivityNotFoundException("YouTube Music cannot handle direct track links");
-                    }
                     startActivity(playTrack);
-                } catch (ActivityNotFoundException | SecurityException noHandler) {
-                    Toast.makeText(MainActivity.this, "YouTube Music could not open the selected track, Sir. Please check that the app is installed and updated.", Toast.LENGTH_LONG).show();
+                    result.set("TRACK_OPENED:" + id);
+                } catch (ActivityNotFoundException | SecurityException error) {
+                    result.set("ERROR: YouTube Music could not open the selected track.");
+                } finally {
+                    completed.countDown();
                 }
             });
-            return "TRACK_OPEN_REQUESTED:" + id;
+            try {
+                if (!completed.await(4, TimeUnit.SECONDS)) {
+                    return "ERROR: Android timed out while opening YouTube Music.";
+                }
+            } catch (InterruptedException interrupted) {
+                Thread.currentThread().interrupt();
+                return "ERROR: Track launch was interrupted.";
+            }
+            return result.get();
+        }
+
+        private android.media.session.MediaController getYouTubeMusicController() {
+            android.media.session.MediaSessionManager manager =
+                    (android.media.session.MediaSessionManager) getSystemService(MEDIA_SESSION_SERVICE);
+            if (manager == null) return null;
+            java.util.List<android.media.session.MediaController> sessions =
+                    manager.getActiveSessions(new android.content.ComponentName(
+                            MainActivity.this, JarvisMediaNotificationListener.class));
+            for (android.media.session.MediaController session : sessions) {
+                if ("com.google.android.apps.youtube.music".equals(session.getPackageName())) return session;
+            }
+            return null;
+        }
+
+        @JavascriptInterface public String getYouTubeMusicPlaybackStatus() {
+            JSONObject result = new JSONObject();
+            try {
+                android.media.session.MediaController controller = getYouTubeMusicController();
+                if (controller == null) {
+                    result.put("state", "NO_SESSION");
+                    return result.toString();
+                }
+                android.media.session.PlaybackState playback = controller.getPlaybackState();
+                int state = playback == null
+                        ? android.media.session.PlaybackState.STATE_NONE : playback.getState();
+                String label;
+                switch (state) {
+                    case android.media.session.PlaybackState.STATE_PLAYING: label = "PLAYING"; break;
+                    case android.media.session.PlaybackState.STATE_PAUSED: label = "PAUSED"; break;
+                    case android.media.session.PlaybackState.STATE_BUFFERING: label = "BUFFERING"; break;
+                    case android.media.session.PlaybackState.STATE_CONNECTING: label = "CONNECTING"; break;
+                    case android.media.session.PlaybackState.STATE_ERROR: label = "ERROR"; break;
+                    default: label = "IDLE"; break;
+                }
+                android.media.MediaMetadata metadata = controller.getMetadata();
+                result.put("state", label);
+                result.put("package", controller.getPackageName());
+                if (metadata != null) {
+                    result.put("title", metadata.getString(android.media.MediaMetadata.METADATA_KEY_TITLE));
+                    result.put("artist", metadata.getString(android.media.MediaMetadata.METADATA_KEY_ARTIST));
+                    result.put("mediaId", metadata.getString(android.media.MediaMetadata.METADATA_KEY_MEDIA_ID));
+                }
+            } catch (SecurityException permissionMissing) {
+                try { result.put("state", "PERMISSION_REQUIRED"); } catch (Exception ignored) { }
+            } catch (Exception error) {
+                try {
+                    result.put("state", "ERROR");
+                    result.put("message", "Android could not read YouTube Music playback state.");
+                } catch (Exception ignored) { }
+            }
+            return result.toString();
+        }
+
+        @JavascriptInterface public void openNotificationAccessSettings() {
+            runOnUiThread(() -> {
+                try {
+                    startActivity(new Intent(android.provider.Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS));
+                } catch (ActivityNotFoundException ignored) {
+                    startActivity(new Intent(android.provider.Settings.ACTION_SETTINGS));
+                }
+            });
         }
 
         @JavascriptInterface public String controlMusic(String requestedAction) {
@@ -445,16 +545,7 @@ public class MainActivity extends Activity {
                 android.media.session.MediaSessionManager manager =
                         (android.media.session.MediaSessionManager) getSystemService(MEDIA_SESSION_SERVICE);
                 if (manager == null) return "ERROR:Android media controls are unavailable on this device.";
-                java.util.List<android.media.session.MediaController> sessions =
-                        manager.getActiveSessions(new android.content.ComponentName(
-                                MainActivity.this, JarvisMediaNotificationListener.class));
-                android.media.session.MediaController target = null;
-                for (android.media.session.MediaController session : sessions) {
-                    if ("com.google.android.apps.youtube.music".equals(session.getPackageName())) {
-                        target = session;
-                        break;
-                    }
-                }
+                android.media.session.MediaController target = getYouTubeMusicController();
                 if (target == null) return "ERROR:YouTube Music has no active playback session. Start a song in YouTube Music, then try again, Sir.";
                 android.media.session.MediaController.TransportControls controls = target.getTransportControls();
                 switch (action) {
