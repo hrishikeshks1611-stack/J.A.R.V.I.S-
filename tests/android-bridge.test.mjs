@@ -24,11 +24,11 @@ test("native bridge exposes confirmation-based Clock and Calendar actions", asyn
   assert.ok(manifest.includes('com.android.alarm.permission.SET_ALARM'));
 });
 
-test("Android update metadata advances production JARVIS from 5.0.2 to 5.0.3", async () => {
+test("Android update metadata identifies the J.A.R.V.I.S. 16.0 release", async () => {
   const gradle = await readFile(new URL("../app/build.gradle", import.meta.url), "utf8");
   assert.match(gradle, /applicationId\s+'com\.hrishikesh\.jarvis'/);
-  assert.match(gradle, /versionCode\s+503/);
-  assert.match(gradle, /versionName\s+'5\.0\.3'/);
+  assert.match(gradle, /versionCode\s+1600/);
+  assert.match(gradle, /versionName\s+'16\.0\.0'/);
 });
 
 test("APK workflow keeps debug builds as verification artifacts and never publishes them as updates", async () => {
@@ -89,4 +89,21 @@ test("in-app updater validates package and version before Android PackageInstall
   assert.match(manifest, /UpdateInstallReceiver/);
   assert.match(html, /checkJarvisUpdates/);
   assert.match(html, /api\.github\.com\/repos\/hrishikeshks1611-stack/);
+});
+
+
+test("wake-word service survives Activity backgrounding and restores only after explicit opt-in", async () => {
+  const source = await readFile(new URL("../app/src/main/java/com/hrishikesh/jarvis/MainActivity.java", import.meta.url), "utf8");
+  const activity = await readFile(new URL("../app/src/main/java/com/hrishikesh/jarvis/WakeWordActivity.java", import.meta.url), "utf8");
+  const onStop = source.match(/@Override protected void onStop\(\)\s*\{([\s\S]*?)\n    \}/);
+  assert.ok(onStop, "MainActivity should define onStop");
+  assert.doesNotMatch(onStop[1], /stopService|putBoolean\("enabled", false\)/,
+    "backgrounding the Activity must not stop the explicitly enabled foreground service");
+  assert.match(source, /restoreWakeWordServiceIfEnabled\(\)/);
+  assert.match(source, /getBoolean\("enabled", false\)/);
+  assert.match(source, /checkSelfPermission\(Manifest\.permission\.RECORD_AUDIO\)/);
+  assert.match(source, /startForegroundService\(service\)/);
+  assert.match(activity, /putBoolean\("enabled", true\)/);
+  assert.match(activity, /stopService\(new Intent\(this, WakeWordService\.class\)\)/,
+    "the user-facing microphone switch remains an explicit OFF control");
 });
