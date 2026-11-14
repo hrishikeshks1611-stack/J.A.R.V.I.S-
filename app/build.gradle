@@ -19,7 +19,7 @@ android {
         buildConfig true
     }
     defaultConfig {
-        applicationId 'com.hrishikesh.jarvis'
+        applicationId 'com.hrishikesh.jarvis16'
         minSdk 23
         targetSdk 35
         versionCode 1600
