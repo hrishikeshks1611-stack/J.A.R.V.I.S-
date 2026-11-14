@@ -40,7 +40,7 @@ test("APK workflow builds only the phone release candidate without publishing it
   const workflow = await readFile(new URL("../.github/workflows/android-apk.yml", import.meta.url), "utf8");
   assert.match(workflow, /contents:\s*read/);
   assert.match(workflow, /assemblePhoneRelease/);
-  assert.match(workflow, /JARVIS-16\.0-phone-release-candidate/);
+  assert.match(workflow, /JARVIS-17\.0-phone-release-candidate/);
   assert.match(workflow, /app-phone-release\.apk/);
   assert.doesNotMatch(workflow, /assembleTv|app-tv-|gh release create|action-gh-release/);
 });
