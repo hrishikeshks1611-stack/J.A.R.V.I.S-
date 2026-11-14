@@ -69,7 +69,7 @@ test("Live Voice provisions a single-use, short-lived transcription-only token w
   assert.equal(res.headers["Cache-Control"], "no-store");
   assert.equal(sent.headers["x-goog-api-key"], "test-gemini-key");
   assert.equal(sent.body.uses, 1);
-  assert.equal(sent.body.liveConnectConstraints.model, "models/gemini-3.8-live");
+  assert.equal(sent.body.liveConnectConstraints.model, "models/gemini-3.5-transcribe-live");
   assert.deepEqual(sent.body.liveConnectConstraints.config.responseModalities, ["TEXT"]);
   assert.deepEqual(sent.body.liveConnectConstraints.config.inputAudioTranscription, {});
   assert.ok(sent.body.liveConnectConstraints.config.sessionResumption);
