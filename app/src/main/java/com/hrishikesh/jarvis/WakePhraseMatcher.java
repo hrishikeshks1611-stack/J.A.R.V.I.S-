@@ -14,6 +14,8 @@ public final class WakePhraseMatcher {
     public static String extractCommand(String raw) {
         if (raw == null) return null;
         String text = raw.toLowerCase(Locale.ROOT).trim().replaceAll("[^a-z0-9 ]", " ").replaceAll("\\s+", " ");
+        if (text.equals("jarvis")) return "";
+        if (text.startsWith("jarvis ")) return text.substring("jarvis".length()).trim();
         String[] phrases = {
             "hey jarvis", "wake up jarvis", "hello jarvis",
             "jarvis are you there", "jarvis you there"
