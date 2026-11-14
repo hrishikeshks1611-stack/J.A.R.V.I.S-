@@ -19,9 +19,9 @@ test("calculator enforces input and result bounds", () => {
   assert.throws(() => calculateExpression("9999999999999999 * 9999999999999999"));
 });
 
-test("tool registry exposes only the approved nine tools", () => {
+test("tool registry exposes only the approved ten tools", () => {
   const names = JARVIS_TOOL_DECLARATIONS[0].function_declarations.map(item => item.name);
-  assert.deepEqual(names, ["calculate", "get_device_status", "request_open_app", "request_dial_number", "request_sms_draft", "request_alarm", "request_calendar_event", "search_saved_memories", "search_conversation"]);
+  assert.deepEqual(names, ["calculate", "get_device_status", "request_open_app", "request_dial_number", "request_sms_draft", "request_share_text", "request_alarm", "request_calendar_event", "search_saved_memories", "search_conversation"]);
 });
 
 test("device status reports only fields explicitly supplied by the app", async () => {
@@ -105,4 +105,12 @@ test("SMS action opens only a user-confirmed draft and never sends it", async ()
   assert.deepEqual(result.pendingAction, { type: "sms_draft", phoneNumber: "9876543210", message: "I will be there at six." });
   await assert.rejects(() => executeJarvisTool("request_sms_draft", { phoneNumber: "9876543210", message: "Hello" }, { userMessage: "Explain SMS." }));
   await assert.rejects(() => executeJarvisTool("request_sms_draft", { phoneNumber: "9876543210", message: "" }, { userMessage: "Send an SMS." }));
+});
+
+test("cross-app share requires explicit user intent and returns a user-confirmed action", async () => {
+  const result = await executeJarvisTool("request_share_text", { text: "Hello from JARVIS", title: "Share with" }, { userMessage: "Share this through WhatsApp." });
+  assert.equal(result.requiresConfirmation, true);
+  assert.deepEqual(result.pendingAction, { type: "share_text", text: "Hello from JARVIS", title: "Share with" });
+  await assert.rejects(() => executeJarvisTool("request_share_text", { text: "Hello", title: "Share" }, { userMessage: "What is WhatsApp?" }));
+  await assert.rejects(() => executeJarvisTool("request_share_text", { text: "", title: "Share" }, { userMessage: "Share this." }));
 });
