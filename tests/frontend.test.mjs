@@ -170,6 +170,10 @@ test("calendar event commands validate a future ISO date and open the native eve
   assert.equal(result.args[0], "Dentist appointment");
   assert.equal(result.args[2] - result.args[1], 60 * 60 * 1000);
   assert.equal(result.args[3], "Created through J.A.R.V.I.S.");
+  const natural = parse("Put Dentist appointment on my calendar for 2030-06-15 at 09:30");
+  assert.equal(natural.type, "event");
+  assert.equal(natural.args[0], "Dentist appointment");
+  assert.equal(natural.args[2] - natural.args[1], 60 * 60 * 1000);
   assert.match(parse("Create event Invalid date on 2030-02-31 at 09:30"), /invalid/i);
 });
 
