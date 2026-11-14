@@ -2,7 +2,7 @@ name: Build JARVIS 7.0 Android phone and TV packages
 on:
   workflow_dispatch:
   push:
-    branches: [ jarvis-7.0-new-app ]
+    branches: [ jarvis-7.0-new-app, jarvis-7.0-recovery ]
     paths:
       - 'app/**'
       - '*.gradle'
