@@ -18,6 +18,43 @@ on:
 permissions:
   contents: read
 jobs:
+  alarm-reminder-reboot-regression:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+      - name: Run alarm and reminder tests on Android emulator, including real reboot
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_2
+          script: |
+            set -euo pipefail
+            gradle --no-daemon installPhoneDebug installPhoneDebugAndroidTest
+            adb shell pm grant com.hrishikesh.jarvis.fourteen.release android.permission.POST_NOTIFICATIONS || true
+            adb shell am instrument -w -e class com.hrishikesh.jarvis.AlarmReminderRegressionTest#reminderIsPersistedAndHasARealAlarmManagerPendingIntent com.hrishikesh.jarvis.fourteen.release.test/androidx.test.runner.AndroidJUnitRunner
+            adb reboot
+            adb wait-for-device
+            for i in $(seq 1 60); do
+              booted="$(adb shell getprop sys.boot_completed | tr -d '\r')"
+              if [ "$booted" = "1" ]; then break; fi
+              sleep 2
+            done
+            test "$(adb shell getprop sys.boot_completed | tr -d '\r')" = "1"
+            sleep 5
+            adb shell am instrument -w -e class com.hrishikesh.jarvis.AlarmReminderRegressionTest#bootRecoveryRecreatesAlarmFromPersistedReminder com.hrishikesh.jarvis.fourteen.release.test/androidx.test.runner.AndroidJUnitRunner
+            adb shell am instrument -w -e class com.hrishikesh.jarvis.AlarmReminderRegressionTest com.hrishikesh.jarvis.fourteen.release.test/androidx.test.runner.AndroidJUnitRunner
   build:
     runs-on: ubuntu-latest
     steps:
