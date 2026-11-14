@@ -35,6 +35,7 @@ import android.speech.tts.UtteranceProgressListener;
 import android.webkit.JavascriptInterface;
 import android.webkit.GeolocationPermissions;
 import android.webkit.WebChromeClient;
+import android.webkit.PermissionRequest;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
@@ -52,6 +53,8 @@ public class MainActivity extends Activity {
     private static final int REQUEST_FILE = 4103;
     private static final int REQUEST_CAMERA = 4104;
     private static final int REQUEST_LOCATION = 4105;
+    private static final int REQUEST_WEB_AUDIO = 4106;
+    private PermissionRequest pendingWebAudioRequest;
     private GeolocationPermissions.Callback pendingGeoCallback;
     private String pendingGeoOrigin;
     private Uri pendingCameraUri;
@@ -102,6 +105,28 @@ public class MainActivity extends Activity {
         webView.getSettings().setGeolocationEnabled(true);
         webView.addJavascriptInterface(new JarvisBridge(), "AndroidJarvis");
         webView.setWebChromeClient(new WebChromeClient() {
+            @Override public void onPermissionRequest(PermissionRequest request) {
+                runOnUiThread(() -> {
+                    boolean audioOnly = true;
+                    for (String resource : request.getResources()) {
+                        if (!PermissionRequest.RESOURCE_AUDIO_CAPTURE.equals(resource)) audioOnly = false;
+                    }
+                    if (!audioOnly) {
+                        request.deny();
+                        return;
+                    }
+                    if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+                        request.grant(new String[]{PermissionRequest.RESOURCE_AUDIO_CAPTURE});
+                    } else {
+                        if (pendingWebAudioRequest != null) pendingWebAudioRequest.deny();
+                        pendingWebAudioRequest = request;
+                        requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, REQUEST_WEB_AUDIO);
+                    }
+                });
+            }
+            @Override public void onPermissionRequestCanceled(PermissionRequest request) {
+                if (pendingWebAudioRequest == request) pendingWebAudioRequest = null;
+            }
             @Override public void onGeolocationPermissionsShowPrompt(String origin, GeolocationPermissions.Callback callback) {
                 if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
                     callback.invoke(origin, true, false);
@@ -857,6 +882,20 @@ public class MainActivity extends Activity {
             else Toast.makeText(this, "Microphone permission is needed for private JARVIS voice input.", Toast.LENGTH_LONG).show();
             return;
         }
+        if (requestCode == REQUEST_WEB_AUDIO) {
+            PermissionRequest pending = pendingWebAudioRequest;
+            pendingWebAudioRequest = null;
+            if (pending != null) {
+                if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED
+                        && webView != null && !isFinishing()) {
+                    pending.grant(new String[]{PermissionRequest.RESOURCE_AUDIO_CAPTURE});
+                } else {
+                    pending.deny();
+                    Toast.makeText(this, "Allow microphone access to use Live Voice, Sir.", Toast.LENGTH_LONG).show();
+                }
+            }
+            return;
+        }
         if (requestCode == REQUEST_LOCATION && pendingGeoCallback != null) {
             boolean precise = checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED;
             GeolocationPermissions.Callback callback = pendingGeoCallback;
@@ -989,6 +1028,7 @@ public class MainActivity extends Activity {
     @Override protected void onDestroy() {
         if (wakeWordReceiver != null) { try { unregisterReceiver(wakeWordReceiver); } catch (Exception ignored) { } wakeWordReceiver = null; }
         if (textToSpeech != null) { textToSpeech.stop(); textToSpeech.shutdown(); }
+        if (pendingWebAudioRequest != null) { try { pendingWebAudioRequest.deny(); } catch (Exception ignored) { } pendingWebAudioRequest = null; }
         if (webView != null) webView.destroy();
         super.onDestroy();
     }
