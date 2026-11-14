@@ -9,7 +9,7 @@
 
 Evolve J.A.R.V.I.S into a context-aware, memory-enabled, permissioned autonomous AI that understands goals, plans work, uses approved tools, verifies outcomes, and communicates through voice and a cinematic interface.
 
-**15.0 is an additive upgrade. Existing 14.0 capabilities are compatibility requirements, not optional features.**
+**15.0 is an additive development line. Existing 14.0 capabilities are compatibility requirements, not optional features.**
 
 ## Non-negotiable preservation contract
 
@@ -28,20 +28,28 @@ Do not remove, silently replace, or regress:
 - Security audit, owner recovery/transfer, backups, and confirmation gates.
 - Existing 3D ARC reactor and current interface controls.
 
-### Compatibility rules
+### Compatibility and installation rules
 
-1. Preserve Android application identity and existing user data.
-2. Never ship a second app as an upgrade workaround.
-3. Never modify the installed phone app or distribute an APK until update compatibility is independently verified.
-4. Keep consequential actions behind explicit confirmation.
-5. Never claim an action completed without a successful tool result or device-side evidence.
-6. Preserve offline fallbacks, tap-to-speak, and clear error reporting.
-7. Build new capabilities as modules; use feature flags where practical.
-8. Maintain regression tests for every preserved capability.
+1. Keep the installed 14.0 app and its local data untouched throughout 15.0 development.
+2. Build 15.0 as a separate Android installation with a distinct application ID. It must not overwrite or collide with 14.0.
+3. Do not copy, clear, or migrate 14.0 private app data as an installation shortcut.
+4. Pair 15.0 to the existing J.A.R.V.I.S account/backend. Shared conversation history and saved memories remain server-side and are available to authenticated paired devices.
+5. Preserve 14.0's owner role during initial 15.0 pairing. Verify 15.0 can read shared history and memories before changing ownership.
+6. For cutover: transfer owner status from 14.0 to 15.0; verify 15.0 reports OWNER and can manage devices; only then revoke 14.0's device session.
+7. Revoking 14.0 must revoke its server access only. It must not uninstall 14.0 or erase its local app data.
+8. Device-local capabilities and permissions (microphone/wake-word, camera, contacts, alarms, reminders, calendar, media controls) are not automatically synchronised by shared conversation/memory sync. Re-authorise and validate these on 15.0 separately.
+9. Keep consequential actions behind explicit confirmation.
+10. Never claim an action completed without a successful tool result or device-side evidence.
+11. Preserve offline fallbacks, tap-to-speak, and clear error reporting.
+12. Build new capabilities as modules; use feature flags where practical.
+13. Maintain regression tests for every preserved capability.
+14. Do not distribute a 15.0 APK until package identity, build, install side-by-side, pairing, sync, owner transfer, revoke behavior, and preserved local data have been verified.
 
 ## Existing 14.0 baseline discovered
 
 The branch already contains a Gemini-backed server-side chat endpoint, a server-side allow-listed tool registry, shared conversation history, explicit saved memories, a bounded multi-step tool loop, personality/capability/tutor/medical/mentalist modules, Android bridges for calls/camera/media/alarms/reminders/calendar/wake-word services, a web app with an animated 3D reactor and mission control, security and backup flows, and Node tests covering agent behavior, permissions, memory, native bridges, voice routing, files, and UI contracts.
+
+The existing pairing API already supports one-time pairing codes, shared history, paired-device listing, owner transfer, and revocation. The current owner must remain in place until 15.0 has paired and verified shared data. The existing owner can then transfer ownership to 15.0; the new owner can revoke the old 14.0 session. The revocation endpoint removes the server session/device record, not the old app's private local data.
 
 The current agent already has a bounded tool loop. 15.0 should strengthen goal planning, task state, recovery, and verification rather than replacing this foundation.
 
@@ -96,6 +104,7 @@ Start with research, organising information, drafting, file preparation, and oth
 - Show which device is executing a local action.
 - Explicitly identify unavailable device-only actions.
 - Preserve pairing, owner recovery, and session security.
+- Treat app-local permissions and local device data separately from cloud-shared context.
 
 ## Delivery phases and exit criteria
 
@@ -124,8 +133,8 @@ Add task and memory panels around the existing reactor; add audio, task, and app
 **Exit:** interface remains responsive, readable, and functional with reduced motion.
 
 ### Phase 6 — Cross-device hardening and release
-Test pairing, sync, reconnect, owner recovery, and local-only actions. Run the full preservation suite. Verify package identity, versioning, and update compatibility before any APK distribution.  
-**Exit:** automated checks pass, device tests are documented, and update compatibility is proven—not assumed.
+Test side-by-side 14.0/15.0 installation, pairing, shared history/memory, reconnect, owner transfer, old-session revocation, owner recovery, and local-only actions. Run the full preservation suite.  
+**Exit:** automated checks pass, device tests are documented, and both installations coexist without data loss or accidental access revocation.
 
 ## Verification snapshot from the initial audit
 
@@ -138,13 +147,15 @@ Test pairing, sync, reconnect, owner recovery, and local-only actions. Run the f
 
 ## First implementation backlog
 
-1. Add the 15.0 branch to quality and Android compile/unit-test CI triggers.
-2. Add agent task-state schemas and tests without changing current tool semantics.
-3. Add memory retrieval/summarisation behind existing memory APIs.
-4. Add a permission-aware task planner and progress event contract.
-5. Extend the existing HUD with task and memory panels, retaining the ARC reactor.
-6. Establish device-level evidence for wake word, alarms/reminders, camera, and voice before release.
+1. Configure a distinct 15.0 Android application ID and version.
+2. Add the 15.0 branch to quality and Android compile/unit-test CI triggers.
+3. Add automated tests for side-by-side package identity and device-pairing/cutover semantics.
+4. Add agent task-state schemas and tests without changing current tool semantics.
+5. Add memory retrieval/summarisation behind existing memory APIs.
+6. Add a permission-aware task planner and progress event contract.
+7. Extend the existing HUD with task and memory panels, retaining the ARC reactor.
+8. Establish device-level evidence for wake word, alarms/reminders, camera, and voice before release.
 
 ## Definition of done
 
-15.0 is ready only when advanced conversational intelligence, autonomous multi-step execution, and the ARC-reactor holographic-style interface are delivered while every 14.0 preservation requirement remains functional, tested, permissioned, and accurately represented.
+15.0 is ready only when advanced conversational intelligence, autonomous multi-step execution, and the ARC-reactor holographic-style interface are delivered while every 14.0 preservation requirement remains functional, tested, permissioned, and accurately represented. Both apps must coexist safely until the user explicitly approves the final cutover.
