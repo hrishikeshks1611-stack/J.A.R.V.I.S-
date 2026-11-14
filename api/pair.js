@@ -284,7 +284,7 @@ export default async function handler(req, res) {
         "redis.call('DEL', KEYS[2], KEYS[1])",
         "redis.call('SREM', KEYS[3], ARGV[2])",
         "return cjson.encode({ ok = true })"
-      ].join("\\n");
+      ].join("\n");
       const revokeRaw = await redisCommand(
         "EVAL", revokeScript, "3",
         JARVIS_PREFIX + "device:" + target,
