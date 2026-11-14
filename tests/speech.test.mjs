@@ -91,11 +91,14 @@ test("Algieba speech preserves en-GB identity and streams PCM across split SSE c
   assert.match(modelRequest.contents[0].parts[0].text, /contemporary British English/);
 });
 
-test("Gemini speech quota errors remain visible as HTTP 429", async () => {
-  setup(async () => new Response(JSON.stringify({ error: { message: "quota exceeded" } }), { status: 429 }));
+test("Gemini speech quota errors preserve upstream Retry-After guidance", async () => {
+  setup(async () => new Response(JSON.stringify({ error: { message: "quota exceeded" } }), {
+    status: 429, headers: { "Retry-After": "75" }
+  }));
   const res = response();
   await handler(request, res);
   assert.equal(res.statusCode, 429);
+  assert.equal(res.headers["Retry-After"], "75");
   assert.match(res.body.error, /HTTP 429/);
 });
 
