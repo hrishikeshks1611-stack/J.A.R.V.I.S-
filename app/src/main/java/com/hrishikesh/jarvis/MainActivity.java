@@ -410,6 +410,48 @@ public class MainActivity extends Activity {
             return "Opening Android's Cast settings, Sir. Select a compatible TV or wireless display.";
         }
 
+        @JavascriptInterface public String dialNumber(String requestedNumber) {
+            String number = requestedNumber == null ? "" : requestedNumber.trim();
+            if (!number.matches("\\+?[0-9][0-9 .()\\-]{5,24}")) {
+                return "That phone number is invalid, Sir.";
+            }
+            Intent intent = new Intent(Intent.ACTION_DIAL, Uri.fromParts("tel", number, null));
+            runOnUiThread(() -> {
+                try {
+                    if (intent.resolveActivity(getPackageManager()) == null) {
+                        Toast.makeText(MainActivity.this, "No compatible dialler is available, Sir.", Toast.LENGTH_LONG).show();
+                        return;
+                    }
+                    startActivity(intent);
+                } catch (ActivityNotFoundException error) {
+                    Toast.makeText(MainActivity.this, "Android could not open the dialler, Sir.", Toast.LENGTH_LONG).show();
+                }
+            });
+            return "Opening the dialler for your review. No call is placed automatically, Sir.";
+        }
+
+        @JavascriptInterface public String openSmsComposer(String requestedNumber, String requestedBody) {
+            String number = requestedNumber == null ? "" : requestedNumber.trim();
+            String body = requestedBody == null ? "" : requestedBody.trim();
+            if (!number.matches("\\+?[0-9][0-9 .()\\-]{5,24}") || body.isEmpty() || body.length() > 2000) {
+                return "A valid contact number and message of up to 2,000 characters are required, Sir.";
+            }
+            Intent intent = new Intent(Intent.ACTION_SENDTO, Uri.fromParts("smsto", number, null));
+            intent.putExtra("sms_body", body);
+            runOnUiThread(() -> {
+                try {
+                    if (intent.resolveActivity(getPackageManager()) == null) {
+                        Toast.makeText(MainActivity.this, "No compatible messaging app is available, Sir.", Toast.LENGTH_LONG).show();
+                        return;
+                    }
+                    startActivity(intent);
+                } catch (ActivityNotFoundException error) {
+                    Toast.makeText(MainActivity.this, "Android could not open the messaging app, Sir.", Toast.LENGTH_LONG).show();
+                }
+            });
+            return "Opening your messaging app with the message ready. Review and press Send yourself, Sir.";
+        }
+
         @JavascriptInterface public String setAlarm(int hour, int minute, String label) {
             if (hour < 0 || hour > 23 || minute < 0 || minute > 59) {
                 return "That alarm time is invalid, Sir.";
