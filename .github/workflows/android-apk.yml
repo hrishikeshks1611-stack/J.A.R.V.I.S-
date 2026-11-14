@@ -58,6 +58,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: JARVIS-16.0-phone-release-candidate
-          path: app/build/outputs/apk/phone/release/app-phone-release-unsigned.apk
+          path: app/build/outputs/apk/phone/release/app-phone-release.apk
           if-no-files-found: error
           retention-days: 30
