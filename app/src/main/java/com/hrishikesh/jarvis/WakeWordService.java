@@ -133,6 +133,7 @@ public class WakeWordService extends Service implements RecognitionListener {
 
     private void prepareAndListen() {
         try {
+            updateNotification("Preparing offline speech model · checking this phone first…");
             Log.i("WakeWordService", "prepareAndListen: checking local Vosk model");
             File modelDir = new File(getFilesDir(), "vosk-model-small-en-in-0.4");
             if (!new File(modelDir, "am").isDirectory() || !new File(modelDir, "conf").isDirectory()) {
@@ -152,7 +153,7 @@ public class WakeWordService extends Service implements RecognitionListener {
                 Log.i("WakeWordService", "prepareAndListen: cancelled before model load");
                 return;
             }
-            updateNotification("Speech model installed · loading recognition engine…");
+            updateNotification("Speech model available · loading recognition engine…");
             Log.i("WakeWordService", "prepareAndListen: loading native Vosk model");
             model = new Model(modelDir.getAbsolutePath());
             Log.i("WakeWordService", "prepareAndListen: native Vosk model loaded");
