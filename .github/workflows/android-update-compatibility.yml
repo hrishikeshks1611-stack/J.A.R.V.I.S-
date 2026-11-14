@@ -1,0 +1,78 @@
+name: Verify JARVIS 6.0.0 to 6.0.1 in-place update
+on:
+  workflow_dispatch:
+  push:
+    branches: [ jarvis-6.0.1-repair ]
+    paths:
+      - 'app/**'
+      - '.github/workflows/android-update-compatibility.yml'
+permissions:
+  contents: read
+  actions: read
+jobs:
+  update-compatibility:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out 6.0.1 repair source
+        uses: actions/checkout@v4
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          accept-android-sdk-licenses: true
+          packages: platform-tools
+      - name: Install Android platform and build tools
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+      - name: Retrieve the archived original JARVIS 6.0.0 phone build
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          curl --fail --location \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/14029357651/zip" \
+            --output jarvis-6.0.0-artifact.zip
+          mkdir -p baseline
+          unzip -q jarvis-6.0.0-artifact.zip -d baseline
+          test -s baseline/app-phone-debug.apk
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging baseline/app-phone-debug.apk | grep -Fq "package: name='com.hrishikesh.jarvis.next' versionCode='600' versionName='6.0.0'"
+      - name: Build JARVIS 6.0.1 phone APK
+        run: |
+          set -euo pipefail
+          gradle --no-daemon assemblePhoneDebug
+          APK="app/build/outputs/apk/phone/debug/app-phone-debug.apk"
+          test -s "$APK"
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" | grep -Fq "package: name='com.hrishikesh.jarvis.next' versionCode='601' versionName='6.0.1'"
+      - name: Preserve test APKs
+        uses: actions/upload-artifact@v4
+        with:
+          name: JARVIS-6.0.0-to-6.0.1-compatibility-test-inputs
+          path: |
+            baseline/app-phone-debug.apk
+            app/build/outputs/apk/phone/debug/app-phone-debug.apk
+          if-no-files-found: error
+          retention-days: 30
+      - name: Install original and update on Android 10 emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 29
+          arch: x86_64
+          profile: pixel_2
+          script: |
+            set -euo pipefail
+            adb install baseline/app-phone-debug.apk
+            adb shell pm path com.hrishikesh.jarvis.next
+            adb shell "run-as com.hrishikesh.jarvis.next sh -c 'mkdir -p files && printf jarvis-preserve-check > files/update-compatibility-sentinel.txt'"
+            adb install -r app/build/outputs/apk/phone/debug/app-phone-debug.apk
+            adb shell "run-as com.hrishikesh.jarvis.next grep -qx jarvis-preserve-check files/update-compatibility-sentinel.txt"
+            adb shell dumpsys package com.hrishikesh.jarvis.next | grep -E 'versionCode=601|versionName=6.0.1'
+            echo "PASS: Android accepted the 6.0.1 update and preserved app-private data."

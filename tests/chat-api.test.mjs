@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import handler from "../api/chat.js";
+import { hashToken } from "../lib/jarvis-store.js";
 
 function response() {
   return {
@@ -38,4 +39,91 @@ test("chat API rejects unapproved origins", async () => {
     body: { message: "Hello" }
   }, res);
   assert.equal(res.statusCode, 403);
+});
+
+
+test("Android capability questions return the code-backed catalogue without calling Gemini", async () => {
+  const originalFetch = global.fetch;
+  const keys = ["UPSTASH_REDIS_REST_URL", "UPSTASH_REDIS_REST_TOKEN", "JARVIS", "GEMINI_API_KEY"];
+  const original = Object.fromEntries(keys.map(key => [key, process.env[key]]));
+  const token = "capability-test-session-token";
+  process.env.UPSTASH_REDIS_REST_URL = "https://redis.example.test";
+  process.env.UPSTASH_REDIS_REST_TOKEN = "test-token";
+  delete process.env.JARVIS;
+  delete process.env.GEMINI_API_KEY;
+  const writes = [];
+  global.fetch = async (_url, options) => {
+    const commands = JSON.parse(options.body);
+    const results = commands.map(command => {
+      const [op, key] = command;
+      if (op === "GET" && key.includes(":session:")) return { result: JSON.stringify({ deviceId: "android-test-device" }) };
+      if (op === "GET" && key.endsWith(":owner:token-hash")) return { result: null };
+      if (op === "GET") return { result: null };
+      if (op === "EXPIRE") return { result: 1 };
+      if (op === "EVAL") { writes.push(command); return { result: JSON.stringify([{ role: "user", text: "What all can he do?" }, { role: "model", text: "catalogue answer" }]) }; }
+      throw new Error("Unexpected Redis command: " + op);
+    });
+    return { ok: true, status: 200, text: async () => JSON.stringify(results) };
+  };
+  try {
+    const res = response();
+    await handler({
+      method: "POST",
+      headers: { authorization: "Bearer " + token },
+      body: { message: "What all can he do?", deviceContext: { deviceType: "Android phone/tablet" } }
+    }, res);
+    assert.equal(res.statusCode, 200);
+    assert.equal(res.body.capabilityCatalogue, true);
+    assert.match(res.body.reply, /initiate a phone call/i);
+    assert.match(res.body.reply, /structured study plan/i);
+    assert.deepEqual(res.body.toolCalls, []);
+    assert.equal(writes.length, 1, "the capability response should be saved to shared conversation history");
+  } finally {
+    global.fetch = originalFetch;
+    for (const key of keys) {
+      if (original[key] === undefined) delete process.env[key];
+      else process.env[key] = original[key];
+    }
+  }
+});
+
+
+test("medical red-flag emergencies bypass Gemini and return immediate emergency instructions", async () => {
+  const originalFetch = global.fetch;
+  const keys = ["UPSTASH_REDIS_REST_URL", "UPSTASH_REDIS_REST_TOKEN", "JARVIS", "GEMINI_API_KEY"];
+  const original = Object.fromEntries(keys.map(key => [key, process.env[key]]));
+  process.env.UPSTASH_REDIS_REST_URL = "https://redis.example.test";
+  process.env.UPSTASH_REDIS_REST_TOKEN = "test-token";
+  delete process.env.JARVIS;
+  delete process.env.GEMINI_API_KEY;
+  const writes = [];
+  global.fetch = async (_url, options) => {
+    const commands = JSON.parse(options.body);
+    const results = commands.map(command => {
+      const [op, key] = command;
+      if (op === "GET" && key.includes(":session:")) return { result: JSON.stringify({ deviceId: "android-test-device" }) };
+      if (op === "GET") return { result: null };
+      if (op === "EXPIRE") return { result: 1 };
+      if (op === "EVAL") { writes.push(command); return { result: JSON.stringify([]) }; }
+      throw new Error("Unexpected Redis command: " + op);
+    });
+    return { ok: true, status: 200, text: async () => JSON.stringify(results) };
+  };
+  try {
+    const res = response();
+    await handler({ method: "POST", headers: { authorization: "Bearer emergency-test-token" }, body: { message: "My father is having chest pain right now" } }, res);
+    assert.equal(res.statusCode, 200);
+    assert.equal(res.body.emergency, true);
+    assert.equal(res.body.engine, "medical-emergency");
+    assert.match(res.body.reply, /Call 112 now/);
+    assert.match(res.body.reply, /108 for an ambulance in Kerala/);
+    assert.deepEqual(res.body.toolCalls, []);
+    assert.equal(writes.length, 1);
+  } finally {
+    global.fetch = originalFetch;
+    for (const key of keys) {
+      if (original[key] === undefined) delete process.env[key];
+      else process.env[key] = original[key];
+    }
+  }
 });

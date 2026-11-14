@@ -43,7 +43,8 @@ export default async function handler(req, res) {
     const prompt = [
       "Speak the supplied transcript exactly as written. Do not paraphrase, omit, add, or announce anything.",
       "VOICE: Use Algieba, a male voice in Google’s published Gemini TTS voice catalogue. Preserve a distinctly masculine adult voice; never switch to a female voice or another speaker identity.",
-      "ACCENT: Use clearly recognisable contemporary British English pronunciation, preferably educated Southern British / understated modern RP. This must sound British, not American.",
+      "ACCENT: Use clearly recognisable contemporary British English pronunciation, preferably educated Southern British / understated modern RP. This must sound British, not American. Treat en-GB as the required spoken locale, not merely a spelling convention.",
+      "ACCENT CHECK WORDS: For words such as car, garden, rather, water, warm, and care, use natural contemporary Southern British vowel quality and non-rhotic linking. Do not insert an R where British speakers would not pronounce one. Do not exaggerate or parody the accent.",
       "PRONUNCIATION: Use non-rhotic British pronunciation: do not pronounce an R at the end of a word or before a consonant. Use British vowel quality and British word stress. Avoid American R-colouring, American vowel shifts, and American intonation.",
       "DELIVERY: A polished, discreet, exceptionally articulate British personal butler: calm, measured, warm but reserved, quietly confident, precise diction, natural connected speech, controlled pacing, and understated dry wit where the words allow it.",
       "MANNER: Sound naturally courteous and intelligent, never servile, over-formal, breathless, or theatrical. Use subtle sentence-level intonation and gentle emphasis on meaningful words. Keep pauses brief and purposeful.",

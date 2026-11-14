@@ -66,7 +66,7 @@ test("Alfred voice fails silent and never falls back to Android default TTS", as
   const fallback = html.slice(start, end);
   assert.ok(fallback.includes("I will remain silent rather than use another voice"));
   assert.ok(!fallback.includes("speakOfflineFallback"));
-  assert.ok(html.includes("jarvis-alfred-male-british-v2"));
+  assert.ok(html.includes("jarvis-alfred-male-british-v3"));
 });
 
 
@@ -332,12 +332,30 @@ test("installed-app inventory and arbitrary app names use the native Android bri
 });
 
 
-test("always-on microphone is disabled while tap-to-speak remains available", async () => {
+test("wake-word microphone is explicitly user-controlled and tap-to-speak remains available", async () => {
  const source = await readFile(new URL("../app/src/main/java/com/hrishikesh/jarvis/MainActivity.java", import.meta.url), "utf8");
  const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
- assert.ok(source.includes('putBoolean("enabled", false)'));
- assert.ok(source.includes('stopService(new Intent(this, WakeWordService.class))'));
- assert.ok(html.includes("$('wakeWordButton').hidden=true"));
+ assert.ok(source.includes('wakePrefs.getBoolean("enabled", false)'));
+ assert.ok(source.includes('if (!wakeWordEnabled) stopService(new Intent(this, WakeWordService.class))'));
+ assert.ok(html.includes("$('wakeWordButton').hidden=false"));
  assert.ok(html.includes("Tap the microphone button when you want to speak"));
  assert.ok(source.includes("startOfflineDictation()"));
+});
+
+
+test("Alfred mode is selectable and the Android voice test exercises British pronunciation", async () => {
+  const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+  assert.ok(html.includes('<option value="alfred" selected>Alfred · British butler</option>'));
+  assert.ok(html.includes("The car is parked near the garden. The water is rather warm"));
+  assert.ok(html.includes("jarvis-alfred-male-british-v3|gemini-3.1-flash-tts-preview"));
+  assert.ok(html.includes("jarvisPersonalityModeV1"));
+  assert.ok(html.includes("localStorage.setItem(PERSONALITY_MODE_KEY,$('mode').value)"));
+});
+
+test("Alfred speech endpoint pins Algieba and en-GB and requests non-rhotic British pronunciation", async () => {
+  const speech = await readFile(new URL("../api/speech.js", import.meta.url), "utf8");
+  assert.ok(speech.includes('voiceName: "Algieba"'));
+  assert.ok(speech.includes('languageCode: "en-GB"'));
+  assert.match(speech, /non-rhotic British pronunciation/i);
+  assert.match(speech, /ACCENT CHECK WORDS/);
 });

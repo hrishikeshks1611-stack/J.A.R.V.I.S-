@@ -1,0 +1,83 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import {
+  ACTION_STATES,
+  JARVIS_CAPABILITIES,
+  buildJarvisCapabilitiesReply,
+  isJarvisCapabilitiesQuestion,
+  createJarvisAction,
+  getJarvisCapability,
+  isJarvisCapabilityAvailable,
+  listJarvisCapabilities,
+  transitionJarvisAction
+} from "../lib/jarvis-capabilities.js";
+
+test("capability catalogue has unique stable identifiers", () => {
+  const ids = JARVIS_CAPABILITIES.map(item => item.id);
+  assert.equal(new Set(ids).size, ids.length);
+  assert.ok(ids.includes("offline_wake_word"));
+  assert.ok(ids.includes("youtube_music_exact_track"));
+  assert.ok(ids.includes("holographic_command_station"));
+  assert.ok(ids.includes("education_engine"));
+  assert.ok(ids.includes("study_plan_builder"));
+});
+
+test("prototype and planned features are not advertised as available", () => {
+  assert.equal(isJarvisCapabilityAvailable("offline_wake_word", "android"), false);
+  assert.equal(isJarvisCapabilityAvailable("durable_reminders_and_schedules", "android"), false);
+  assert.equal(isJarvisCapabilityAvailable("conversation", "android"), true);
+  assert.equal(isJarvisCapabilityAvailable("conversation", "desktop"), false);
+  assert.equal(isJarvisCapabilityAvailable("education_engine", "backend"), true);
+  assert.equal(isJarvisCapabilityAvailable("medical_assistant_engine", "backend"), true);
+  assert.equal(isJarvisCapabilityAvailable("emergency_triage_guidance", "backend"), true);
+  assert.equal(isJarvisCapabilityAvailable("study_plan_builder", "backend"), true);
+});
+
+test("capability queries filter by area, status and surface", () => {
+  assert.equal(getJarvisCapability("conversation").area, "intelligence");
+  assert.equal(getJarvisCapability("not-a-capability"), null);
+  assert.ok(listJarvisCapabilities({ area: "voice" }).length >= 2);
+  assert.ok(listJarvisCapabilities({ status: "planned" }).every(item => item.status === "planned"));
+  assert.ok(listJarvisCapabilities({ surface: "tv" }).every(item => item.surfaces.includes("tv")));
+});
+
+test("action lifecycle requires approval and evidence before verification", () => {
+  let action = createJarvisAction({ id: "a1", tool: "request_alarm", requiresApproval: true, createdAt: 100 });
+  assert.equal(action.state, "awaiting_approval");
+  action = transitionJarvisAction(action, "handed_off", {}, 110);
+  action = transitionJarvisAction(action, "executed", {}, 120);
+  assert.throws(() => transitionJarvisAction(action, "verified", {}, 130), /verification evidence/);
+  action = transitionJarvisAction(action, "verified", { evidence: "Clock activity confirmed by the native app." }, 140);
+  assert.equal(action.state, "verified");
+  assert.equal(action.updatedAt, 140);
+  assert.throws(() => transitionJarvisAction(action, "failed", { error: "late failure" }), /cannot be changed/);
+});
+
+test("action lifecycle rejects unsafe skips and requires failure reasons", () => {
+  const action = createJarvisAction({ tool: "open_track" });
+  assert.equal(action.state, "proposed");
+  assert.throws(() => transitionJarvisAction(action, "verified", { evidence: "it probably worked" }), /Invalid JARVIS action transition/);
+  assert.throws(() => transitionJarvisAction(action, "failed"), /failure reason/);
+  assert.throws(() => transitionJarvisAction(action, "nonsense"), /Invalid JARVIS action transition/);
+  assert.deepEqual(ACTION_STATES, ["proposed", "awaiting_approval", "handed_off", "executed", "verified", "failed", "cancelled"]);
+});
+
+
+test("capability catalogue answers capability questions from verified build metadata", () => {
+  assert.equal(isJarvisCapabilitiesQuestion("What all can he do?"), true);
+  assert.equal(isJarvisCapabilitiesQuestion("What can you do?"), true);
+  assert.equal(isJarvisCapabilitiesQuestion("Can you explain photosynthesis?"), false);
+  assert.equal(getJarvisCapability("contact_calling").status, "implemented");
+  assert.equal(isJarvisCapabilityAvailable("contact_calling", "android"), true);
+  assert.equal(isJarvisCapabilityAvailable("contact_calling", "pwa"), false);
+  const android = buildJarvisCapabilitiesReply("Android phone/tablet");
+  assert.match(android, /initiate a phone call/i);
+  assert.match(android, /tap-to-speak voice input/i);
+  assert.match(android, /structured study plan/i);
+  assert.match(android, /PDF, DOCX, XLSX, PPTX, CSV, TXT and Markdown/i);
+  assert.match(android, /wake-word detection is experimental/i);
+  assert.match(android, /cannot verify those from this server response/i);
+  const browser = buildJarvisCapabilitiesReply("Browser / desktop");
+  assert.doesNotMatch(browser, /initiate a phone call/i);
+  assert.doesNotMatch(browser, /take a photo or selfie/i);
+});

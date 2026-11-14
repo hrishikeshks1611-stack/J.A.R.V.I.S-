@@ -37,6 +37,9 @@ public class WakeWordService extends Service implements RecognitionListener {
     public static final String ACTION_WAKE = "com.hrishikesh.jarvis.WAKE_DETECTED";
     public static final String ACTION_COMMAND = "com.hrishikesh.jarvis.WAKE_COMMAND";
     public static final String ACTION_PARTIAL = "com.hrishikesh.jarvis.WAKE_PARTIAL";
+    public static final String ACTION_READY = "com.hrishikesh.jarvis.MICROPHONE_READY";
+    public static final String ACTION_ERROR = "com.hrishikesh.jarvis.MICROPHONE_ERROR";
+    public static final String EXTRA_ERROR = "error";
     public static final String EXTRA_COMMAND = "command";
     public static final String ACTION_DICTATION = "com.hrishikesh.jarvis.START_DICTATION";
     private static final String ACTION_STOP = "com.hrishikesh.jarvis.STOP_WAKE";
@@ -48,12 +51,20 @@ public class WakeWordService extends Service implements RecognitionListener {
     private volatile boolean dictationMode = false;
     private volatile boolean wakeDetectedInUtterance = false;
     private volatile boolean preparing = false;
+    private volatile boolean readyBroadcasted = false;
     private final Handler commandTimeoutHandler = new Handler(Looper.getMainLooper());
     private final Handler dictationTimeoutHandler = new Handler(Looper.getMainLooper());
     private final Runnable dictationTimeout = () -> {
         if (!dictationMode) return;
+        boolean wasReady = readyBroadcasted;
         dictationMode = false;
-        updateNotification("No speech detected · microphone stopped");
+        if (!wasReady) {
+            String detail = "Microphone startup timed out before audio capture became active.";
+            updateNotification("Microphone startup timed out");
+            broadcast(ACTION_ERROR, detail);
+        } else {
+            updateNotification("No speech detected · microphone stopped");
+        }
         if (!getSharedPreferences("jarvis_wake_word", MODE_PRIVATE).getBoolean("enabled", false)) stopSelf();
     };
     private final Runnable commandTimeout = () -> {
@@ -75,7 +86,7 @@ public class WakeWordService extends Service implements RecognitionListener {
     @Override public void onCreate() {
         super.onCreate();
         Log.i("WakeWordService", "onCreate: foreground microphone service process entered");
-        active = true;
+        active = false;
         createChannel();
         try {
             startForegroundCompat("Preparing offline wake-word engine. Audio stays on this phone.");
@@ -97,9 +108,12 @@ public class WakeWordService extends Service implements RecognitionListener {
         if (intent != null && ACTION_DICTATION.equals(intent.getAction())) {
             dictationMode = true;
             dictationTimeoutHandler.removeCallbacks(dictationTimeout);
+            dictationTimeoutHandler.postDelayed(dictationTimeout, 90000);
             if (audioRecord != null && recording) {
+                dictationTimeoutHandler.removeCallbacks(dictationTimeout);
                 dictationTimeoutHandler.postDelayed(dictationTimeout, 20000);
                 updateNotification("JARVIS voice input · speak now · audio stays on this phone");
+                if (readyBroadcasted) broadcast(ACTION_READY, null);
             }
         }
         synchronized (this) {
@@ -143,17 +157,15 @@ public class WakeWordService extends Service implements RecognitionListener {
             Log.i("WakeWordService", "prepareAndListen: opening 16 kHz mono voice microphone");
             startAudioCapture();
             Log.i("WakeWordService", "prepareAndListen: microphone capture thread launched");
-            if (dictationMode) {
-                dictationTimeoutHandler.removeCallbacks(dictationTimeout);
-                dictationTimeoutHandler.postDelayed(dictationTimeout, 20000);
-                updateNotification("JARVIS voice input · speak now · audio stays on this phone");
-            } else {
-                updateNotification("Microphone ON · offline wake-word detection active");
-            }
-            Log.i("WakeWordService", "offline speech service ready");
+            updateNotification("Microphone initialised · waiting for first audio frame");
+            Log.i("WakeWordService", "Vosk is loaded and AudioRecord started; waiting for first PCM frame before reporting ready");
         } catch (Exception | LinkageError error) {
             Log.e("WakeWordService", "Failed to prepare offline wake-word service", error);
-            updateNotification("Wake-word setup failed. Open JARVIS and switch the microphone OFF.");
+            active = false;
+            recording = false;
+            String detail = error.getMessage() == null ? error.getClass().getSimpleName() : error.getMessage();
+            updateNotification("Microphone setup failed · " + detail);
+            broadcast(ACTION_ERROR, detail);
             getSharedPreferences("jarvis_wake_word", MODE_PRIVATE).edit().putBoolean("enabled", false).apply();
             stopSelf();
         } finally {
@@ -229,6 +241,19 @@ public class WakeWordService extends Service implements RecognitionListener {
                 while (recording && !stopped) {
                     int count = recorder.read(pcm, 0, pcm.length);
                     if (count > 0) {
+                        if (!readyBroadcasted) {
+                            readyBroadcasted = true;
+                            active = true;
+                            if (dictationMode) {
+                                dictationTimeoutHandler.removeCallbacks(dictationTimeout);
+                                dictationTimeoutHandler.postDelayed(dictationTimeout, 20000);
+                                updateNotification("JARVIS voice input · microphone active · speak now");
+                            } else {
+                                updateNotification("Microphone ON · offline wake-word detection active");
+                            }
+                            broadcast(ACTION_READY, null);
+                            Log.i("WakeWordService", "First PCM frame received; microphone readiness confirmed");
+                        }
                         Recognizer activeRecognizer = recognizer;
                         if (activeRecognizer == null) break;
                         if (activeRecognizer.acceptWaveForm(pcm, count)) onResult(activeRecognizer.getResult());
@@ -240,6 +265,8 @@ public class WakeWordService extends Service implements RecognitionListener {
             } catch (Exception | LinkageError error) {
                 if (recording && !stopped) {
                     Log.e("WakeWordService", "Microphone capture failed", error);
+                    active = false;
+                    recording = false;
                     onError(error instanceof Exception ? (Exception) error
                             : new IllegalStateException("Native microphone processing failed", error));
                 }
@@ -510,7 +537,11 @@ public class WakeWordService extends Service implements RecognitionListener {
 
     @Override public void onError(Exception exception) {
         Log.e("WakeWordService", "Offline speech recognition error", exception);
-        updateNotification("Offline microphone error. Open JARVIS to turn it OFF.");
+        active = false;
+        recording = false;
+        String detail = exception == null || exception.getMessage() == null ? "Offline speech recognition failed." : exception.getMessage();
+        broadcast(ACTION_ERROR, detail);
+        updateNotification("Offline microphone error · " + detail);
         getSharedPreferences("jarvis_wake_word", MODE_PRIVATE).edit().putBoolean("enabled", false).apply();
         stopSelf();
     }
@@ -531,6 +562,7 @@ public class WakeWordService extends Service implements RecognitionListener {
         HttpURLConnection connection = modelConnection;
         if (connection != null) connection.disconnect();
         recording = false;
+        readyBroadcasted = false;
         AudioRecord recorder = audioRecord;
         if (recorder != null) {
             try { if (recorder.getRecordingState() == AudioRecord.RECORDSTATE_RECORDING) recorder.stop(); }
