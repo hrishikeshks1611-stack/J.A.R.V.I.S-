@@ -62,26 +62,28 @@ public final class MainActivity extends Activity {
     private void buildInterface() {
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(dp(16), dp(12), dp(16), dp(10));
+        root.setPadding(dp(14), dp(8), dp(14), dp(10));
         root.setBackgroundColor(Color.rgb(2, 8, 18));
 
         TextView title = new TextView(this);
-        title.setText("J.A.R.V.I.S.");
-        title.setTextColor(cyan);
-        title.setTextSize(25);
-        title.setLetterSpacing(.22f);
+        title.setText("J.A.R.V.I.S");
+        title.setTextColor(Color.rgb(155, 225, 255));
+        title.setTextSize(19);
+        title.setLetterSpacing(.34f);
+        title.setShadowLayer(dp(12), 0, 0, Color.rgb(0, 120, 220));
         title.setGravity(Gravity.CENTER);
         root.addView(title, matchWrap());
 
         reactorView = new ArcReactorView(this);
-        LinearLayout.LayoutParams rp = new LinearLayout.LayoutParams(dp(174), dp(174));
+        LinearLayout.LayoutParams rp = new LinearLayout.LayoutParams(dp(208), dp(208));
         rp.gravity = Gravity.CENTER_HORIZONTAL;
         rp.setMargins(0, dp(2), 0, dp(3));
         root.addView(reactorView, rp);
 
         status = new TextView(this);
         status.setTextColor(Color.rgb(120, 205, 235));
-        status.setTextSize(11);
+        status.setTextSize(9);
+        status.setLetterSpacing(.12f);
         status.setGravity(Gravity.CENTER);
         status.setPadding(dp(4), dp(5), dp(4), dp(8));
         root.addView(status, matchWrap());
@@ -122,6 +124,7 @@ public final class MainActivity extends Activity {
         composer.setPadding(0, dp(8), 0, dp(4));
         chatInput = new android.widget.EditText(this);
         chatInput.setSingleLine(true);
+        chatInput.setImeOptions(android.view.inputmethod.EditorInfo.IME_ACTION_SEND);
         chatInput.setTextColor(Color.WHITE);
         chatInput.setHintTextColor(Color.rgb(120, 150, 170));
         chatInput.setHint("Message J.A.R.V.I.S...");
@@ -134,15 +137,26 @@ public final class MainActivity extends Activity {
         chatInput.setBackground(inputBg);
         composer.addView(chatInput, new LinearLayout.LayoutParams(0, dp(50), 1f));
 
-        Button mic = makeButton("MIC");
-        mic.setTextSize(11);
-        LinearLayout.LayoutParams mp = new LinearLayout.LayoutParams(dp(58), dp(48));
-        mp.setMargins(dp(5), 0, dp(4), 0);
+        Button mic = new Button(this);
+        mic.setText("◉");
+        mic.setTextColor(Color.rgb(125, 225, 255));
+        mic.setTextSize(22);
+        mic.setAllCaps(false);
+        mic.setContentDescription("Speak to J.A.R.V.I.S");
+        mic.setBackgroundTintList(android.content.res.ColorStateList.valueOf(Color.rgb(7, 36, 58)));
+        LinearLayout.LayoutParams mp = new LinearLayout.LayoutParams(dp(54), dp(50));
+        mp.setMargins(dp(7), 0, 0, 0);
         composer.addView(mic, mp);
         mic.setOnClickListener(v -> startListening());
 
-        chatInput.setImeOptions(android.view.inputmethod.EditorInfo.IME_ACTION_SEND);
-        chatInput.setOnEditorActionListener((v, actionId, event) -> { sendChatMessage(); return true; });
+        chatInput.setOnEditorActionListener((v, actionId, event) -> {
+            if (actionId == android.view.inputmethod.EditorInfo.IME_ACTION_SEND
+                    || (event != null && event.getKeyCode() == android.view.KeyEvent.KEYCODE_ENTER)) {
+                sendChatMessage();
+                return true;
+            }
+            return false;
+        });
         root.addView(composer, matchWrap());
 
         setContentView(root);
@@ -175,25 +189,6 @@ public final class MainActivity extends Activity {
         if (chatScroll != null) chatScroll.post(() -> chatScroll.fullScroll(View.FOCUS_DOWN));
     }
 
-    private void showTools() {
-        String[] tools = {"Talk to J.A.R.V.I.S", "Start background wake listening", "Stop wake listening", "Discover installed apps", "Open J.A.R.V.I.S camera", "Search music", "Create Office document", "Import attachment", "Build study revision pack", "View private memory", "Clear local memory"};
-        new android.app.AlertDialog.Builder(this).setTitle("J.A.R.V.I.S TOOLS")
-            .setItems(tools, (dialog, which) -> {
-                switch (which) {
-                    case 0: startListening(); break;
-                    case 1: startWakeListening(); break;
-                    case 2: stopWakeListening(); break;
-                    case 3: showApps(); break;
-                    case 4: openCamera(); break;
-                    case 5: playMusic("music"); break;
-                    case 6: showOfficeComposer(); break;
-                    case 7: importAttachment(); break;
-                    case 8: showStudyComposer(); break;
-                    case 9: showMemory(); break;
-                    case 10: confirmClearMemory(); break;
-                }
-            }).setNegativeButton("CLOSE", null).show();
-    }
 
     private LinearLayout addPanel(LinearLayout root, String heading) {
         LinearLayout panel = new LinearLayout(this);
@@ -320,11 +315,6 @@ public final class MainActivity extends Activity {
     private void handleCommand(String raw) {
         if (memory != null) memory.add("user", raw);
         String normalized = raw.trim().toLowerCase(Locale.ROOT);
-        if (normalized.equals("tools") || normalized.equals("open tools") || normalized.equals("show controls")) {
-            addChatLine("ALFRED", "Certainly, Sir. Opening the available controls.", false);
-            showTools();
-            return;
-        }
         if (normalized.equals("create document") || normalized.equals("create a document") || normalized.equals("open office")) {
             addChatLine("ALFRED", "Opening the document studio, Sir.", false);
             showOfficeComposer();
@@ -348,6 +338,7 @@ public final class MainActivity extends Activity {
             confirmClearMemory();
             return;
         }
+        if (routeSystemCommand(raw)) return;
         CommandParser.Command command = CommandParser.parse(raw);
         switch (command.action) {
             case OPEN_CAMERA:
@@ -377,6 +368,138 @@ public final class MainActivity extends Activity {
                 setStatus("ALFRED PERSONA • OFFLINE RESPONSE");
                 break;
         }
+    }
+
+    /** Natural-language device and module routing; controls stay inside conversation. */
+    private boolean routeSystemCommand(String raw) {
+        String text = raw == null ? "" : raw.trim();
+        String lower = text.toLowerCase(Locale.ROOT);
+
+        if (lower.matches(".*\\b(start|enable|turn on)\\b.*\\b(wake listening|wake word|hands free)\\b.*")) {
+            startWakeListening();
+            reply("Wake listening has been requested, Sir. Android will display its microphone notification.");
+            return true;
+        }
+        if (lower.matches(".*\\b(stop|disable|turn off)\\b.*\\b(wake listening|wake word|hands free)\\b.*")) {
+            stopWakeListening();
+            reply("Wake listening is stopped, Sir.");
+            return true;
+        }
+        if (lower.matches(".*\\b(set|create)\\s+(an? )?alarm\\b.*") || lower.startsWith("wake me up")) {
+            java.util.regex.Matcher time = java.util.regex.Pattern
+                    .compile("(?:for|at)\\s+(\\d{1,2})(?::(\\d{2}))?\\s*(am|pm)?").matcher(lower);
+            Intent alarm = new Intent(android.provider.AlarmClock.ACTION_SET_ALARM);
+            alarm.putExtra(android.provider.AlarmClock.EXTRA_SKIP_UI, false);
+            alarm.putExtra(android.provider.AlarmClock.EXTRA_MESSAGE, "J.A.R.V.I.S");
+            if (time.find()) {
+                int hour = Integer.parseInt(time.group(1));
+                int minute = time.group(2) == null ? 0 : Integer.parseInt(time.group(2));
+                String meridiem = time.group(3);
+                if (meridiem != null) {
+                    if ("pm".equals(meridiem) && hour < 12) hour += 12;
+                    if ("am".equals(meridiem) && hour == 12) hour = 0;
+                }
+                if (hour <= 23 && minute <= 59) {
+                    alarm.putExtra(android.provider.AlarmClock.EXTRA_HOUR, hour);
+                    alarm.putExtra(android.provider.AlarmClock.EXTRA_MINUTES, minute);
+                }
+            }
+            return launchIntent(alarm, "Opening Clock to configure your alarm, Sir.");
+        }
+        if (lower.matches(".*\\b(set|start)\\s+(a )?timer\\b.*")) {
+            Intent timer = new Intent(android.provider.AlarmClock.ACTION_SET_TIMER);
+            timer.putExtra(android.provider.AlarmClock.EXTRA_SKIP_UI, false);
+            java.util.regex.Matcher duration = java.util.regex.Pattern.compile("(\\d+)\\s*(seconds?|minutes?|hours?)").matcher(lower);
+            if (duration.find()) {
+                int value = Integer.parseInt(duration.group(1));
+                String unit = duration.group(2);
+                int seconds = value * (unit.startsWith("hour") ? 3600 : unit.startsWith("minute") ? 60 : 1);
+                timer.putExtra(android.provider.AlarmClock.EXTRA_LENGTH, Math.max(1, seconds));
+            }
+            return launchIntent(timer, "Opening the timer, Sir.");
+        }
+        if (lower.equals("open contacts") || lower.equals("show contacts") || lower.equals("my contacts")) {
+            return launchIntent(new Intent(Intent.ACTION_VIEW, android.provider.ContactsContract.Contacts.CONTENT_URI),
+                    "Opening your contacts, Sir.");
+        }
+        if (lower.startsWith("call ")) {
+            String target = text.substring(5).trim();
+            String digits = target.replaceAll("[^+0-9]", "");
+            if (!digits.isEmpty() && digits.matches("[+0-9]{3,}")) {
+                return launchIntent(new Intent(Intent.ACTION_DIAL, android.net.Uri.fromParts("tel", digits, null)),
+                        "Opening the dialler for " + target + ", Sir.");
+            }
+            reply("I'll open your contacts so you can select " + target + " and confirm the call, Sir.");
+            return launchIntent(new Intent(Intent.ACTION_VIEW, android.provider.ContactsContract.Contacts.CONTENT_URI),
+                    "Opening contacts.");
+        }
+        if (lower.equals("open calendar") || lower.equals("show calendar")) {
+            return launchIntent(new Intent(Intent.ACTION_VIEW, android.provider.CalendarContract.CONTENT_URI),
+                    "Opening your calendar, Sir.");
+        }
+        if (lower.startsWith("remind me") || lower.startsWith("create event") ||
+                lower.startsWith("add event") || lower.startsWith("schedule ")) {
+            String title = text.replaceFirst("(?i)^(remind me to|create event|add event|schedule)\\s*", "").trim();
+            if (title.isEmpty()) title = "J.A.R.V.I.S reminder";
+            Intent event = new Intent(Intent.ACTION_INSERT, android.provider.CalendarContract.Events.CONTENT_URI);
+            event.putExtra(android.provider.CalendarContract.Events.TITLE, title);
+            event.putExtra(android.provider.CalendarContract.Events.DESCRIPTION, "Created with J.A.R.V.I.S");
+            return launchIntent(event, "Opening Calendar to save that reminder, Sir.");
+        }
+        if (lower.contains("office") || lower.contains("word document") || lower.contains("spreadsheet")
+                || lower.contains("powerpoint") || lower.contains("create a pdf") || lower.equals("create document")) {
+            reply("Certainly, Sir. Opening the document studio.");
+            showOfficeComposer(); return true;
+        }
+        if (lower.equals("import file") || lower.equals("import attachment") || lower.equals("open a file")) {
+            reply("Choose the file you'd like me to read, Sir.");
+            importAttachment(); return true;
+        }
+        if (lower.contains("tutor") || lower.contains("teach me") || lower.contains("study pack")
+                || lower.contains("revision") || lower.equals("study")) {
+            reply("I can organise your supplied notes into a revision pack. The current offline study engine is not yet a fact-checked AI tutor.");
+            showStudyComposer(); return true;
+        }
+        if (lower.contains("medical") || lower.startsWith("health question")) {
+            reply("Medical assistant mode is not a diagnostic service yet, Sir. I can explain general health information, but urgent symptoms need a qualified clinician.");
+            return true;
+        }
+        if (lower.contains("mentalist") || lower.startsWith("analyse my") || lower.startsWith("analyze my")) {
+            reply("Mentalist mode is ready for a reasoning exercise, Sir. I can discuss patterns and possibilities, but I cannot read minds or infer hidden facts.");
+            return true;
+        }
+        if (lower.contains("emotional support") || lower.startsWith("i feel ") || lower.startsWith("i am feeling ")) {
+            String answer = PersonalityEngine.respond(text, memory == null ? null : memory.recent(12));
+            reply(answer); return true;
+        }
+        if (lower.startsWith("open settings") || lower.equals("settings")) {
+            return launchIntent(new Intent(android.provider.Settings.ACTION_SETTINGS), "Opening Android settings, Sir.");
+        }
+        if (lower.equals("show memory") || lower.equals("recent memory")) { showMemory(); return true; }
+        if (lower.equals("clear memory")) { confirmClearMemory(); return true; }
+        if (lower.equals("show installed apps") || lower.equals("list my apps")) { showApps(); return true; }
+        return false;
+    }
+
+    private void reply(String message) {
+        addChatLine("ALFRED", message, false);
+        speak(message);
+    }
+
+    private boolean launchIntent(Intent intent, String message) {
+        try {
+            if (intent.resolveActivity(getPackageManager()) == null) {
+                reply("I cannot find a compatible Android app for that request, Sir.");
+                return true;
+            }
+            startActivity(intent);
+            reply(message);
+            setStatus("DEVICE ACTION HANDED TO ANDROID");
+        } catch (Exception error) {
+            reply("Android could not complete that action, Sir. " + error.getClass().getSimpleName());
+            setStatus("DEVICE ACTION FAILED");
+        }
+        return true;
     }
 
     private void launchApp(String requested) {
