@@ -32,7 +32,7 @@ test("JARVIS 15.0 installs separately from the protected 14.0 package", async ()
   const gradle = await readFile(new URL("../app/build.gradle", import.meta.url), "utf8");
   const manifest = await readFile(new URL("../app/src/main/AndroidManifest.xml", import.meta.url), "utf8");
   assert.match(gradle, /applicationId\s+'com\.hrishikesh\.jarvis\.fifteen\.release'/);
-  assert.match(gradle, /versionCode\s+1500/);
+  assert.match(gradle, /versionCode\\s+1501/);
   assert.match(gradle, /versionName\s+'15\.0\.0'/);
   assert.doesNotMatch(gradle, /applicationId\s+'com\.hrishikesh\.jarvis\.fourteen\.release'/);
   assert.match(manifest, /android:label="J\.A\.R\.V\.I\.S 15\.0"/);
