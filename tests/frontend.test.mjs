@@ -377,19 +377,21 @@ test("Alfred voice keeps Algieba as the only generated voice and retries transie
 });
 
 
-test("phone UI provides authenticated continuous Live Voice transcription with explicit stop and safe PCM capture", async () => {
+test("phone UI provides authenticated OpenAI Realtime WebRTC voice with explicit stop", async () => {
   const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
-  assert.match(html, /id="liveVoiceButton"/);
-  assert.match(html, /async function startLiveVoice\(\)/);
-  assert.match(html, /navigator\.mediaDevices\?\.getUserMedia/);
-  assert.match(html, /Authorization':?'Bearer '\+sessionToken/);
-  assert.match(html, /BidiGenerateContentConstrained\?access_token=/);
-  assert.match(html, /models\/gemini-3\.5-transcribe-live/);
-  assert.match(html, /mimeType:'audio\/pcm;rate=16000'/);
-  assert.match(html, /inputTranscription/);
-  assert.match(html, /requestSubmit\(\)/);
-  assert.match(html, /function stopLiveVoice\(reason\)/);
-  assert.match(html, /outputBuffer\.getChannelData\(0\)\.fill\(0\)/);
+  for (const feature of [
+    'id="liveVoiceButton"',
+    "async function startLiveVoice()",
+    "navigator.mediaDevices?.getUserMedia",
+    "openai-live-token",
+    "new RTCPeerConnection()",
+    "createDataChannel('oai-events')",
+    "https://api.openai.com/v1/realtime/calls",
+    "response.output_audio_transcript.delta",
+    "conversation.item.input_audio_transcription.completed",
+    "function stopLiveVoice(reason)",
+    "state.stream.getTracks().forEach(track=>track.stop())"
+  ]) assert.ok(html.includes(feature), "Missing Live Voice feature: " + feature);
 });
 
 test("Android WebView only grants microphone capture after runtime permission", async () => {
