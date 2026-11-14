@@ -925,6 +925,42 @@ if(musicTransport && window.AndroidJarvis && typeof window.AndroidJarvis.control
  speak(reply);return;
 }
 
+function extractYouTubeVideoQuery(message){
+ const clean=String(message||'').trim().replace(/^\s*(?:hey\s+)?jarvis[, ]*/i,'').replace(/[.!?]+$/,'').trim();
+ if(/\byoutube\s+music\b/i.test(clean))return null;
+ const patterns=[
+  /^(?:(?:please|could you|can you|would you|will you)\s+)*(?:play|search(?:\s+for)?|find|show(?:\s+me)?|watch|look up)\s+(.+?)\s+(?:on|in)\s+youtube$/i,
+  /^(?:(?:please|could you|can you|would you|will you)\s+)*(?:search(?:\s+for)?|find|show(?:\s+me)?|look up)\s+youtube\s+for\s+(.+)$/i,
+  /^(?:(?:please|could you|can you|would you|will you)\s+)*(?:play|show|watch)\s+(.+?\b(?:moments?|clips?|highlights?|scenes?|compilations?|shorts?)\b.*)$/i
+ ];
+ for(const pattern of patterns){const match=clean.match(pattern);if(match&&match[1])return match[1].trim().replace(/^["']|["']$/g,'');}
+ return null;
+}
+const youtubeVideoQuery=extractYouTubeVideoQuery(message);
+if(youtubeVideoQuery){
+ const reply='Certainly, Sir. Searching YouTube for '+youtubeVideoQuery+'. Please choose the video you want to play.';
+ add(reply,'jarvis');history.push({role:'model',text:reply});history=history.slice(-20);
+ pairApi({action:'append-local',message,reply}).catch(()=>{});
+ $('hint').textContent='Opening YouTube search results. Choose a video to begin playback.';
+ status('Searching YouTube');
+ let result='SEARCH_OPENING';
+ try{
+  if(window.AndroidJarvis&&typeof window.AndroidJarvis.searchYouTubeVideos==='function'){
+   result=window.AndroidJarvis.searchYouTubeVideos(youtubeVideoQuery)||'';
+   if(result.startsWith('ERROR:'))throw new Error(result.replace(/^ERROR:/,''));
+   if(!result.startsWith('SEARCH_OPENED:'))throw new Error('Android did not confirm that YouTube search opened.');
+  }else{
+   window.open('https://www.youtube.com/results?search_query='+encodeURIComponent(youtubeVideoQuery),'_blank');
+  }
+  $('hint').textContent='YouTube search opened. Select a result to play; automatic video selection is not enabled.';
+  status('YouTube search opened');
+ }catch(error){
+  const failure='I could not open YouTube search, Sir: '+error.message;
+  add(failure,'jarvis');history.push({role:'model',text:failure});history=history.slice(-20);
+  $('hint').textContent=error.message;status('YouTube search failed');speak(failure);return;
+ }
+ speak(reply);return;
+}
 const musicCommand=message.match(/^\s*(?:(?:hey\s+)?jarvis[, ]+)?(?:(?:please|could you|can you|would you|will you)\s+)*(?:play|search(?:\s+for)?|find|put on|listen to|i want to hear|i'd like to hear)\s+(.+?)(?:\s+(?:on|in)\s+youtube\s+music)?[.!?]*\s*$/i);
 const explicitMusicCommand=/\byoutube\s+music\b/i.test(message)&&musicCommand;
 const directMusicIntent=/^\s*(?:(?:hey\s+)?jarvis[, ]+)?(?:(?:please|could you|can you|would you|will you)\s+)*(?:play|put on|listen to|i want to hear|i'd like to hear)\b/i.test(message);
