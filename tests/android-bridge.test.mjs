@@ -31,7 +31,7 @@ test("native bridge exposes confirmation-based Clock and Calendar actions", asyn
 
 test("Android update metadata identifies the J.A.R.V.I.S. 16.0 release", async () => {
   const gradle = await readFile(new URL("../app/build.gradle", import.meta.url), "utf8");
-  assert.match(gradle, /applicationId\s+'com\.hrishikesh\.jarvis'/);
+  assert.match(gradle, /applicationId\s+'com\.hrishikesh\.jarvis16'/);
   assert.match(gradle, /versionCode\s+1600/);
   assert.match(gradle, /versionName\s+'16\.0\.0'/);
 });
