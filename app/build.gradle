@@ -3,11 +3,11 @@ android {
     namespace 'com.hrishikesh.jarvis'
     compileSdk 35
     defaultConfig {
-        applicationId 'com.hrishikesh.jarvis.nine.release'
+        applicationId 'com.hrishikesh.jarvis.ten.release'
         minSdk 26
         targetSdk 35
-        versionCode 900
-        versionName '9.0'
+        versionCode 1000
+        versionName '10.0'
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
     }
 }
