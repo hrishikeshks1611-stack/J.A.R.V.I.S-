@@ -1,5 +1,5 @@
 // J.A.R.V.I.S. server-side AI endpoint. Gemini credentials and shared history stay server-side.
-import { getSession, readHistory, readMemories, appendConversationTurn } from "../lib/jarvis-store.js";
+import { getSession, readConversationContext, appendConversationTurn } from "../lib/jarvis-store.js";
 import { JARVIS_TOOL_DECLARATIONS, executeJarvisTool } from "../lib/jarvis-tools.js";
 import { buildJarvisSystemInstruction } from "../lib/jarvis-personality.js";
 import { buildJarvisCapabilitiesReply, isJarvisCapabilitiesQuestion } from "../lib/jarvis-capabilities.js";
@@ -37,7 +37,9 @@ export default async function handler(req, res) {
   try {
     session = await getSession(req);
     if (!session) return res.status(401).json({ error: "This device is not paired with JARVIS. Open Devices & Sync to pair it." });
-    [sharedHistory, savedMemories] = await Promise.all([readHistory(), readMemories()]);
+    const sharedContext = await readConversationContext();
+    sharedHistory = sharedContext.history;
+    savedMemories = sharedContext.memories;
   } catch (error) {
     console.error("JARVIS shared memory unavailable:", error);
     return res.status(503).json({ error: "JARVIS shared memory is temporarily unavailable. Please try again shortly." });
