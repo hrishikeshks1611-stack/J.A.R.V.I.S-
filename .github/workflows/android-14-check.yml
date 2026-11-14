@@ -1,4 +1,4 @@
-name: J.A.R.V.I.S 14.0 Android microphone and wake-word checks
+name: J.A.R.V.I.S 15.0 Android compile and wake-word checks
 on:
   push:
     branches: [ jarvis-14.0, jarvis-15.0 ]
@@ -47,7 +47,7 @@ jobs:
       - name: Publish APK build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: jarvis-14.0-debug-apks
+          name: jarvis-15.0-debug-apks
           path: app/build/outputs/apk/**/*.apk
           if-no-files-found: error
           retention-days: 14
