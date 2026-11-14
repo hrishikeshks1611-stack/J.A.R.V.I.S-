@@ -57,13 +57,10 @@ public class MainActivity extends Activity {
     private static final int REQUEST_CAMERA = 4104;
     private static final int REQUEST_LOCATION = 4105;
     private static final int REQUEST_CONTACTS = 4106;
-    private static final int REQUEST_CALL_PHONE = 4107;
     private static final int REQUEST_REMINDER_NOTIFICATION = 4108;
     private long pendingReminderAt = 0L;
     private String pendingReminderTitle = null;
     private String pendingContactCall;
-    private String pendingCallName;
-    private String pendingCallNumber;
     private JarvisBridge jarvisBridge;
     private GeolocationPermissions.Callback pendingGeoCallback;
     private String pendingGeoOrigin;
@@ -375,7 +372,7 @@ public class MainActivity extends Activity {
                 String name = match[0] == null ? requestedName : match[0];
                 String number = match[1];
                 runOnUiThread(() -> requestOrPlaceCall(name, number));
-                return "CALL_STARTING:Calling " + name + ".";
+                return "DIALER_OPENED:Dialler opened for " + name + ". Review and confirm the call.";
             } catch (SecurityException error) {
                 return "ERROR:Contacts permission was not granted, Sir.";
             } finally {
@@ -384,26 +381,12 @@ public class MainActivity extends Activity {
         }
 
         private void requestOrPlaceCall(String name, String number) {
-            pendingCallName = name;
-            pendingCallNumber = number;
-            if (Build.VERSION.SDK_INT >= 23 && checkSelfPermission(Manifest.permission.CALL_PHONE) != PackageManager.PERMISSION_GRANTED) {
-                requestPermissions(new String[]{Manifest.permission.CALL_PHONE}, REQUEST_CALL_PHONE);
-                return;
-            }
-            placePendingCall();
-        }
-
-        private void placePendingCall() {
-            String number = pendingCallNumber;
-            pendingCallName = null;
-            pendingCallNumber = null;
             if (number == null || number.trim().isEmpty()) return;
             try {
-                startActivity(new Intent(Intent.ACTION_CALL, Uri.fromParts("tel", number, null)));
-            } catch (SecurityException error) {
-                Toast.makeText(MainActivity.this, "Android did not grant permission to place the call, Sir.", Toast.LENGTH_LONG).show();
+                Intent dial = new Intent(Intent.ACTION_DIAL, Uri.fromParts("tel", number, null));
+                startActivity(dial);
             } catch (ActivityNotFoundException error) {
-                Toast.makeText(MainActivity.this, "No compatible Phone app is available, Sir.", Toast.LENGTH_LONG).show();
+                Toast.makeText(MainActivity.this, "No compatible Phone dialler is available, Sir.", Toast.LENGTH_LONG).show();
             }
         }
         @JavascriptInterface public int getInstalledVersionCode() {
@@ -1064,16 +1047,6 @@ public class MainActivity extends Activity {
                 }
             } else {
                 Toast.makeText(this, "Contacts access was not granted. No call was started, Sir.", Toast.LENGTH_LONG).show();
-            }
-            return;
-        }
-        if (requestCode == REQUEST_CALL_PHONE) {
-            boolean granted = grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED;
-            if (granted && jarvisBridge != null) jarvisBridge.placePendingCall();
-            else {
-                pendingCallName = null;
-                pendingCallNumber = null;
-                Toast.makeText(this, "Phone-call permission was denied. No call was placed, Sir.", Toast.LENGTH_LONG).show();
             }
             return;
         }
