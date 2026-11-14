@@ -127,3 +127,66 @@ test("medical red-flag emergencies bypass Gemini and return immediate emergency 
     }
   }
 });
+
+
+test("chat API streams quick conversational tokens and persists the completed turn", async () => {
+  const originalFetch = global.fetch;
+  const keys = ["UPSTASH_REDIS_REST_URL", "UPSTASH_REDIS_REST_TOKEN", "JARVIS", "GEMINI_API_KEY"];
+  const original = Object.fromEntries(keys.map(key => [key, process.env[key]]));
+  process.env.UPSTASH_REDIS_REST_URL = "https://redis.example.test";
+  process.env.UPSTASH_REDIS_REST_TOKEN = "test-token";
+  process.env.JARVIS = "test-gemini-key";
+  delete process.env.GEMINI_API_KEY;
+  const encoder = new TextEncoder();
+  let saved = false;
+  global.fetch = async (url, options) => {
+    if (String(url).includes("generativelanguage.googleapis.com")) {
+      const chunks = [
+        'data: {"candidates":[{"content":{"parts":[{"text":"The sky"}]}}]}\\n\\n',
+        'data: {"candidates":[{"content":{"parts":[{"text":" looks blue."}]}}]}\\n\\n'
+      ];
+      let index = 0;
+      return { ok: true, status: 200, body: new ReadableStream({
+        pull(controller) {
+          if (index < chunks.length) controller.enqueue(encoder.encode(chunks[index++]));
+          else controller.close();
+        }
+      }) };
+    }
+    const commands = JSON.parse(options.body);
+    const results = commands.map(command => {
+      const [op, key] = command;
+      if (op === "GET" && key.includes(":session:")) return { result: JSON.stringify({ deviceId: "stream-test-device" }) };
+      if (op === "GET" && key.endsWith(":owner:token-hash")) return { result: null };
+      if (op === "GET") return { result: null };
+      if (op === "EXPIRE") return { result: 1 };
+      if (op === "EVAL") { saved = true; return { result: JSON.stringify([{ role: "user", text: "Why is the sky blue?" }, { role: "model", text: "The sky looks blue." }]) }; }
+      throw new Error("Unexpected Redis command: " + op);
+    });
+    return { ok: true, status: 200, text: async () => JSON.stringify(results) };
+  };
+  try {
+    const res = response();
+    res.chunks = [];
+    res.write = function (chunk) { this.chunks.push(chunk); return true; };
+    await handler({
+      method: "POST",
+      headers: { authorization: "Bearer stream-test-session" },
+      body: { message: "Why is the sky blue?", stream: true }
+    }, res);
+    const wire = res.chunks.join("");
+    assert.equal(res.headers["Content-Type"], "text/event-stream; charset=utf-8");
+    assert.match(wire, /event: delta/);
+    assert.match(wire, /The sky/);
+    assert.match(wire, /looks blue/);
+    assert.match(wire, /event: done/);
+    assert.equal(saved, true);
+    assert.equal(res.ended, true);
+  } finally {
+    global.fetch = originalFetch;
+    for (const key of keys) {
+      if (original[key] === undefined) delete process.env[key];
+      else process.env[key] = original[key];
+    }
+  }
+});
