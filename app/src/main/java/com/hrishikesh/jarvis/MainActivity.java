@@ -177,19 +177,12 @@ public class MainActivity extends Activity {
     }
 
     private void scheduleReminderNotification(long triggerAtMillis, String title) {
-        android.app.AlarmManager alarmManager = (android.app.AlarmManager) getSystemService(ALARM_SERVICE);
-        if (alarmManager == null) {
-            Toast.makeText(this, "Android reminders are unavailable on this device, Sir.", Toast.LENGTH_LONG).show();
-            return;
+        try {
+            ReminderScheduler.schedule(this, triggerAtMillis, title);
+            runOnUiThread(() -> Toast.makeText(this, "Reminder scheduled, Sir. It will be restored after a restart.", Toast.LENGTH_SHORT).show());
+        } catch (Exception error) {
+            runOnUiThread(() -> Toast.makeText(this, "I could not schedule that reminder. Please try again, Sir.", Toast.LENGTH_LONG).show());
         }
-        int notificationId = (int) (triggerAtMillis % Integer.MAX_VALUE);
-        Intent intent = new Intent(this, ReminderReceiver.class);
-        intent.putExtra(ReminderReceiver.EXTRA_TITLE, title);
-        intent.putExtra(ReminderReceiver.EXTRA_NOTIFICATION_ID, notificationId);
-        PendingIntent pending = PendingIntent.getBroadcast(this, notificationId, intent,
-                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
-        alarmManager.setAndAllowWhileIdle(android.app.AlarmManager.RTC_WAKEUP, triggerAtMillis, pending);
-        runOnUiThread(() -> Toast.makeText(this, "Reminder scheduled, Sir.", Toast.LENGTH_SHORT).show());
     }
 
     private void loadBundledInterface() {
