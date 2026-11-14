@@ -62,18 +62,17 @@ jobs:
           profile: pixel_2
           script: |
             set -euo pipefail
-            PACKAGE="com.hrishikesh.jarvis.fourteen.release"
             adb install update-test-inputs/jarvis-14.0-baseline.apk
-            adb shell pm path "$PACKAGE"
-            adb shell "run-as $PACKAGE sh -c 'mkdir -p files shared_prefs && printf jarvis-14.0-data-preservation-check > files/update-compatibility-sentinel.txt && printf "<map><string name=\"sentinel\">jarvis-14.0-preferences-preserved</string></map>" > shared_prefs/update-compatibility.xml'"
+            adb shell pm path com.hrishikesh.jarvis.fourteen.release
+            adb shell "run-as com.hrishikesh.jarvis.fourteen.release sh -c 'mkdir -p files shared_prefs && printf jarvis-14.0-data-preservation-check > files/update-compatibility-sentinel.txt && printf \"<map><string name=\\\"sentinel\\\">jarvis-14.0-preferences-preserved</string></map>\" > shared_prefs/update-compatibility.xml'"
             adb install -r update-test-inputs/jarvis-14.0.1-candidate.apk
-            adb shell dumpsys package "$PACKAGE" | grep -F "versionCode=1401"
-            adb shell dumpsys package "$PACKAGE" | grep -F "versionName=14.0.1"
-            adb shell pm list packages | grep -Fx "package:$PACKAGE"
-            test "$(adb shell pm list packages | grep -cF "package:$PACKAGE")" -eq 1
-            adb shell "run-as $PACKAGE grep -qx jarvis-14.0-data-preservation-check files/update-compatibility-sentinel.txt"
-            adb shell "run-as $PACKAGE grep -q jarvis-14.0-preferences-preserved shared_prefs/update-compatibility.xml"
-            adb shell monkey -p "$PACKAGE" -c android.intent.category.LAUNCHER 1
+            adb shell dumpsys package com.hrishikesh.jarvis.fourteen.release | grep -F "versionCode=1401"
+            adb shell dumpsys package com.hrishikesh.jarvis.fourteen.release | grep -F "versionName=14.0.1"
+            adb shell pm list packages | grep -Fx "package:com.hrishikesh.jarvis.fourteen.release"
+            test "$(adb shell pm list packages | grep -cF "package:com.hrishikesh.jarvis.fourteen.release")" -eq 1
+            adb shell "run-as com.hrishikesh.jarvis.fourteen.release grep -qx jarvis-14.0-data-preservation-check files/update-compatibility-sentinel.txt"
+            adb shell "run-as com.hrishikesh.jarvis.fourteen.release grep -q jarvis-14.0-preferences-preserved shared_prefs/update-compatibility.xml"
+            adb shell monkey -p com.hrishikesh.jarvis.fourteen.release -c android.intent.category.LAUNCHER 1
             echo "PASS: 14.0.1 replaced 14.0 in place, retained app-private files and preferences, and did not create a second package."
       - name: Upload verified 14.0.1 phone candidate
         uses: actions/upload-artifact@v4
