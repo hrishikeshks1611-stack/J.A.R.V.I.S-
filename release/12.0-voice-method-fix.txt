@@ -1,0 +1,1 @@
+Wake service method identifier compile fix.
