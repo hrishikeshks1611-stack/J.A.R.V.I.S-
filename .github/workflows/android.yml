@@ -1,4 +1,4 @@
-name: Fresh Android Build
+name: Fresh Android Build — Separate Install
 on:
   push:
     branches: [jarvis-9.0]
