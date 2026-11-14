@@ -52,7 +52,7 @@ export default async function handler(req, res) {
     if (!message) return res.status(400).json({ error: "Please enter a request." });
 
     const intent = classifyJarvisIntent(message);
-    const system = buildJarvisSystemInstruction(mode) + "\\n\\n" + buildIntentRoutingInstruction(intent.intent);
+    const system = buildJarvisSystemInstruction(mode) + "\n\n" + buildIntentRoutingInstruction(intent.intent);
 
     // Every paired device reads the same central conversation rather than sending
     // a private browser-only history. Only the latest eight turns enter the prompt.
