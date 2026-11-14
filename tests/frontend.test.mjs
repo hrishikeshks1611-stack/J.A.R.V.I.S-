@@ -120,6 +120,7 @@ test("YouTube Music voice commands use the native playback bridge or search fall
   assert.ok(html.includes("Finding your music, Sir…"));
   assert.ok(html.includes("const acknowledgement='Certainly, Sir.'"));
   assert.ok(html.includes("await acknowledgementFinished"));
+  assert.ok(html.includes("await openYoutubeMusicTrack(track);"));
 });
 
 test("native app launch results are sent to shared conversation history", async () => {
